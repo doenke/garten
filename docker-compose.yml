@@ -1,0 +1,27 @@
+services:
+  gardenglow:
+    build: .
+    container_name: gardenglow
+    restart: unless-stopped
+    environment:
+      SECRET_KEY: changeme
+      DATABASE_URL: sqlite:////data/garden.db
+      UPLOAD_FOLDER: /data/uploads
+      OIDC_SERVER_METADATA_URL: https://example.com/.well-known/openid-configuration
+      OIDC_CLIENT_ID: change-me
+      OIDC_CLIENT_SECRET: change-me
+    volumes:
+      - gardenglow_data:/data
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gardenglow.rule=Host(`gardenglow.local`)"
+      - "traefik.http.services.gardenglow.loadbalancer.server.port=8000"
+volumes:
+  gardenglow_data:
