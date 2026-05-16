@@ -2,7 +2,7 @@ import os
 from urllib.parse import urlparse
 import requests
 from authlib.integrations.flask_client import OAuth
-from flask import Blueprint, redirect, url_for, session, current_app
+from flask import Blueprint, redirect, url_for, session
 from .models import db, User
 
 oauth = OAuth()
@@ -66,4 +66,7 @@ def auth_callback():
 @auth_bp.route('/logout')
 def logout():
     session.clear()
+    logout_url = os.getenv('OIDC_LOGOUT_URL')
+    if logout_url:
+        return redirect(logout_url)
     return redirect(url_for('main.index'))

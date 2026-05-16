@@ -10,6 +10,7 @@ services:
       OIDC_SERVER_METADATA_URL: https://example.com/.well-known/openid-configuration
       OIDC_CLIENT_ID: change-me
       OIDC_CLIENT_SECRET: change-me
+      OIDC_LOGOUT_URL: https://example.com/logout
     volumes:
       - gardenglow_data:/data
     ports:
