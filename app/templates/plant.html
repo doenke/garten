@@ -3,6 +3,7 @@
 <h2>{{plant.name}} ({{plant.common_name}})</h2>
 <p>Lichtbedarf: {{plant.light_need}} | Blühmonate: {{plant.bloom_months}} | Blütenfarbe: {{plant.flower_color}}</p>
 <p>{{plant.info}}</p>
+<p><a href="/locations/{{ plant.location_id }}">← Zurück zur Location</a></p>
 <form method="post" action="/plants/{{ plant.id }}/delete" onsubmit="return confirm('Pflanze wirklich löschen?');" style="margin-bottom:1rem;">
   <button type="submit">Pflanze löschen</button>
 </form>
