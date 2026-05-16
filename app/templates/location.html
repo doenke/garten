@@ -12,5 +12,5 @@
 <textarea name="info" placeholder="Weitere Info"></textarea>
 <button>Pflanze anlegen</button>
 </form>
-<ul>{% for p in plants %}<li><a href="/plants/{{p.id}}">{{p.name}}</a></li>{% endfor %}</ul>
+<ul>{% for p in plants %}{% set c = creators.get(p.creator_id) %}<li>{% if c and c.avatar_filename %}<img class="avatar-sm" src="/avatars/{{ c.avatar_filename }}">{% endif %}<a href="/plants/{{p.id}}">{{p.name}}</a> <small>(von {{ c.name if c else 'Unbekannt' }})</small></li>{% endfor %}</ul>
 {% endblock %}

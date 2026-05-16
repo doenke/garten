@@ -7,6 +7,12 @@
   <button>anlegen</button>
 </form>
 <ul>
-{% for l in locations %}<li><a href="/locations/{{l.id}}">{{l.name}}</a> - {{l.description}}</li>{% endfor %}
+{% for l in locations %}
+  {% set c = creators.get(l.creator_id) %}
+  <li>
+    {% if c and c.avatar_filename %}<img class="avatar-sm" src="/avatars/{{ c.avatar_filename }}">{% endif %}
+    <a href="/locations/{{l.id}}">{{l.name}}</a> - {{l.description}} <small>(angelegt von {{ c.name if c else 'Unbekannt' }})</small>
+  </li>
+{% endfor %}
 </ul>
 {% endblock %}

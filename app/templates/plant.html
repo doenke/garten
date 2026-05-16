@@ -18,8 +18,9 @@
 </form>
 <h3>Fotos</h3>
 {% for ph in photos %}
-<div><img src="/uploads/{{ph.filename}}" style="max-height:200px"><br>{{ph.taken_on}} - {{ph.comment}}</div>
+{% set c = creators.get(ph.creator_id) %}
+<div>{% if c and c.avatar_filename %}<img class="avatar-sm" src="/avatars/{{ c.avatar_filename }}">{% endif %}<img src="/uploads/{{ph.filename}}" style="max-height:200px"><br>{{ph.taken_on}} - {{ph.comment}} <small>(von {{ c.name if c else 'Unbekannt' }})</small></div>
 {% endfor %}
 <h3>Kommentare</h3>
-{% for n in notes %}<p>{{n.note_date}}: {{n.comment}}</p>{% endfor %}
+{% for n in notes %}{% set c = creators.get(n.creator_id) %}<p>{% if c and c.avatar_filename %}<img class="avatar-sm" src="/avatars/{{ c.avatar_filename }}">{% endif %}{{n.note_date}}: {{n.comment}} <small>(von {{ c.name if c else 'Unbekannt' }})</small></p>{% endfor %}
 {% endblock %}
