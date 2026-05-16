@@ -9,7 +9,7 @@ docker compose up --build
 ```
 
 ## OIDC
-Setze `OIDC_SERVER_METADATA_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` in `docker-compose.yml` oder via env.
+Setze `OIDC_SERVER_METADATA_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` und optional `OIDC_LOGOUT_URL` in `docker-compose.yml` oder via env.
 
 ## Features
 - OIDC Login + Avatar
