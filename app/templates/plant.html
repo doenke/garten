@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>{{plant.name}} ({{plant.common_name}})</h2>
+<p>Lichtbedarf: {{plant.light_need}} | Blühmonate: {{plant.bloom_months}} | Blütenfarbe: {{plant.flower_color}}</p>
+<p>{{plant.info}}</p>
+<h3>Foto hochladen</h3>
+<form method="post" action="/plants/{{plant.id}}/photos" enctype="multipart/form-data">
+  <input type="file" name="photo" required>
+  <input type="date" name="taken_on">
+  <input name="comment" placeholder="Kommentar">
+  <button>Hochladen</button>
+</form>
+<h3>Kommentar hinzufügen</h3>
+<form method="post" action="/plants/{{plant.id}}/notes">
+  <input type="date" name="note_date">
+  <input name="comment" placeholder="Kommentar" required>
+  <button>Speichern</button>
+</form>
+<h3>Fotos</h3>
+{% for ph in photos %}
+<div><img src="/uploads/{{ph.filename}}" style="max-height:200px"><br>{{ph.taken_on}} - {{ph.comment}}</div>
+{% endfor %}
+<h3>Kommentare</h3>
+{% for n in notes %}<p>{{n.note_date}}: {{n.comment}}</p>{% endfor %}
+{% endblock %}

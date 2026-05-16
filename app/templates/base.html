@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="de" data-theme="auto">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>GardenGlow</title>
+  <link rel="stylesheet" href="https://assets.kanonenwiese.de/css/central_style.css">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  <meta name="theme-color" content="#355e3b" />
+  <style>footer{position:fixed;bottom:0;left:0;right:0;background:#0001;padding:.5rem} .avatar{width:36px;height:36px;border-radius:50%}</style>
+</head>
+<body>
+<header style="display:flex;justify-content:space-between;align-items:center;">
+  <div style="display:flex;align-items:center;gap:1rem"><img src="https://assets.kanonenwiese.de/US_KanonenwieseLogo.svg" style="height:40px"><h1>GardenGlow</h1></div>
+  <div>
+    {% if user %}
+      {% if user.avatar_url %}<img class="avatar" src="{{ user.avatar_url }}">{% endif %}
+      {{ user.name or user.email }} | <a href="/logout">Logout</a>
+    {% endif %}
+  </div>
+</header>
+<main style="padding-bottom:4rem">
+{% block content %}{% endblock %}
+</main>
+<footer>
+  <label>Theme:</label>
+  <select id="themeSwitch"><option value="auto">Auto</option><option value="light">Hell</option><option value="dark">Dunkel</option></select>
+</footer>
+<script>
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}
+const s=document.getElementById('themeSwitch');const saved=localStorage.getItem('theme')||'auto';s.value=saved;document.documentElement.dataset.theme=saved;
+s.addEventListener('change',()=>{localStorage.setItem('theme',s.value);document.documentElement.dataset.theme=s.value;});
+</script>
+</body></html>

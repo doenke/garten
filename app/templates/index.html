@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Pflanzorte</h2>
+<form method="post" action="/locations/new">
+  <input name="name" placeholder="Name" required>
+  <input name="description" placeholder="Beschreibung">
+  <button>anlegen</button>
+</form>
+<ul>
+{% for l in locations %}<li><a href="/locations/{{l.id}}">{{l.name}}</a> - {{l.description}}</li>{% endfor %}
+</ul>
+{% endblock %}
