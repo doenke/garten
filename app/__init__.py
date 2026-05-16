@@ -7,16 +7,18 @@ from sqlalchemy import inspect, text
 import os
 
 
-def _ensure_user_avatar_filename_column():
+def _ensure_column(table_name, column_name, ddl, backfill_sql=None):
     inspector = inspect(db.engine)
-    if not inspector.has_table('user'):
+    if not inspector.has_table(table_name):
         return
 
-    user_columns = {column['name'] for column in inspector.get_columns('user')}
-    if 'avatar_filename' in user_columns:
+    columns = {column['name'] for column in inspector.get_columns(table_name)}
+    if column_name in columns:
         return
 
-    db.session.execute(text('ALTER TABLE user ADD COLUMN avatar_filename VARCHAR(255)'))
+    db.session.execute(text(f'ALTER TABLE {table_name} ADD COLUMN {ddl}'))
+    if backfill_sql:
+        db.session.execute(text(backfill_sql))
     db.session.commit()
 
 
@@ -39,7 +41,13 @@ def create_app():
 
     with app.app_context():
         db.create_all()
-        _ensure_user_avatar_filename_column()
+        _ensure_column('user', 'avatar_filename', 'avatar_filename VARCHAR(255)')
+        _ensure_column(
+            'location',
+            'creator_id',
+            'creator_id INTEGER',
+            backfill_sql='UPDATE location SET creator_id = user_id WHERE creator_id IS NULL'
+        )
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
         os.makedirs(app.config['AVATAR_FOLDER'], exist_ok=True)
 
