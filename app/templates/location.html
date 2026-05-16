@@ -1,6 +1,9 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>{{ location.name }}</h2>
+<form method="post" action="/locations/{{ location.id }}/delete" onsubmit="return confirm('Location wirklich löschen? Alle enthaltenen Pflanzen werden ebenfalls gelöscht.');" style="margin-bottom:1rem;">
+  <button type="submit">Location löschen</button>
+</form>
 <form method="post" action="/locations/{{location.id}}/plants/new">
 <input name="name" placeholder="Namen" required>
 <input name="common_name" placeholder="Umgangssprachlicher Name">
