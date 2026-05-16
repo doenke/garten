@@ -48,6 +48,24 @@ def create_app():
             'creator_id INTEGER',
             backfill_sql='UPDATE location SET creator_id = user_id WHERE creator_id IS NULL'
         )
+        _ensure_column(
+            'plant',
+            'creator_id',
+            'creator_id INTEGER',
+            backfill_sql='UPDATE plant SET creator_id = user_id WHERE creator_id IS NULL'
+        )
+        _ensure_column(
+            'plant_photo',
+            'creator_id',
+            'creator_id INTEGER',
+            backfill_sql='UPDATE plant_photo SET creator_id = user_id WHERE creator_id IS NULL'
+        )
+        _ensure_column(
+            'plant_note',
+            'creator_id',
+            'creator_id INTEGER',
+            backfill_sql='UPDATE plant_note SET creator_id = user_id WHERE creator_id IS NULL'
+        )
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
         os.makedirs(app.config['AVATAR_FOLDER'], exist_ok=True)
 
