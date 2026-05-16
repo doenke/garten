@@ -54,7 +54,17 @@ def avatars(filename):
 def index():
     user = current_user()
     locations = Location.query.all()
-    return render_template('index.html', user=user, locations=locations, creators={u.id: u for u in User.query.all()})
+    location_plant_counts = {
+        location_id: count
+        for location_id, count in db.session.query(Plant.location_id, db.func.count(Plant.id)).group_by(Plant.location_id).all()
+    }
+    return render_template(
+        'index.html',
+        user=user,
+        locations=locations,
+        creators={u.id: u for u in User.query.all()},
+        location_plant_counts=location_plant_counts,
+    )
 
 @main_bp.route('/locations/new', methods=['POST'])
 @login_required
