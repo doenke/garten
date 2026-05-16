@@ -1,6 +1,6 @@
 services:
   gardenglow:
-    build: .
+    build: https://github.com/doenke/garten.git#main
     container_name: gardenglow
     restart: unless-stopped
     environment:
