@@ -103,6 +103,19 @@ def new_plant(location_id):
     db.session.commit()
     return redirect(url_for('main.location_detail', location_id=location_id))
 
+@main_bp.route('/locations/<int:location_id>/delete', methods=['POST'])
+@login_required
+def delete_location(location_id):
+    location = Location.query.get_or_404(location_id)
+    plants = Plant.query.filter_by(location_id=location.id).all()
+    for plant in plants:
+        PlantPhoto.query.filter_by(plant_id=plant.id).delete()
+        PlantNote.query.filter_by(plant_id=plant.id).delete()
+        db.session.delete(plant)
+    db.session.delete(location)
+    db.session.commit()
+    return redirect(url_for('main.index'))
+
 @main_bp.route('/plants/<int:plant_id>')
 @login_required
 def plant_detail(plant_id):
@@ -110,6 +123,17 @@ def plant_detail(plant_id):
     photos = PlantPhoto.query.filter_by(plant_id=plant.id).order_by(PlantPhoto.uploaded_at.desc()).all()
     notes = PlantNote.query.filter_by(plant_id=plant.id).order_by(PlantNote.created_at.desc()).all()
     return render_template('plant.html', plant=plant, photos=photos, notes=notes, user=current_user(), creators={u.id: u for u in User.query.all()})
+
+@main_bp.route('/plants/<int:plant_id>/delete', methods=['POST'])
+@login_required
+def delete_plant(plant_id):
+    plant = Plant.query.get_or_404(plant_id)
+    location_id = plant.location_id
+    PlantPhoto.query.filter_by(plant_id=plant.id).delete()
+    PlantNote.query.filter_by(plant_id=plant.id).delete()
+    db.session.delete(plant)
+    db.session.commit()
+    return redirect(url_for('main.location_detail', location_id=location_id))
 
 @main_bp.route('/plants/<int:plant_id>/photos', methods=['POST'])
 @login_required
