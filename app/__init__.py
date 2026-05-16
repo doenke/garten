@@ -3,7 +3,21 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from .models import db
 from .auth import auth_bp, oauth
 from .views import main_bp
+from sqlalchemy import inspect, text
 import os
+
+
+def _ensure_user_avatar_filename_column():
+    inspector = inspect(db.engine)
+    if not inspector.has_table('user'):
+        return
+
+    user_columns = {column['name'] for column in inspector.get_columns('user')}
+    if 'avatar_filename' in user_columns:
+        return
+
+    db.session.execute(text('ALTER TABLE user ADD COLUMN avatar_filename VARCHAR(255)'))
+    db.session.commit()
 
 
 def create_app():
@@ -25,6 +39,7 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        _ensure_user_avatar_filename_column()
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
         os.makedirs(app.config['AVATAR_FOLDER'], exist_ok=True)
 
