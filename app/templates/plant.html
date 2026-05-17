@@ -22,8 +22,8 @@
 <h3>Fotos</h3>
 {% for ph in photos %}
 {% set c = creators.get(ph.creator_id) %}
-<div>{% if c and c.avatar_filename %}<img class="avatar-sm" src="/avatars/{{ c.avatar_filename }}">{% endif %}<img src="/uploads/{{ph.filename}}" style="max-height:200px"><br>{{ph.taken_on}} - {{ph.comment}} <small>(von {{ c.name if c else 'Unbekannt' }})</small></div>
+<div>{% if c and c.avatar_filename %}<img class="avatar-sm" src="/avatars/{{ c.avatar_filename }}" title="{{ c.name or c.email or 'Unbekannt' }}" alt="{{ c.name or c.email or 'Unbekannt' }}">{% elif c and c.avatar_url %}<img class="avatar-sm" src="{{ c.avatar_url }}" title="{{ c.name or c.email or 'Unbekannt' }}" alt="{{ c.name or c.email or 'Unbekannt' }}">{% else %}<span title="{{ c.name if c else 'Unbekannt' }}">👤</span>{% endif %}<img src="/uploads/{{ph.filename}}" style="max-height:200px"><br>{{ph.taken_on}} - {{ph.comment}}</div>
 {% endfor %}
 <h3>Kommentare</h3>
-{% for n in notes %}{% set c = creators.get(n.creator_id) %}<p>{% if c and c.avatar_filename %}<img class="avatar-sm" src="/avatars/{{ c.avatar_filename }}">{% endif %}{{n.note_date}}: {{n.comment}} <small>(von {{ c.name if c else 'Unbekannt' }})</small></p>{% endfor %}
+{% for n in notes %}{% set c = creators.get(n.creator_id) %}<p>{% if c and c.avatar_filename %}<img class="avatar-sm" src="/avatars/{{ c.avatar_filename }}" title="{{ c.name or c.email or 'Unbekannt' }}" alt="{{ c.name or c.email or 'Unbekannt' }}">{% elif c and c.avatar_url %}<img class="avatar-sm" src="{{ c.avatar_url }}" title="{{ c.name or c.email or 'Unbekannt' }}" alt="{{ c.name or c.email or 'Unbekannt' }}">{% else %}<span title="{{ c.name if c else 'Unbekannt' }}">👤</span>{% endif %}{{n.note_date}}: {{n.comment}}</p>{% endfor %}
 {% endblock %}

@@ -18,8 +18,13 @@
       <td>{{ l.description or '-' }}</td>
       <td>{{ location_plant_counts.get(l.id, 0) }}</td>
       <td>
-        {% if c and c.avatar_filename %}<img class="avatar-sm" src="/avatars/{{ c.avatar_filename }}">{% endif %}
-        {{ c.name if c else 'Unbekannt' }}
+        {% if c and c.avatar_filename %}
+          <img class="avatar-sm" src="/avatars/{{ c.avatar_filename }}" title="{{ c.name or c.email or 'Unbekannt' }}" alt="{{ c.name or c.email or 'Unbekannt' }}">
+        {% elif c and c.avatar_url %}
+          <img class="avatar-sm" src="{{ c.avatar_url }}" title="{{ c.name or c.email or 'Unbekannt' }}" alt="{{ c.name or c.email or 'Unbekannt' }}">
+        {% else %}
+          <span title="{{ c.name if c else 'Unbekannt' }}">👤</span>
+        {% endif %}
       </td>
     </tr>
   {% endfor %}
