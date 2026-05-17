@@ -24,6 +24,24 @@ SYSTEM_EVENT_TEMPLATES = {
     'outplant': {'title': 'Ausgepflanzt', 'description': 'Pflanze wurde ausgepflanzt.'},
 }
 
+PLANTING_STATE_TYPES = {
+    'Eingepflanzt': 'planting',
+    'Umgepflanzt': 'transplant',
+    'Ausgepflanzt': 'outplant',
+}
+
+
+def create_system_event(plant_id, key, creator_id, event_at=None, description=None):
+    tpl = SYSTEM_EVENT_TEMPLATES[key]
+    db.session.add(PlantEvent(
+        plant_id=plant_id,
+        event_type='plant_event',
+        event_at=event_at or datetime.utcnow(),
+        title=tpl['title'],
+        description=description if description is not None else tpl['description'],
+        creator_id=creator_id
+    ))
+
 def current_user():
     uid = session.get('user_id')
     return User.query.get(uid) if uid else None
@@ -164,9 +182,12 @@ def plant_detail(plant_id):
     photos = PlantPhoto.query.filter_by(plant_id=plant.id).order_by(PlantPhoto.uploaded_at.desc()).all()
     notes = PlantNote.query.filter_by(plant_id=plant.id).order_by(PlantNote.created_at.desc()).all()
     month_names = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
+    last_plant_event = next((ev for ev in events if ev.event_type == 'plant_event' and ev.title in PLANTING_STATE_TYPES), None)
+    is_planted = bool(last_plant_event and PLANTING_STATE_TYPES[last_plant_event.title] in {'planting', 'transplant'})
     return render_template(
         'plant.html',
         plant=plant,
+        events=events,
         photos=photos,
         notes=notes,
         user=current_user(),
@@ -174,18 +195,16 @@ def plant_detail(plant_id):
         creators={u.id: u for u in User.query.all()},
         today_date=datetime.utcnow().date().isoformat(),
         month_names=month_names,
+        is_planted=is_planted,
     )
 
 @main_bp.route('/plants/<int:plant_id>/delete', methods=['POST'])
 @login_required
 def delete_plant(plant_id):
     plant = Plant.query.get_or_404(plant_id)
-    location_id = plant.location_id
-    PlantPhoto.query.filter_by(plant_id=plant.id).delete()
-    PlantNote.query.filter_by(plant_id=plant.id).delete()
-    PlantEvent.query.filter_by(plant_id=plant.id).delete()
-    db.session.delete(plant)
     trash = get_or_create_trash_location(current_user().id)
+    if plant.location_id != trash.id:
+        create_system_event(plant.id, 'outplant', current_user().id)
     plant.location_id = trash.id
     db.session.commit()
     return redirect(url_for('main.plant_detail', plant_id=plant.id))
@@ -196,6 +215,19 @@ def move_plant(plant_id):
     plant = Plant.query.get_or_404(plant_id)
     target_location_id = request.form.get('location_id', type=int)
     target_location = Location.query.get_or_404(target_location_id)
+    source_location = Location.query.get_or_404(plant.location_id)
+    user_id = current_user().id
+    trash = get_or_create_trash_location(user_id)
+
+    if source_location.id != target_location.id:
+        if source_location.id == trash.id and target_location.id != trash.id:
+            create_system_event(plant.id, 'planting', user_id)
+        elif target_location.id == trash.id and source_location.id != trash.id:
+            create_system_event(plant.id, 'outplant', user_id)
+        elif source_location.id != trash.id and target_location.id != trash.id:
+            description = f"Umgepflanzt von Beet {source_location.name} nach Beet {target_location.name}"
+            create_system_event(plant.id, 'transplant', user_id, description=description)
+
     plant.location_id = target_location.id
     db.session.commit()
     return redirect(url_for('main.plant_detail', plant_id=plant.id))
@@ -203,17 +235,11 @@ def move_plant(plant_id):
 @main_bp.route('/plants/<int:plant_id>/events', methods=['POST'])
 @login_required
 def add_event(plant_id):
-    selected_type = request.form.get('event_type')
-    event_type = EVENT_TYPE_MAP.get(selected_type, 'user_event')
+    event_type = 'user_event'
     event_at_raw = request.form.get('event_at')
     event_at = datetime.strptime(event_at_raw, '%Y-%m-%d') if event_at_raw else datetime.utcnow()
     title = request.form.get('title', '').strip()
     description = request.form.get('description', '').strip()
-
-    if selected_type in SYSTEM_EVENT_TEMPLATES:
-        title = SYSTEM_EVENT_TEMPLATES[selected_type]['title']
-        if not description:
-            description = SYSTEM_EVENT_TEMPLATES[selected_type]['description']
 
     file = request.files.get('attachment')
     attachment_filename = None
@@ -229,4 +255,25 @@ def add_event(plant_id):
     if title or description or attachment_filename:
         db.session.add(PlantEvent(plant_id=plant_id, event_type=event_type, event_at=event_at, title=title or 'Kommentar', description=description or None, attachment_filename=attachment_filename, attachment_kind=attachment_kind, creator_id=current_user().id))
         db.session.commit()
+    return redirect(url_for('main.plant_detail', plant_id=plant_id))
+
+
+@main_bp.route('/plants/<int:plant_id>/events/system/<string:event_key>', methods=['POST'])
+@login_required
+def add_system_event(plant_id, event_key):
+    if event_key not in {'planting', 'outplant', 'care_event', 'measurement'}:
+        return redirect(url_for('main.plant_detail', plant_id=plant_id))
+    if event_key in {'care_event', 'measurement'}:
+        titles = {'care_event': 'Pflege', 'measurement': 'Messen'}
+        db.session.add(PlantEvent(
+            plant_id=plant_id,
+            event_type=EVENT_TYPE_MAP[event_key],
+            event_at=datetime.utcnow(),
+            title=titles[event_key],
+            description=None,
+            creator_id=current_user().id
+        ))
+    else:
+        create_system_event(plant_id, event_key, current_user().id)
+    db.session.commit()
     return redirect(url_for('main.plant_detail', plant_id=plant_id))
