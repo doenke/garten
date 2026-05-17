@@ -1,8 +1,9 @@
 import os
 from urllib.parse import urlparse
 import requests
+from authlib.integrations.base_client.errors import MismatchingStateError
 from authlib.integrations.flask_client import OAuth
-from flask import Blueprint, redirect, url_for, session
+from flask import Blueprint, current_app, redirect, url_for, session
 from .models import db, User
 
 oauth = OAuth()
@@ -48,7 +49,12 @@ def _download_avatar(user, avatar_url):
 
 @auth_bp.route('/auth/callback')
 def auth_callback():
-    token = oauth.oidc.authorize_access_token()
+    try:
+        token = oauth.oidc.authorize_access_token()
+    except MismatchingStateError:
+        current_app.logger.warning('OIDC state mismatch; restarting login flow')
+        session.clear()
+        return redirect(url_for('auth.login'))
     userinfo = token.get('userinfo') or oauth.oidc.userinfo()
     sub = userinfo['sub']
     user = User.query.filter_by(sub=sub).first()
