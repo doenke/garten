@@ -1,8 +1,12 @@
 {% extends 'base.html' %}
 {% block content %}
 <section class="card">
+<nav class="page-breadcrumb" aria-label="Breadcrumb">
+  <a href="/">Übersicht</a>
+  <span class="separator" aria-hidden="true">/</span>
+  <span aria-current="page">{{ location.name }}</span>
+</nav>
 <h2>{{ location.name }}</h2>
-<p><a href="/" class="btn secondary">← Zurück zur Übersicht</a></p>
 <form method="post" action="/locations/{{ location.id }}/delete" onsubmit="return confirm('Location wirklich löschen? Alle enthaltenen Pflanzen werden in den Papierkorb verschoben.');" class="floating-trash">
   <button type="submit" aria-label="Location löschen" title="Location löschen">🗑️</button>
 </form>

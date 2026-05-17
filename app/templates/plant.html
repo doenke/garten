@@ -1,9 +1,15 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2>{{ plant.name }} ({{ plant.common_name or '-' }})</h2>
-<p><a href="/locations/{{ plant.location_id }}" class="btn secondary">← Zurück zur Location</a></p>
+<section class="card">
+  <nav class="page-breadcrumb" aria-label="Breadcrumb">
+    <a href="/">Übersicht</a>
+    <span class="separator" aria-hidden="true">/</span>
+    <a href="/locations/{{ plant.location_id }}">Location</a>
+    <span class="separator" aria-hidden="true">/</span>
+    <span aria-current="page">{{ plant.name }}</span>
+  </nav>
+  <h2 style="margin-top:0;">{{ plant.name }} ({{ plant.common_name or '-' }})</h2>
 
-<div class="card">
   <h3 style="margin-top:0;">Stammdaten</h3>
   <p><strong>Name:</strong> {{ plant.name }}</p>
   <p><strong>Botanischer Name:</strong> {{ plant.common_name or '-' }}</p>
@@ -49,7 +55,7 @@
       <button type="submit">Stammdaten speichern</button>
     </form>
   </details>
-</div>
+</section>
 
 <div class="card">
   <h3 style="margin-top:0;">Aktionen</h3>
