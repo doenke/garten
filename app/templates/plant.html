@@ -1,80 +1,117 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2>{{plant.name}} ({{plant.common_name}})</h2>
-<p>Lichtbedarf: {{plant.light_need}} | Blütenfarbe: {{plant.flower_color}}</p>
-<p>Boden: {{ plant.soil or '-' }} | Höhe ohne Blüte: {{ plant.height_without_bloom_cm or '-' }} cm | Höhe mit Blüte: {{ plant.height_with_bloom_cm or '-' }} cm</p>
-{% if plant.bloom_start_month and plant.bloom_end_month %}
-{% set start_idx = plant.bloom_start_month - 1 %}
-{% set end_idx = plant.bloom_end_month - 1 %}
-<p>Blütezeit: {{ month_names[start_idx] }} bis {{ month_names[end_idx] }}</p>
-<div class="bloom-timeline" aria-label="Zeitstrahl der Blütezeit">
-  <div class="timeline-track">
-    {% for i in range(12) %}
+<h2>{{ plant.name }} ({{ plant.common_name or '-' }})</h2>
+<p><a href="/locations/{{ plant.location_id }}">← Zurück zur Location</a></p>
+
+<div style="border:1px solid #ddd; border-radius:8px; padding:1rem; margin-bottom:1rem;">
+  <h3 style="margin-top:0;">Stammdaten</h3>
+  <p><strong>Name:</strong> {{ plant.name }}</p>
+  <p><strong>Botanischer Name:</strong> {{ plant.common_name or '-' }}</p>
+  <p><strong>Quelle:</strong> {{ plant.source or '-' }}</p>
+  <p><strong>Lichtbedarf:</strong> {{ plant.light_need or '-' }}</p>
+  <p><strong>Blütenfarbe:</strong> {{ plant.flower_color or '-' }}</p>
+  <p><strong>Boden:</strong> {{ plant.soil or '-' }}</p>
+  <p><strong>Höhe ohne Blüte:</strong> {{ plant.height_without_bloom_cm or '-' }} cm</p>
+  <p><strong>Höhe mit Blüte:</strong> {{ plant.height_with_bloom_cm or '-' }} cm</p>
+  {% if plant.bloom_start_month and plant.bloom_end_month %}
+  {% set start_idx = plant.bloom_start_month - 1 %}
+  {% set end_idx = plant.bloom_end_month - 1 %}
+  <p><strong>Blütezeit:</strong> {{ month_names[start_idx] }} bis {{ month_names[end_idx] }}</p>
+  <div class="bloom-timeline" aria-label="Zeitstrahl der Blütezeit">
+    <div class="timeline-track">
+      {% for i in range(12) %}
       {% set active = (start_idx <= end_idx and i >= start_idx and i <= end_idx) or (start_idx > end_idx and (i >= start_idx or i <= end_idx)) %}
       <span class="timeline-month {% if active %}active{% endif %}">{{ month_names[i] }}</span>
-    {% endfor %}
+      {% endfor %}
+    </div>
   </div>
+  {% endif %}
+  <p><strong>Info:</strong> {{ plant.info or '-' }}</p>
+
+  <details>
+    <summary>Stammdaten ändern</summary>
+    <form method="post" action="/plants/{{ plant.id }}/masterdata" style="margin-top:.75rem; display:grid; gap:.5rem;">
+      <input name="name" value="{{ plant.name }}" placeholder="Name" required>
+      <input name="common_name" value="{{ plant.common_name or '' }}" placeholder="Botanischer Name">
+      <input name="source" value="{{ plant.source or '' }}" placeholder="Quelle">
+      <input name="light_need" value="{{ plant.light_need or '' }}" placeholder="Lichtbedarf">
+      <div style="display:flex; gap:.5rem;">
+        <input type="number" min="1" max="12" name="bloom_start_month" value="{{ plant.bloom_start_month or '' }}" placeholder="Blütezeit von (1-12)">
+        <input type="number" min="1" max="12" name="bloom_end_month" value="{{ plant.bloom_end_month or '' }}" placeholder="Blütezeit bis (1-12)">
+      </div>
+      <input name="flower_color" value="{{ plant.flower_color or '' }}" placeholder="Blütenfarbe">
+      <textarea name="soil" placeholder="Boden">{{ plant.soil or '' }}</textarea>
+      <div style="display:flex; gap:.5rem;">
+        <input type="number" min="0" name="height_without_bloom_cm" value="{{ plant.height_without_bloom_cm or '' }}" placeholder="Höhe ohne Blüte (cm)">
+        <input type="number" min="0" name="height_with_bloom_cm" value="{{ plant.height_with_bloom_cm or '' }}" placeholder="Höhe mit Blüte (cm)">
+      </div>
+      <textarea name="info" placeholder="Info">{{ plant.info or '' }}</textarea>
+      <button type="submit">Stammdaten speichern</button>
+    </form>
+  </details>
 </div>
-{% endif %}
-<p>{{plant.info}}</p>
-<p><a href="/locations/{{ plant.location_id }}">← Zurück zur Location</a></p>
-<form method="post" action="/plants/{{ plant.id }}/move" style="margin-bottom:1rem;">
-  <label for="location_id">In andere Location verschieben:</label>
-  <select id="location_id" name="location_id" required>
-    {% for location in locations %}
+
+<div style="border:1px solid #ddd; border-radius:8px; padding:1rem; margin-bottom:1rem;">
+  <h3 style="margin-top:0;">Aktionen</h3>
+  <form method="post" action="/plants/{{ plant.id }}/move" style="margin-bottom:.75rem;">
+    <label for="location_id">In andere Location verschieben:</label>
+    <select id="location_id" name="location_id" required>
+      {% for location in locations %}
       <option value="{{ location.id }}" {% if location.id == plant.location_id %}selected{% endif %}>{{ location.name }}</option>
-    {% endfor %}
-  </select>
-  <button type="submit">Verschieben</button>
-</form>
-<form method="post" action="/plants/{{ plant.id }}/delete" onsubmit="return confirm('Pflanze wirklich löschen?');" style="margin-bottom:1rem;">
-  <button type="submit">In Papierkorb verschieben</button>
-</form>
+      {% endfor %}
+    </select>
+    <button type="submit">Verschieben</button>
+  </form>
 
-{% if not is_planted %}
-<div style="background:#ffe5e5; border:2px solid #e11; color:#900; padding:1rem; border-radius:8px; font-weight:700; margin-bottom:1rem;">
-  Pflanze ist nicht eingepflanzt
+  <form method="post" action="/plants/{{ plant.id }}/delete" onsubmit="return confirm('Pflanze wirklich löschen?');" style="margin-bottom:.75rem;">
+    <button type="submit">In Papierkorb verschieben</button>
+  </form>
+
+  {% if not is_planted %}
+  <div style="background:#ffe5e5; border:2px solid #e11; color:#900; padding:1rem; border-radius:8px; font-weight:700; margin-bottom:.75rem;">
+    Pflanze ist nicht eingepflanzt
+  </div>
+  <form method="post" action="/plants/{{ plant.id }}/events/system/planting" style="display:inline-block; margin-right:.5rem; margin-bottom:.75rem;">
+    <button type="submit">Einpflanzen</button>
+  </form>
+  {% else %}
+  <form method="post" action="/plants/{{ plant.id }}/events/system/outplant" style="display:inline-block; margin-right:.5rem; margin-bottom:.75rem;">
+    <button type="submit">Auspflanzen</button>
+  </form>
+  {% endif %}
+  <form method="post" action="/plants/{{ plant.id }}/events/system/care_event" style="display:inline-block; margin-right:.5rem; margin-bottom:.75rem;">
+    <button type="submit">Pflege</button>
+  </form>
+  <form method="post" action="/plants/{{ plant.id }}/events/system/measurement" style="display:inline-block; margin-bottom:.75rem;">
+    <button type="submit">Messen</button>
+  </form>
+
+  <h4>Timeline-Event hinzufügen</h4>
+  <form method="post" action="/plants/{{ plant.id }}/events" enctype="multipart/form-data" style="display:grid; gap:.5rem;">
+    <input type="date" name="event_at" value="{{ today_date }}">
+    <input name="title" placeholder="Titel">
+    <textarea name="description" placeholder="Beschreibung"></textarea>
+    <input type="file" name="attachment" accept="image/*,application/pdf">
+    <button>Speichern</button>
+  </form>
 </div>
-<form method="post" action="/plants/{{ plant.id }}/events/system/planting" style="display:inline-block; margin-right:.5rem; margin-bottom:1rem;">
-  <button type="submit">Einpflanzen</button>
-</form>
-{% else %}
-<form method="post" action="/plants/{{ plant.id }}/events/system/outplant" style="display:inline-block; margin-right:.5rem; margin-bottom:1rem;">
-  <button type="submit">Auspflanzen</button>
-</form>
-{% endif %}
-<form method="post" action="/plants/{{ plant.id }}/events/system/care_event" style="display:inline-block; margin-right:.5rem; margin-bottom:1rem;">
-  <button type="submit">Pflege</button>
-</form>
-<form method="post" action="/plants/{{ plant.id }}/events/system/measurement" style="display:inline-block; margin-bottom:1rem;">
-  <button type="submit">Messen</button>
-</form>
-
-<h3>Timeline-Event hinzufügen</h3>
-<form method="post" action="/plants/{{plant.id}}/events" enctype="multipart/form-data">
-  <input type="date" name="event_at" value="{{ today_date }}">
-  <input name="title" placeholder="Titel">
-  <textarea name="description" placeholder="Beschreibung"></textarea>
-  <input type="file" name="attachment" accept="image/*,application/pdf">
-  <button>Speichern</button>
-</form>
 
 <h3>Timeline</h3>
 {% for ev in events %}
 {% set c = creators.get(ev.creator_id) %}
 <div style="border:1px solid #ddd; border-radius:8px; padding:.75rem; margin-bottom:.75rem;">
+  <small>{{ ev.event_at.strftime('%d.%m.%Y') }}</small>
   <div>
     {% if c and c.avatar_filename %}<img class="avatar-sm" src="/avatars/{{ c.avatar_filename }}" title="{{ c.name or c.email or 'Unbekannt' }}" alt="{{ c.name or c.email or 'Unbekannt' }}">{% elif c and c.avatar_url %}<img class="avatar-sm" src="{{ c.avatar_url }}" title="{{ c.name or c.email or 'Unbekannt' }}" alt="{{ c.name or c.email or 'Unbekannt' }}">{% else %}<span title="{{ c.name if c else 'Unbekannt' }}">👤</span>{% endif %}
     <strong>{{ ev.title }}</strong> ({{ ev.event_type }})
   </div>
-  <small>{{ ev.event_at }}</small>
-  {% if ev.description %}<p>{{ ev.description }}</p>{% endif %}
+  {% if ev.description %}<p style="white-space:pre-line;">{{ ev.description }}</p>{% endif %}
   {% if ev.attachment_filename and ev.attachment_kind == 'image' %}
     <button type="button" class="timeline-image-btn" data-image-src="/uploads/{{ ev.attachment_filename }}" aria-label="Bild groß anzeigen" style="border:none;background:none;padding:0;cursor:pointer;">
       <img src="/uploads/{{ ev.attachment_filename }}" style="max-height:220px" alt="Anhang">
     </button>
   {% elif ev.attachment_filename and ev.attachment_kind == 'pdf' %}
-    <a href="/uploads/{{ ev.attachment_filename }}" download>PDF herunterladen</a>
+  <a href="/uploads/{{ ev.attachment_filename }}" download>PDF herunterladen</a>
   {% endif %}
 </div>
 {% endfor %}

@@ -198,6 +198,62 @@ def plant_detail(plant_id):
         is_planted=is_planted,
     )
 
+
+
+@main_bp.route('/plants/<int:plant_id>/masterdata', methods=['POST'])
+@login_required
+def update_masterdata(plant_id):
+    plant = Plant.query.get_or_404(plant_id)
+
+    field_labels = {
+        'name': 'Name',
+        'common_name': 'Botanischer Name',
+        'source': 'Quelle',
+        'light_need': 'Lichtbedarf',
+        'bloom_start_month': 'Blütezeit von',
+        'bloom_end_month': 'Blütezeit bis',
+        'flower_color': 'Blütenfarbe',
+        'soil': 'Boden',
+        'height_without_bloom_cm': 'Höhe ohne Blüte (cm)',
+        'height_with_bloom_cm': 'Höhe mit Blüte (cm)',
+        'info': 'Info',
+    }
+
+    updates = {
+        'name': request.form.get('name', '').strip(),
+        'common_name': request.form.get('common_name', '').strip() or None,
+        'source': request.form.get('source', '').strip() or None,
+        'light_need': request.form.get('light_need', '').strip() or 'Unbekannt',
+        'bloom_start_month': request.form.get('bloom_start_month', type=int),
+        'bloom_end_month': request.form.get('bloom_end_month', type=int),
+        'flower_color': request.form.get('flower_color', '').strip() or None,
+        'soil': request.form.get('soil', '').strip() or None,
+        'height_without_bloom_cm': request.form.get('height_without_bloom_cm', type=int),
+        'height_with_bloom_cm': request.form.get('height_with_bloom_cm', type=int),
+        'info': request.form.get('info', '').strip() or None,
+    }
+
+    changes = []
+    for field, new_value in updates.items():
+        old_value = getattr(plant, field)
+        if old_value != new_value:
+            old_display = old_value if old_value not in (None, '') else '-'
+            new_display = new_value if new_value not in (None, '') else '-'
+            changes.append(f"{field_labels[field]}: {old_display} → {new_display}")
+            setattr(plant, field, new_value)
+
+    if changes:
+        db.session.add(PlantEvent(
+            plant_id=plant.id,
+            event_type='data_event',
+            event_at=datetime.utcnow(),
+            title='Stammdaten geändert',
+            description='\n'.join(changes),
+            creator_id=current_user().id
+        ))
+
+    db.session.commit()
+    return redirect(url_for('main.plant_detail', plant_id=plant.id))
 @main_bp.route('/plants/<int:plant_id>/delete', methods=['POST'])
 @login_required
 def delete_plant(plant_id):
