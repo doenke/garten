@@ -66,6 +66,43 @@ def create_app():
             'creator_id INTEGER',
             backfill_sql='UPDATE plant_note SET creator_id = user_id WHERE creator_id IS NULL'
         )
+
+        db.session.execute(text("""
+            CREATE TABLE IF NOT EXISTS plant_event (
+                id INTEGER PRIMARY KEY,
+                plant_id INTEGER NOT NULL,
+                event_type VARCHAR(32) NOT NULL,
+                event_at DATETIME NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                description TEXT,
+                attachment_filename VARCHAR(255),
+                attachment_kind VARCHAR(16),
+                creator_id INTEGER NOT NULL,
+                FOREIGN KEY(plant_id) REFERENCES plant(id),
+                FOREIGN KEY(creator_id) REFERENCES user(id)
+            )
+        """))
+        db.session.execute(text("""
+            INSERT INTO plant_event (plant_id, event_type, event_at, title, description, creator_id)
+            SELECT p.id, 'plant_event', COALESCE(p.planting_date, CURRENT_TIMESTAMP), 'Eingepflanzt', 'Pflanze wurde eingepflanzt.', p.creator_id
+            FROM plant p
+            WHERE p.planting_date IS NOT NULL
+              AND NOT EXISTS (SELECT 1 FROM plant_event pe WHERE pe.plant_id = p.id AND pe.title = 'Eingepflanzt')
+        """))
+        db.session.execute(text("""
+            INSERT INTO plant_event (plant_id, event_type, event_at, title, description, attachment_filename, attachment_kind, creator_id)
+            SELECT plant_id, 'user_comment', COALESCE(uploaded_at, CURRENT_TIMESTAMP), COALESCE(comment, 'Foto'), comment, filename, 'image', creator_id
+            FROM plant_photo pp
+            WHERE NOT EXISTS (SELECT 1 FROM plant_event pe WHERE pe.plant_id = pp.plant_id AND pe.attachment_filename = pp.filename)
+        """))
+        db.session.execute(text("""
+            INSERT INTO plant_event (plant_id, event_type, event_at, title, description, creator_id)
+            SELECT plant_id, 'user_comment', COALESCE(created_at, CURRENT_TIMESTAMP), 'Kommentar', comment, creator_id
+            FROM plant_note pn
+            WHERE NOT EXISTS (SELECT 1 FROM plant_event pe WHERE pe.plant_id = pn.plant_id AND pe.description = pn.comment AND pe.creator_id = pn.creator_id)
+        """))
+        db.session.commit()
+
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
         os.makedirs(app.config['AVATAR_FOLDER'], exist_ok=True)
 
