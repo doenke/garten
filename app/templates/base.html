@@ -22,7 +22,8 @@
     .brand{display:flex;align-items:center;gap:.8rem;text-decoration:none;color:inherit}
     .brand img{height:42px}.brand h1{font-size:1.35rem;margin:0}
     .header-actions{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap}
-    .avatar{width:40px;height:40px;border-radius:50%;border:2px solid var(--surface-soft);object-fit:cover}
+    .avatar-link{display:inline-flex;line-height:0;text-decoration:none}
+    .avatar{width:40px;height:40px;border-radius:50%;border:2px solid var(--surface-soft);object-fit:cover;display:grid;place-items:center}
     .avatar-sm{width:28px;height:28px;border-radius:50%;vertical-align:middle;object-fit:cover}
     .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:1rem}
     .page-breadcrumb{display:flex;flex-wrap:wrap;align-items:center;gap:.35rem;font-size:.9rem;color:var(--muted);margin:0 0 .65rem}
@@ -60,8 +61,9 @@
   <a href="/" class="brand"><img src="https://assets.kanonenwiese.de/US_KanonenwieseLogo.svg"><h1>GardenGlow</h1></a>
   <div class="header-actions">
     {% if user %}
-      {% if user.avatar_filename %}<img class="avatar" src="/avatars/{{ user.avatar_filename }}">{% elif user.avatar_url %}<img class="avatar" src="{{ user.avatar_url }}">{% endif %}
-      <a href="/logout" class="btn secondary">Logout</a>
+      <a href="/logout" class="avatar-link" title="Logout" aria-label="Logout">
+        {% if user.avatar_filename %}<img class="avatar" src="/avatars/{{ user.avatar_filename }}" alt="Logout">{% elif user.avatar_url %}<img class="avatar" src="{{ user.avatar_url }}" alt="Logout">{% else %}<span class="avatar" aria-hidden="true">👤</span>{% endif %}
+      </a>
     {% endif %}
   </div>
 </header>
