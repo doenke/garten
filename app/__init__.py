@@ -37,6 +37,7 @@ def create_app():
     app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', '/data/uploads')
     app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
     app.config['AVATAR_FOLDER'] = os.getenv('AVATAR_FOLDER', '/data/avatars')
+    app.config['MAP_FOLDER'] = os.getenv('MAP_FOLDER', '/data/maps')
 
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1)
 
@@ -55,12 +56,16 @@ def create_app():
             'creator_id INTEGER',
             backfill_sql='UPDATE location SET creator_id = user_id WHERE creator_id IS NULL'
         )
+        _ensure_column('location', 'color', "color VARCHAR(7)")
+        _ensure_column('location', 'polygon_points', "polygon_points TEXT")
         _ensure_column(
             'plant',
             'creator_id',
             'creator_id INTEGER',
             backfill_sql='UPDATE plant SET creator_id = user_id WHERE creator_id IS NULL'
         )
+        _ensure_column('plant', 'map_x', 'map_x FLOAT')
+        _ensure_column('plant', 'map_y', 'map_y FLOAT')
 
         _ensure_column('plant', 'bloom_start_month', 'bloom_start_month INTEGER')
         _ensure_column('plant', 'bloom_end_month', 'bloom_end_month INTEGER')
@@ -95,6 +100,15 @@ def create_app():
                 FOREIGN KEY(creator_id) REFERENCES user(id)
             )
         """))
+        db.session.execute(text("""
+            CREATE TABLE IF NOT EXISTS garden_map (
+                id INTEGER PRIMARY KEY,
+                user_id INTEGER NOT NULL UNIQUE,
+                filename VARCHAR(255),
+                calibration_points TEXT,
+                FOREIGN KEY(user_id) REFERENCES user(id)
+            )
+        """))
         if _has_column('plant', 'planting_date'):
             db.session.execute(text("""
                 INSERT INTO plant_event (plant_id, event_type, event_at, title, description, creator_id)
@@ -122,5 +136,6 @@ def create_app():
 
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
         os.makedirs(app.config['AVATAR_FOLDER'], exist_ok=True)
+        os.makedirs(app.config['MAP_FOLDER'], exist_ok=True)
 
     return app

@@ -2,6 +2,17 @@
 {% block content %}
 <section class="card">
 <h2>Pflanzorte</h2>
+<h3>Luftbild</h3>
+<form method="post" action="/map/upload" enctype="multipart/form-data" class="grid" style="margin-bottom:1rem;">
+  <input type="file" name="map_image" accept="image/*" required>
+  <button>Luftbild hochladen</button>
+</form>
+{% if garden_map and garden_map.filename %}
+<div style="position:relative;display:inline-block;max-width:100%;margin-bottom:1rem;">
+  <img id="overview-map-image" src="/maps/{{ garden_map.filename }}" style="max-width:100%;border-radius:10px;">
+  <svg id="overview-map-overlay" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;"></svg>
+</div>
+{% endif %}
 <table>
   <thead>
     <tr>
@@ -26,10 +37,34 @@
 <form method="post" action="/locations/new" id="new-location-form" class="grid" style="display:none; margin-top:1rem;">
   <input name="name" placeholder="Name" required>
   <input name="description" placeholder="Beschreibung">
+  <label>Farbe <input type="color" name="color" value="#2f6d40"></label>
   <button>anlegen</button>
 </form>
 
 <script>
+  const allLocations = [
+    {% for l in locations %}
+      {id: {{ l.id }}, color: "{{ l.color or '#2f6d40' }}", polygon: {{ (l.polygon_points or '[]') | safe }} },
+    {% endfor %}
+  ];
+  const img = document.getElementById('overview-map-image');
+  const svg = document.getElementById('overview-map-overlay');
+  if (img && svg) {
+    img.addEventListener('load', () => {
+      svg.setAttribute('viewBox', `0 0 ${img.naturalWidth} ${img.naturalHeight}`);
+      svg.innerHTML = '';
+      allLocations.forEach((location) => {
+        if (!location.polygon || location.polygon.length < 3) return;
+        const points = location.polygon.map((point) => `${point.x * img.naturalWidth},${point.y * img.naturalHeight}`).join(' ');
+        const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        polygon.setAttribute('points', points);
+        polygon.setAttribute('fill', location.color + '66');
+        polygon.setAttribute('stroke', location.color);
+        polygon.setAttribute('stroke-width', '2');
+        svg.appendChild(polygon);
+      });
+    });
+  }
   const toggleButton = document.getElementById('toggle-new-location');
   const newLocationForm = document.getElementById('new-location-form');
 
