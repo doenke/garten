@@ -13,7 +13,7 @@
   {% for l in locations %}
     <tr>
       <td><a href="/locations/{{l.id}}">{{l.name}}</a></td>
-      <td>{{ l.description or '-' }}</td>
+      <td>{{ l.description }}</td>
       <td>{{ location_plant_counts.get(l.id, 0) }}</td>
     </tr>
   {% endfor %}
