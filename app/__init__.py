@@ -61,6 +61,12 @@ def create_app():
             'creator_id INTEGER',
             backfill_sql='UPDATE plant SET creator_id = user_id WHERE creator_id IS NULL'
         )
+
+        _ensure_column('plant', 'bloom_start_month', 'bloom_start_month INTEGER')
+        _ensure_column('plant', 'bloom_end_month', 'bloom_end_month INTEGER')
+        _ensure_column('plant', 'soil', 'soil TEXT')
+        _ensure_column('plant', 'height_without_bloom_cm', 'height_without_bloom_cm INTEGER')
+        _ensure_column('plant', 'height_with_bloom_cm', 'height_with_bloom_cm INTEGER')
         _ensure_column(
             'plant_photo',
             'creator_id',

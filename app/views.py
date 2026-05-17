@@ -8,7 +8,7 @@ from .models import db, User, Location, Plant, PlantPhoto, PlantNote, PlantEvent
 main_bp = Blueprint('main', __name__)
 ALLOWED = {'png', 'jpg', 'jpeg', 'webp', 'gif', 'pdf'}
 IMAGE_TYPES = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
-
+TRASH_LOCATION_NAME = "Papierkorb"
 EVENT_TYPE_MAP = {
     'planting': 'plant_event',
     'outplant': 'plant_event',
@@ -38,6 +38,20 @@ def login_required(f):
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED
+
+def get_or_create_trash_location(user_id):
+    trash = Location.query.filter_by(user_id=user_id, name=TRASH_LOCATION_NAME).first()
+    if trash:
+        return trash
+    trash = Location(
+        name=TRASH_LOCATION_NAME,
+        description="Automatisch erstellt. Gelöschte Pflanzen landen hier.",
+        user_id=user_id,
+        creator_id=user_id
+    )
+    db.session.add(trash)
+    db.session.flush()
+    return trash
 
 @main_bp.route('/healthz')
 def healthz():
@@ -96,14 +110,22 @@ def location_detail(location_id):
 @login_required
 def new_plant(location_id):
     months = ','.join(request.form.getlist('bloom_months'))
+    planting_date = request.form.get('planting_date') or None
+    light_needs = request.form.getlist('light_need')
+    if not light_needs:
+        light_needs = ['Unbekannt']
     p = Plant(
         location_id=location_id,
         name=request.form['name'],
         common_name=request.form.get('common_name'),
         source=request.form.get('source'),
-        light_need=request.form['light_need'],
-        bloom_months=months,
+        light_need=', '.join(light_needs),
+        bloom_start_month=request.form.get('bloom_start_month', type=int),
+        bloom_end_month=request.form.get('bloom_end_month', type=int),
         flower_color=request.form.get('flower_color'),
+        soil=request.form.get('soil'),
+        height_without_bloom_cm=request.form.get('height_without_bloom_cm', type=int),
+        height_with_bloom_cm=request.form.get('height_with_bloom_cm', type=int),
         info=request.form.get('info'),
         creator_id=current_user().id
     )
@@ -120,12 +142,16 @@ def new_plant(location_id):
 @login_required
 def delete_location(location_id):
     location = Location.query.get_or_404(location_id)
+    if location.name == TRASH_LOCATION_NAME:
+        return redirect(url_for('main.index'))
+    trash = get_or_create_trash_location(location.user_id)
     plants = Plant.query.filter_by(location_id=location.id).all()
     for plant in plants:
         PlantPhoto.query.filter_by(plant_id=plant.id).delete()
         PlantNote.query.filter_by(plant_id=plant.id).delete()
         PlantEvent.query.filter_by(plant_id=plant.id).delete()
         db.session.delete(plant)
+        plant.location_id = trash.id
     db.session.delete(location)
     db.session.commit()
     return redirect(url_for('main.index'))
@@ -135,7 +161,20 @@ def delete_location(location_id):
 def plant_detail(plant_id):
     plant = Plant.query.get_or_404(plant_id)
     events = PlantEvent.query.filter_by(plant_id=plant.id).order_by(PlantEvent.event_at.desc()).all()
-    return render_template('plant.html', plant=plant, events=events, user=current_user(), creators={u.id: u for u in User.query.all()}, today_date=datetime.utcnow().date().isoformat())
+    photos = PlantPhoto.query.filter_by(plant_id=plant.id).order_by(PlantPhoto.uploaded_at.desc()).all()
+    notes = PlantNote.query.filter_by(plant_id=plant.id).order_by(PlantNote.created_at.desc()).all()
+    month_names = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
+    return render_template(
+        'plant.html',
+        plant=plant,
+        photos=photos,
+        notes=notes,
+        user=current_user(),
+        locations=Location.query.order_by(Location.name.asc()).all(),
+        creators={u.id: u for u in User.query.all()},
+        today_date=datetime.utcnow().date().isoformat(),
+        month_names=month_names,
+    )
 
 @main_bp.route('/plants/<int:plant_id>/delete', methods=['POST'])
 @login_required
@@ -146,8 +185,20 @@ def delete_plant(plant_id):
     PlantNote.query.filter_by(plant_id=plant.id).delete()
     PlantEvent.query.filter_by(plant_id=plant.id).delete()
     db.session.delete(plant)
+    trash = get_or_create_trash_location(current_user().id)
+    plant.location_id = trash.id
     db.session.commit()
-    return redirect(url_for('main.location_detail', location_id=location_id))
+    return redirect(url_for('main.plant_detail', plant_id=plant.id))
+
+@main_bp.route('/plants/<int:plant_id>/move', methods=['POST'])
+@login_required
+def move_plant(plant_id):
+    plant = Plant.query.get_or_404(plant_id)
+    target_location_id = request.form.get('location_id', type=int)
+    target_location = Location.query.get_or_404(target_location_id)
+    plant.location_id = target_location.id
+    db.session.commit()
+    return redirect(url_for('main.plant_detail', plant_id=plant.id))
 
 @main_bp.route('/plants/<int:plant_id>/events', methods=['POST'])
 @login_required
