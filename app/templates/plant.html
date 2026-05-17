@@ -99,7 +99,7 @@
 <h3>Timeline</h3>
 {% for ev in events %}
 {% set c = creators.get(ev.creator_id) %}
-<div style="position:relative; border:1px solid #ddd; border-radius:8px; padding:.75rem  .75rem 2.2rem .75rem; margin-bottom:.75rem;">
+<div class="timeline-entry">
   <div style="display:flex;align-items:center;gap:.5rem;">
     {% if c and c.avatar_filename %}<img class="avatar-sm" src="/avatars/{{ c.avatar_filename }}" title="{{ c.name or c.email or 'Unbekannt' }}" alt="{{ c.name or c.email or 'Unbekannt' }}">{% elif c and c.avatar_url %}<img class="avatar-sm" src="{{ c.avatar_url }}" title="{{ c.name or c.email or 'Unbekannt' }}" alt="{{ c.name or c.email or 'Unbekannt' }}">{% else %}<span title="{{ c.name if c else 'Unbekannt' }}">👤</span>{% endif %}
     <small>{{ ev.event_at.strftime('%d.%m.%Y') }}</small>
@@ -116,7 +116,7 @@
   <a href="/uploads/{{ ev.attachment_filename }}" download>PDF herunterladen</a>
   {% endif %}
   <form method="post" action="/plants/{{ plant.id }}/events/{{ ev.id }}/delete" onsubmit="return confirm('Timeline-Eintrag wirklich löschen?');" style="position:absolute; left:.6rem; bottom:.5rem; margin:0;">
-    <button type="submit" aria-label="Timeline-Eintrag löschen" title="Timeline-Eintrag löschen" style="border:1px solid #ddd; border-radius:6px; background:#fff; cursor:pointer; padding:.2rem .45rem; font-size:1rem; line-height:1;">🗑️</button>
+    <button type="submit" aria-label="Timeline-Eintrag löschen" title="Timeline-Eintrag löschen" style="border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text); cursor:pointer; padding:.2rem .45rem; font-size:1rem; line-height:1;">🗑️</button>
   </form>
 </div>
 {% endfor %}
