@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
+<section class="card">
 <h2>Pflanzorte</h2>
 <table>
   <thead>
@@ -12,17 +13,17 @@
   <tbody>
   {% for l in locations %}
     <tr>
-      <td><a href="/locations/{{l.id}}">{{l.name}}</a></td>
-      <td>{{ l.description }}</td>
-      <td>{{ location_plant_counts.get(l.id, 0) }}</td>
+      <td data-label="Location"><a href="/locations/{{l.id}}">{{l.name}}</a></td>
+      <td data-label="Beschreibung">{{ l.description }}</td>
+      <td data-label="Pflanzen">{{ location_plant_counts.get(l.id, 0) }}</td>
     </tr>
   {% endfor %}
   </tbody>
 </table>
 
-<button type="button" id="toggle-new-location">Neue Location anlegen</button>
+<div class="actions-inline"><button type="button" id="toggle-new-location">Neue Location anlegen</button></div>
 
-<form method="post" action="/locations/new" id="new-location-form" style="display:none; margin-top:1rem;">
+<form method="post" action="/locations/new" id="new-location-form" class="grid" style="display:none; margin-top:1rem;">
   <input name="name" placeholder="Name" required>
   <input name="description" placeholder="Beschreibung">
   <button>anlegen</button>
@@ -38,4 +39,5 @@
     toggleButton.textContent = isHidden ? 'Formular schließen' : 'Neue Location anlegen';
   });
 </script>
+</section>
 {% endblock %}

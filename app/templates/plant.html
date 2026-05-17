@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>{{ plant.name }} ({{ plant.common_name or '-' }})</h2>
-<p><a href="/locations/{{ plant.location_id }}">← Zurück zur Location</a></p>
+<p><a href="/locations/{{ plant.location_id }}" class="btn secondary">← Zurück zur Location</a></p>
 
-<div style="border:1px solid #ddd; border-radius:8px; padding:1rem; margin-bottom:1rem;">
+<div class="card">
   <h3 style="margin-top:0;">Stammdaten</h3>
   <p><strong>Name:</strong> {{ plant.name }}</p>
   <p><strong>Botanischer Name:</strong> {{ plant.common_name or '-' }}</p>
@@ -30,18 +30,18 @@
 
   <details>
     <summary>Stammdaten ändern</summary>
-    <form method="post" action="/plants/{{ plant.id }}/masterdata" style="margin-top:.75rem; display:grid; gap:.5rem;">
+    <form method="post" action="/plants/{{ plant.id }}/masterdata" class="grid" style="margin-top:.75rem;">
       <input name="name" value="{{ plant.name }}" placeholder="Name" required>
       <input name="common_name" value="{{ plant.common_name or '' }}" placeholder="Botanischer Name">
       <input name="source" value="{{ plant.source or '' }}" placeholder="Quelle">
       <input name="light_need" value="{{ plant.light_need or '' }}" placeholder="Lichtbedarf">
-      <div style="display:flex; gap:.5rem;">
+      <div class="actions-inline">
         <input type="number" min="1" max="12" name="bloom_start_month" value="{{ plant.bloom_start_month or '' }}" placeholder="Blütezeit von (1-12)">
         <input type="number" min="1" max="12" name="bloom_end_month" value="{{ plant.bloom_end_month or '' }}" placeholder="Blütezeit bis (1-12)">
       </div>
       <input name="flower_color" value="{{ plant.flower_color or '' }}" placeholder="Blütenfarbe">
       <textarea name="soil" placeholder="Boden">{{ plant.soil or '' }}</textarea>
-      <div style="display:flex; gap:.5rem;">
+      <div class="actions-inline">
         <input type="number" min="0" name="height_without_bloom_cm" value="{{ plant.height_without_bloom_cm or '' }}" placeholder="Höhe ohne Blüte (cm)">
         <input type="number" min="0" name="height_with_bloom_cm" value="{{ plant.height_with_bloom_cm or '' }}" placeholder="Höhe mit Blüte (cm)">
       </div>
@@ -51,9 +51,9 @@
   </details>
 </div>
 
-<div style="border:1px solid #ddd; border-radius:8px; padding:1rem; margin-bottom:1rem;">
+<div class="card">
   <h3 style="margin-top:0;">Aktionen</h3>
-  <form method="post" action="/plants/{{ plant.id }}/move" style="margin-bottom:.75rem;">
+  <form method="post" action="/plants/{{ plant.id }}/move" class="grid" style="margin-bottom:.75rem;">
     <label for="location_id">In andere Location verschieben:</label>
     <select id="location_id" name="location_id" required>
       {% for location in locations %}
@@ -63,8 +63,8 @@
     <button type="submit">Verschieben</button>
   </form>
 
-  <form method="post" action="/plants/{{ plant.id }}/delete" onsubmit="return confirm('Pflanze wirklich löschen?');" style="margin-bottom:.75rem;">
-    <button type="submit">In Papierkorb verschieben</button>
+  <form method="post" action="/plants/{{ plant.id }}/delete" onsubmit="return confirm('Pflanze wirklich löschen?');" class="floating-trash">
+    <button type="submit" aria-label="Pflanze löschen" title="Pflanze löschen">🗑️</button>
   </form>
 
   {% if not is_planted %}
@@ -87,7 +87,7 @@
   </form>
 
   <h4>Timeline-Event hinzufügen</h4>
-  <form method="post" action="/plants/{{ plant.id }}/events" enctype="multipart/form-data" style="display:grid; gap:.5rem;">
+  <form method="post" action="/plants/{{ plant.id }}/events" enctype="multipart/form-data" class="grid">
     <input type="date" name="event_at" value="{{ today_date }}">
     <input name="title" placeholder="Titel">
     <textarea name="description" placeholder="Beschreibung"></textarea>
