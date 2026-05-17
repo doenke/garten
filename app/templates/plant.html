@@ -4,7 +4,7 @@
   <nav class="page-breadcrumb" aria-label="Breadcrumb">
     <a href="/">Übersicht</a>
     <span class="separator" aria-hidden="true">/</span>
-    <a href="/locations/{{ plant.location_id }}">Location</a>
+    <a href="/locations/{{ plant.location_id }}">{{ location.name if location else 'Location' }}</a>
     <span class="separator" aria-hidden="true">/</span>
     <span aria-current="page">{{ plant.name }}</span>
   </nav>
