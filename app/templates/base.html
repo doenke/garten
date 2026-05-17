@@ -9,8 +9,8 @@
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
   <meta name="theme-color" content="#355e3b" />
   <style>
-    :root{--bg:#f4f7f4;--surface:#fff;--surface-soft:#f6faf6;--text:#1f2a1f;--muted:#617065;--primary:#3f8f54;--primary-dark:#2f6d40;--danger:#b64545;--border:#d8e2d8;--shadow:0 10px 30px rgba(27,49,32,.08);--radius:16px}
-    [data-theme="dark"]{--bg:#121714;--surface:#1a211d;--surface-soft:#202922;--text:#ebf3ec;--muted:#9db0a2;--primary:#6fcb87;--primary-dark:#52a669;--danger:#df6f6f;--border:#334137;--shadow:0 14px 32px rgba(0,0,0,.35)}
+    :root{--bg:#f4f7f4;--surface:#fff;--surface-soft:#f6faf6;--text:#1f2a1f;--muted:#617065;--primary:#3f8f54;--primary-dark:#2f6d40;--danger:#b64545;--border:#d8e2d8;--shadow:0 10px 30px rgba(27,49,32,.08);--radius:16px;--link:#1f5f36;--link-hover:#154427}
+    [data-theme="dark"]{--bg:#121714;--surface:#1a211d;--surface-soft:#202922;--text:#ebf3ec;--muted:#9db0a2;--primary:#6fcb87;--primary-dark:#52a669;--danger:#df6f6f;--border:#334137;--shadow:0 14px 32px rgba(0,0,0,.35);--link:#9ee8ae;--link-hover:#c2f5cd}
     *{box-sizing:border-box}
     body{margin:0;background:radial-gradient(circle at top left,#dff5e3 0,#f4f7f4 45%,var(--bg) 100%);color:var(--text);font-family:Inter,system-ui,sans-serif}
     .page-wrap{max-width:1140px;margin:0 auto;padding:1rem 1rem 6rem}
@@ -21,11 +21,14 @@
     .avatar{width:40px;height:40px;border-radius:50%;border:2px solid var(--surface-soft);object-fit:cover}
     .avatar-sm{width:28px;height:28px;border-radius:50%;vertical-align:middle;object-fit:cover}
     .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:1rem}
-    .btn,button{border:none;border-radius:12px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;font-weight:600;padding:.6rem .95rem;cursor:pointer}
+    .btn,button{border:none;border-radius:12px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#ffffff;font-weight:700;padding:.6rem .95rem;cursor:pointer;text-shadow:0 1px 1px rgba(0,0,0,.25)}
     .btn.secondary{background:var(--surface-soft);color:var(--text);border:1px solid var(--border)}
     .btn.danger{background:linear-gradient(135deg,#d46565,var(--danger))}
     input,select,textarea{width:100%;padding:.62rem .72rem;border:1px solid var(--border);border-radius:10px;background:var(--surface-soft);color:var(--text)}
     textarea{min-height:90px;resize:vertical}
+    a{color:var(--link);font-weight:600;text-underline-offset:2px}
+    a:hover{color:var(--link-hover)}
+    p,li,label,small,summary{color:var(--text)}
     form.grid{display:grid;gap:.65rem}
     .actions-inline{display:flex;flex-wrap:wrap;gap:.55rem}
     table{width:100%;border-collapse:separate;border-spacing:0 .55rem}
@@ -36,6 +39,10 @@
     .bloom-timeline{margin:.5rem 0 1rem}.timeline-track{display:grid;grid-template-columns:repeat(12,minmax(40px,1fr));gap:.25rem}.timeline-month{padding:.35rem .25rem;border-radius:.5rem;text-align:center;background:#ddd3;font-size:.85rem}.timeline-month.active{background:linear-gradient(135deg,#7fcf75,#4aa85b);color:#fff;font-weight:600;box-shadow:0 1px 4px #0003}
     .site-footer{position:fixed;bottom:0;left:0;right:0;padding:.55rem 1rem;background:color-mix(in srgb,var(--surface) 85%, transparent);backdrop-filter:blur(8px);border-top:1px solid var(--border);display:flex;justify-content:center}
     .footer-inner{display:flex;align-items:center;gap:.5rem}
+    .floating-trash{position:fixed;right:1rem;bottom:5.1rem;z-index:1200;margin:0}
+    .floating-trash button{width:42px;height:42px;padding:0;border-radius:999px;display:grid;place-items:center;font-size:1.05rem;line-height:1;background:#fff;color:#8b1e1e;border:1px solid #d9b2b2;box-shadow:0 8px 22px rgba(0,0,0,.18);text-shadow:none}
+    .floating-trash button:hover{background:#ffecec}
+    @media (max-width:900px){.floating-trash{right:.75rem;bottom:4.9rem}}
     @media (max-width:900px){.page-wrap{padding:.8rem .75rem 5.4rem}.site-header{flex-direction:column;align-items:stretch}.brand h1{font-size:1.2rem}}
     @media (max-width:700px){table,thead,tbody,th,td,tr{display:block} thead{display:none} tr{margin-bottom:.7rem} td{border:1px solid var(--border)!important;border-radius:10px!important} td::before{content:attr(data-label);display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem;font-weight:600}}
   </style>

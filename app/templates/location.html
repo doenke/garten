@@ -3,8 +3,8 @@
 <section class="card">
 <h2>{{ location.name }}</h2>
 <p><a href="/" class="btn secondary">← Zurück zur Übersicht</a></p>
-<form method="post" action="/locations/{{ location.id }}/delete" onsubmit="return confirm('Location wirklich löschen? Alle enthaltenen Pflanzen werden in den Papierkorb verschoben.');" class="actions-inline" style="margin-bottom:1rem;">
-  <button type="submit">Location löschen</button>
+<form method="post" action="/locations/{{ location.id }}/delete" onsubmit="return confirm('Location wirklich löschen? Alle enthaltenen Pflanzen werden in den Papierkorb verschoben.');" class="floating-trash">
+  <button type="submit" aria-label="Location löschen" title="Location löschen">🗑️</button>
 </form>
 <button type="button" id="toggle-plant-form" style="margin-bottom:1rem;">Pflanze anlegen</button>
 <form method="post" action="/locations/{{location.id}}/plants/new" id="plant-form" class="grid" style="display:none;">

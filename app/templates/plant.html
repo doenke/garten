@@ -63,8 +63,8 @@
     <button type="submit">Verschieben</button>
   </form>
 
-  <form method="post" action="/plants/{{ plant.id }}/delete" onsubmit="return confirm('Pflanze wirklich löschen?');" class="grid" style="margin-bottom:.75rem;">
-    <button type="submit">In Papierkorb verschieben</button>
+  <form method="post" action="/plants/{{ plant.id }}/delete" onsubmit="return confirm('Pflanze wirklich löschen?');" class="floating-trash">
+    <button type="submit" aria-label="Pflanze löschen" title="Pflanze löschen">🗑️</button>
   </form>
 
   {% if not is_planted %}
