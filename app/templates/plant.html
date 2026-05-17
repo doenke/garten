@@ -70,10 +70,88 @@
   <small>{{ ev.event_at }}</small>
   {% if ev.description %}<p>{{ ev.description }}</p>{% endif %}
   {% if ev.attachment_filename and ev.attachment_kind == 'image' %}
-    <img src="/uploads/{{ ev.attachment_filename }}" style="max-height:220px" alt="Anhang">
+    <button type="button" class="timeline-image-btn" data-image-src="/uploads/{{ ev.attachment_filename }}" aria-label="Bild groß anzeigen" style="border:none;background:none;padding:0;cursor:pointer;">
+      <img src="/uploads/{{ ev.attachment_filename }}" style="max-height:220px" alt="Anhang">
+    </button>
   {% elif ev.attachment_filename and ev.attachment_kind == 'pdf' %}
     <a href="/uploads/{{ ev.attachment_filename }}" download>PDF herunterladen</a>
   {% endif %}
 </div>
 {% endfor %}
+
+<div id="image-modal" style="display:none;position:fixed;inset:0;background:#000c;z-index:9999;align-items:center;justify-content:center;padding:1rem;">
+  <div style="position:relative;max-width:92vw;max-height:92vh;display:flex;align-items:center;gap:.5rem;">
+    <button type="button" id="image-prev" aria-label="Vorheriges Foto" style="font-size:2rem;line-height:1;padding:.5rem 1rem;">◀</button>
+    <img id="image-modal-img" src="" alt="Großansicht" style="max-width:80vw;max-height:88vh;border-radius:8px;background:#fff;">
+    <button type="button" id="image-next" aria-label="Nächstes Foto" style="font-size:2rem;line-height:1;padding:.5rem 1rem;">▶</button>
+    <button type="button" id="image-close" aria-label="Schließen" style="position:absolute;top:-.5rem;right:-.5rem;font-size:1.5rem;padding:.25rem .5rem;">✕</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const imageButtons = Array.from(document.querySelectorAll('.timeline-image-btn'));
+  if (!imageButtons.length) return;
+
+  const modal = document.getElementById('image-modal');
+  const modalImage = document.getElementById('image-modal-img');
+  const prevButton = document.getElementById('image-prev');
+  const nextButton = document.getElementById('image-next');
+  const closeButton = document.getElementById('image-close');
+  let currentIndex = 0;
+
+  const updateImage = () => {
+    currentIndex = (currentIndex + imageButtons.length) % imageButtons.length;
+    const source = imageButtons[currentIndex].dataset.imageSrc;
+    modalImage.src = source;
+    prevButton.disabled = imageButtons.length < 2;
+    nextButton.disabled = imageButtons.length < 2;
+  };
+
+  const openModal = (index) => {
+    currentIndex = index;
+    updateImage();
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closeModal = () => {
+    modal.style.display = 'none';
+    modalImage.src = '';
+    document.body.style.overflow = '';
+  };
+
+  imageButtons.forEach((button, index) => {
+    button.addEventListener('click', () => openModal(index));
+  });
+
+  prevButton.addEventListener('click', () => {
+    currentIndex -= 1;
+    updateImage();
+  });
+
+  nextButton.addEventListener('click', () => {
+    currentIndex += 1;
+    updateImage();
+  });
+
+  closeButton.addEventListener('click', closeModal);
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) closeModal();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (modal.style.display !== 'flex') return;
+    if (event.key === 'Escape') closeModal();
+    if (event.key === 'ArrowLeft') {
+      currentIndex -= 1;
+      updateImage();
+    }
+    if (event.key === 'ArrowRight') {
+      currentIndex += 1;
+      updateImage();
+    }
+  });
+})();
+</script>
 {% endblock %}
