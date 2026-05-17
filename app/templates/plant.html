@@ -30,24 +30,39 @@
 <form method="post" action="/plants/{{ plant.id }}/delete" onsubmit="return confirm('Pflanze wirklich löschen?');" style="margin-bottom:1rem;">
   <button type="submit">In Papierkorb verschieben</button>
 </form>
-<h3>Foto hochladen</h3>
-<form method="post" action="/plants/{{plant.id}}/photos" enctype="multipart/form-data">
-  <input type="file" name="photo" required>
-  <input type="date" name="taken_on" value="{{ today_date }}">
-  <input name="comment" placeholder="Kommentar">
-  <button>Hochladen</button>
-</form>
-<h3>Kommentar hinzufügen</h3>
-<form method="post" action="/plants/{{plant.id}}/notes">
-  <input type="date" name="note_date">
-  <input name="comment" placeholder="Kommentar" required>
+
+<h3>Timeline-Event hinzufügen</h3>
+<form method="post" action="/plants/{{plant.id}}/events" enctype="multipart/form-data">
+  <select name="event_type" required>
+    <option value="user_comment">Userevent: Kommentar</option>
+    <option value="care_event">Pflegeevent</option>
+    <option value="measurement">Messevent</option>
+    <option value="planting">Pflanzevent: Eingepflanzt (Systemtitel)</option>
+    <option value="outplant">Pflanzevent: Ausgepflanzt (Systemtitel)</option>
+    <option value="transplant">Pflanzevent: Umgepflanzt (Systemtitel)</option>
+  </select>
+  <input type="date" name="event_at" value="{{ today_date }}">
+  <input name="title" placeholder="Titel (bei Systemevent automatisch)">
+  <textarea name="description" placeholder="Beschreibung"></textarea>
+  <input type="file" name="attachment" accept="image/*,application/pdf">
   <button>Speichern</button>
 </form>
-<h3>Fotos</h3>
-{% for ph in photos %}
-{% set c = creators.get(ph.creator_id) %}
-<div>{% if c and c.avatar_filename %}<img class="avatar-sm" src="/avatars/{{ c.avatar_filename }}" title="{{ c.name or c.email or 'Unbekannt' }}" alt="{{ c.name or c.email or 'Unbekannt' }}">{% elif c and c.avatar_url %}<img class="avatar-sm" src="{{ c.avatar_url }}" title="{{ c.name or c.email or 'Unbekannt' }}" alt="{{ c.name or c.email or 'Unbekannt' }}">{% else %}<span title="{{ c.name if c else 'Unbekannt' }}">👤</span>{% endif %}<img src="/uploads/{{ph.filename}}" style="max-height:200px"><br>{{ph.taken_on}} - {{ph.comment}}</div>
+
+<h3>Timeline</h3>
+{% for ev in events %}
+{% set c = creators.get(ev.creator_id) %}
+<div style="border:1px solid #ddd; border-radius:8px; padding:.75rem; margin-bottom:.75rem;">
+  <div>
+    {% if c and c.avatar_filename %}<img class="avatar-sm" src="/avatars/{{ c.avatar_filename }}" title="{{ c.name or c.email or 'Unbekannt' }}" alt="{{ c.name or c.email or 'Unbekannt' }}">{% elif c and c.avatar_url %}<img class="avatar-sm" src="{{ c.avatar_url }}" title="{{ c.name or c.email or 'Unbekannt' }}" alt="{{ c.name or c.email or 'Unbekannt' }}">{% else %}<span title="{{ c.name if c else 'Unbekannt' }}">👤</span>{% endif %}
+    <strong>{{ ev.title }}</strong> ({{ ev.event_type }})
+  </div>
+  <small>{{ ev.event_at }}</small>
+  {% if ev.description %}<p>{{ ev.description }}</p>{% endif %}
+  {% if ev.attachment_filename and ev.attachment_kind == 'image' %}
+    <img src="/uploads/{{ ev.attachment_filename }}" style="max-height:220px" alt="Anhang">
+  {% elif ev.attachment_filename and ev.attachment_kind == 'pdf' %}
+    <a href="/uploads/{{ ev.attachment_filename }}" download>PDF herunterladen</a>
+  {% endif %}
+</div>
 {% endfor %}
-<h3>Kommentare</h3>
-{% for n in notes %}{% set c = creators.get(n.creator_id) %}<p>{% if c and c.avatar_filename %}<img class="avatar-sm" src="/avatars/{{ c.avatar_filename }}" title="{{ c.name or c.email or 'Unbekannt' }}" alt="{{ c.name or c.email or 'Unbekannt' }}">{% elif c and c.avatar_url %}<img class="avatar-sm" src="{{ c.avatar_url }}" title="{{ c.name or c.email or 'Unbekannt' }}" alt="{{ c.name or c.email or 'Unbekannt' }}">{% else %}<span title="{{ c.name if c else 'Unbekannt' }}">👤</span>{% endif %}{{n.note_date}}: {{n.comment}}</p>{% endfor %}
 {% endblock %}

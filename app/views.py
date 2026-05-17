@@ -3,11 +3,26 @@ from functools import wraps
 from datetime import datetime
 from flask import Blueprint, current_app, render_template, request, redirect, url_for, session, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
-from .models import db, User, Location, Plant, PlantPhoto, PlantNote
+from .models import db, User, Location, Plant, PlantPhoto, PlantNote, PlantEvent
 
 main_bp = Blueprint('main', __name__)
-ALLOWED = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
+ALLOWED = {'png', 'jpg', 'jpeg', 'webp', 'gif', 'pdf'}
+IMAGE_TYPES = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
 TRASH_LOCATION_NAME = "Papierkorb"
+EVENT_TYPE_MAP = {
+    'planting': 'plant_event',
+    'outplant': 'plant_event',
+    'transplant': 'plant_event',
+    'user_comment': 'user_event',
+    'care_event': 'care_event',
+    'measurement': 'measurement_event',
+}
+
+SYSTEM_EVENT_TEMPLATES = {
+    'planting': {'title': 'Eingepflanzt', 'description': 'Pflanze wurde eingepflanzt.'},
+    'transplant': {'title': 'Umgepflanzt', 'description': 'Pflanze wurde umgepflanzt.'},
+    'outplant': {'title': 'Ausgepflanzt', 'description': 'Pflanze wurde ausgepflanzt.'},
+}
 
 def current_user():
     uid = session.get('user_id')
@@ -73,12 +88,7 @@ def index():
         location_id: count
         for location_id, count in db.session.query(Plant.location_id, db.func.count(Plant.id)).group_by(Plant.location_id).all()
     }
-    return render_template(
-        'index.html',
-        user=user,
-        locations=locations,
-        location_plant_counts=location_plant_counts,
-    )
+    return render_template('index.html', user=user, locations=locations, location_plant_counts=location_plant_counts)
 
 @main_bp.route('/locations/new', methods=['POST'])
 @login_required
@@ -99,6 +109,7 @@ def location_detail(location_id):
 @main_bp.route('/locations/<int:location_id>/plants/new', methods=['POST'])
 @login_required
 def new_plant(location_id):
+    months = ','.join(request.form.getlist('bloom_months'))
     planting_date = request.form.get('planting_date') or None
     light_needs = request.form.getlist('light_need')
     if not light_needs:
@@ -107,7 +118,6 @@ def new_plant(location_id):
         location_id=location_id,
         name=request.form['name'],
         common_name=request.form.get('common_name'),
-        planting_date=datetime.strptime(planting_date, '%Y-%m-%d').date() if planting_date else None,
         source=request.form.get('source'),
         light_need=', '.join(light_needs),
         bloom_start_month=request.form.get('bloom_start_month', type=int),
@@ -120,6 +130,11 @@ def new_plant(location_id):
         creator_id=current_user().id
     )
     db.session.add(p)
+    db.session.flush()
+    event_date = request.form.get('planting_date')
+    event_at = datetime.strptime(event_date, '%Y-%m-%d') if event_date else datetime.utcnow()
+    tpl = SYSTEM_EVENT_TEMPLATES['planting']
+    db.session.add(PlantEvent(plant_id=p.id, event_type='plant_event', event_at=event_at, title=tpl['title'], description=tpl['description'], creator_id=current_user().id))
     db.session.commit()
     return redirect(url_for('main.location_detail', location_id=location_id))
 
@@ -132,6 +147,10 @@ def delete_location(location_id):
     trash = get_or_create_trash_location(location.user_id)
     plants = Plant.query.filter_by(location_id=location.id).all()
     for plant in plants:
+        PlantPhoto.query.filter_by(plant_id=plant.id).delete()
+        PlantNote.query.filter_by(plant_id=plant.id).delete()
+        PlantEvent.query.filter_by(plant_id=plant.id).delete()
+        db.session.delete(plant)
         plant.location_id = trash.id
     db.session.delete(location)
     db.session.commit()
@@ -141,6 +160,7 @@ def delete_location(location_id):
 @login_required
 def plant_detail(plant_id):
     plant = Plant.query.get_or_404(plant_id)
+    events = PlantEvent.query.filter_by(plant_id=plant.id).order_by(PlantEvent.event_at.desc()).all()
     photos = PlantPhoto.query.filter_by(plant_id=plant.id).order_by(PlantPhoto.uploaded_at.desc()).all()
     notes = PlantNote.query.filter_by(plant_id=plant.id).order_by(PlantNote.created_at.desc()).all()
     month_names = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
@@ -160,6 +180,11 @@ def plant_detail(plant_id):
 @login_required
 def delete_plant(plant_id):
     plant = Plant.query.get_or_404(plant_id)
+    location_id = plant.location_id
+    PlantPhoto.query.filter_by(plant_id=plant.id).delete()
+    PlantNote.query.filter_by(plant_id=plant.id).delete()
+    PlantEvent.query.filter_by(plant_id=plant.id).delete()
+    db.session.delete(plant)
     trash = get_or_create_trash_location(current_user().id)
     plant.location_id = trash.id
     db.session.commit()
@@ -175,27 +200,33 @@ def move_plant(plant_id):
     db.session.commit()
     return redirect(url_for('main.plant_detail', plant_id=plant.id))
 
-@main_bp.route('/plants/<int:plant_id>/photos', methods=['POST'])
+@main_bp.route('/plants/<int:plant_id>/events', methods=['POST'])
 @login_required
-def upload_photo(plant_id):
-    file = request.files.get('photo')
-    if file and allowed_file(file.filename):
+def add_event(plant_id):
+    selected_type = request.form.get('event_type')
+    event_type = EVENT_TYPE_MAP.get(selected_type, 'user_event')
+    event_at_raw = request.form.get('event_at')
+    event_at = datetime.strptime(event_at_raw, '%Y-%m-%d') if event_at_raw else datetime.utcnow()
+    title = request.form.get('title', '').strip()
+    description = request.form.get('description', '').strip()
+
+    if selected_type in SYSTEM_EVENT_TEMPLATES:
+        title = SYSTEM_EVENT_TEMPLATES[selected_type]['title']
+        if not description:
+            description = SYSTEM_EVENT_TEMPLATES[selected_type]['description']
+
+    file = request.files.get('attachment')
+    attachment_filename = None
+    attachment_kind = None
+    if file and file.filename and allowed_file(file.filename):
         fn = secure_filename(file.filename)
         unique = f"{datetime.utcnow().timestamp()}_{fn}"
         file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], unique))
-        taken_on = request.form.get('taken_on') or None
-        photo = PlantPhoto(plant_id=plant_id, filename=unique, taken_on=datetime.strptime(taken_on, '%Y-%m-%d').date() if taken_on else None, comment=request.form.get('comment'), creator_id=current_user().id)
-        db.session.add(photo)
-        db.session.commit()
-    return redirect(url_for('main.plant_detail', plant_id=plant_id))
+        attachment_filename = unique
+        ext = fn.rsplit('.', 1)[1].lower()
+        attachment_kind = 'image' if ext in IMAGE_TYPES else 'pdf'
 
-@main_bp.route('/plants/<int:plant_id>/notes', methods=['POST'])
-@login_required
-def add_note(plant_id):
-    comment = request.form.get('comment', '').strip()
-    if comment:
-        note_date = request.form.get('note_date') or None
-        note = PlantNote(plant_id=plant_id, comment=comment, note_date=datetime.strptime(note_date, '%Y-%m-%d').date() if note_date else datetime.utcnow().date(), creator_id=current_user().id)
-        db.session.add(note)
+    if title or description or attachment_filename:
+        db.session.add(PlantEvent(plant_id=plant_id, event_type=event_type, event_at=event_at, title=title or 'Kommentar', description=description or None, attachment_filename=attachment_filename, attachment_kind=attachment_kind, creator_id=current_user().id))
         db.session.commit()
     return redirect(url_for('main.plant_detail', plant_id=plant_id))
