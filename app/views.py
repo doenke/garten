@@ -184,9 +184,11 @@ def plant_detail(plant_id):
     month_names = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
     last_plant_event = next((ev for ev in events if ev.event_type == 'plant_event' and ev.title in PLANTING_STATE_TYPES), None)
     is_planted = bool(last_plant_event and PLANTING_STATE_TYPES[last_plant_event.title] in {'planting', 'transplant'})
+    location = Location.query.get(plant.location_id)
     return render_template(
         'plant.html',
         plant=plant,
+        location=location,
         events=events,
         photos=photos,
         notes=notes,
