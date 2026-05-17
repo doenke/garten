@@ -99,17 +99,23 @@ def location_detail(location_id):
 @main_bp.route('/locations/<int:location_id>/plants/new', methods=['POST'])
 @login_required
 def new_plant(location_id):
-    months = ','.join(request.form.getlist('bloom_months'))
     planting_date = request.form.get('planting_date') or None
+    light_needs = request.form.getlist('light_need')
+    if not light_needs:
+        light_needs = ['Unbekannt']
     p = Plant(
         location_id=location_id,
         name=request.form['name'],
         common_name=request.form.get('common_name'),
         planting_date=datetime.strptime(planting_date, '%Y-%m-%d').date() if planting_date else None,
         source=request.form.get('source'),
-        light_need=request.form['light_need'],
-        bloom_months=months,
+        light_need=', '.join(light_needs),
+        bloom_start_month=request.form.get('bloom_start_month', type=int),
+        bloom_end_month=request.form.get('bloom_end_month', type=int),
         flower_color=request.form.get('flower_color'),
+        soil=request.form.get('soil'),
+        height_without_bloom_cm=request.form.get('height_without_bloom_cm', type=int),
+        height_with_bloom_cm=request.form.get('height_with_bloom_cm', type=int),
         info=request.form.get('info'),
         creator_id=current_user().id
     )
@@ -137,6 +143,7 @@ def plant_detail(plant_id):
     plant = Plant.query.get_or_404(plant_id)
     photos = PlantPhoto.query.filter_by(plant_id=plant.id).order_by(PlantPhoto.uploaded_at.desc()).all()
     notes = PlantNote.query.filter_by(plant_id=plant.id).order_by(PlantNote.created_at.desc()).all()
+    month_names = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
     return render_template(
         'plant.html',
         plant=plant,
@@ -146,6 +153,7 @@ def plant_detail(plant_id):
         locations=Location.query.order_by(Location.name.asc()).all(),
         creators={u.id: u for u in User.query.all()},
         today_date=datetime.utcnow().date().isoformat(),
+        month_names=month_names,
     )
 
 @main_bp.route('/plants/<int:plant_id>/delete', methods=['POST'])

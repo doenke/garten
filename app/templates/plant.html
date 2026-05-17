@@ -1,7 +1,21 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>{{plant.name}} ({{plant.common_name}})</h2>
-<p>Lichtbedarf: {{plant.light_need}} | Blühmonate: {{plant.bloom_months}} | Blütenfarbe: {{plant.flower_color}}</p>
+<p>Lichtbedarf: {{plant.light_need}} | Blütenfarbe: {{plant.flower_color}}</p>
+<p>Boden: {{ plant.soil or '-' }} | Höhe ohne Blüte: {{ plant.height_without_bloom_cm or '-' }} cm | Höhe mit Blüte: {{ plant.height_with_bloom_cm or '-' }} cm</p>
+{% if plant.bloom_start_month and plant.bloom_end_month %}
+{% set start_idx = plant.bloom_start_month - 1 %}
+{% set end_idx = plant.bloom_end_month - 1 %}
+<p>Blütezeit: {{ month_names[start_idx] }} bis {{ month_names[end_idx] }}</p>
+<div class="bloom-timeline" aria-label="Zeitstrahl der Blütezeit">
+  <div class="timeline-track">
+    {% for i in range(12) %}
+      {% set active = (start_idx <= end_idx and i >= start_idx and i <= end_idx) or (start_idx > end_idx and (i >= start_idx or i <= end_idx)) %}
+      <span class="timeline-month {% if active %}active{% endif %}">{{ month_names[i] }}</span>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
 <p>{{plant.info}}</p>
 <p><a href="/locations/{{ plant.location_id }}">← Zurück zur Location</a></p>
 <form method="post" action="/plants/{{ plant.id }}/move" style="margin-bottom:1rem;">
