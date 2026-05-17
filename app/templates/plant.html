@@ -56,6 +56,21 @@
     </form>
   </details>
 </section>
+{% if garden_map and garden_map.filename and location %}
+<section class="card">
+  <h3 style="margin-top:0;">Standort auf Luftbild</h3>
+  <p>Klick auf das Bild, um den Pflanzenstandort im Polygon zu markieren.</p>
+  <div style="position:relative;display:inline-block;max-width:100%;">
+    <img id="plant-map-image" src="/maps/{{ garden_map.filename }}" style="max-width:100%;border-radius:10px;">
+    <svg id="plant-map-overlay" style="position:absolute;left:0;top:0;width:100%;height:100%;"></svg>
+  </div>
+  <form method="post" action="/plants/{{ plant.id }}/position" class="grid" style="margin-top:.75rem;">
+    <input type="hidden" id="plant-map-x" name="map_x" value="{{ plant.map_x if plant.map_x is not none else '' }}">
+    <input type="hidden" id="plant-map-y" name="map_y" value="{{ plant.map_y if plant.map_y is not none else '' }}">
+    <button>Standort speichern</button>
+  </form>
+</section>
+{% endif %}
 
 <div class="card">
   <h3 style="margin-top:0;">Aktionen</h3>
@@ -157,6 +172,32 @@
 
 <script>
 (() => {
+  const mapImage = document.getElementById('plant-map-image');
+  const mapOverlay = document.getElementById('plant-map-overlay');
+  const mapX = document.getElementById('plant-map-x');
+  const mapY = document.getElementById('plant-map-y');
+  const locationPolygon = {{ (location.polygon_points or '[]') | safe if location else '[]' }};
+  const locationColor = "{{ location.color or '#2f6d40' if location else '#2f6d40' }}";
+
+  const renderPlantMap = () => {
+    if (!mapImage || !mapOverlay) return;
+    mapOverlay.setAttribute('viewBox', `0 0 ${mapImage.naturalWidth} ${mapImage.naturalHeight}`);
+    const poly = locationPolygon.map((point) => `${point.x * mapImage.naturalWidth},${point.y * mapImage.naturalHeight}`).join(' ');
+    const marker = (mapX?.value && mapY?.value)
+      ? `<circle cx="${Number(mapX.value) * mapImage.naturalWidth}" cy="${Number(mapY.value) * mapImage.naturalHeight}" r="7" fill="#d7263d"></circle>`
+      : '';
+    mapOverlay.innerHTML = locationPolygon.length > 2 ? `<polygon points="${poly}" fill="${locationColor}55" stroke="${locationColor}" stroke-width="2"></polygon>${marker}` : marker;
+  };
+  if (mapImage && mapOverlay && mapX && mapY) {
+    mapImage.addEventListener('load', renderPlantMap);
+    mapOverlay.addEventListener('click', (event) => {
+      const rect = mapOverlay.getBoundingClientRect();
+      mapX.value = (event.clientX - rect.left) / rect.width;
+      mapY.value = (event.clientY - rect.top) / rect.height;
+      renderPlantMap();
+    });
+  }
+
   const imageButtons = Array.from(document.querySelectorAll('.timeline-image-btn'));
   if (!imageButtons.length) return;
 

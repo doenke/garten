@@ -18,6 +18,8 @@ class Location(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
+    color = db.Column(db.String(7), default='#2f6d40')
+    polygon_points = db.Column(db.Text)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     creator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
@@ -36,7 +38,16 @@ class Plant(db.Model):
     height_without_bloom_cm = db.Column(db.Integer)
     height_with_bloom_cm = db.Column(db.Integer)
     info = db.Column(db.Text)
+    map_x = db.Column(db.Float)
+    map_y = db.Column(db.Float)
     creator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+
+class GardenMap(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
+    filename = db.Column(db.String(255))
+    calibration_points = db.Column(db.Text)
 
 
 class PlantPhoto(db.Model):

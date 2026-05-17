@@ -1,9 +1,10 @@
 import os
+import json
 from functools import wraps
 from datetime import datetime
 from flask import Blueprint, current_app, render_template, request, redirect, url_for, session, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
-from .models import db, User, Location, Plant, PlantPhoto, PlantNote, PlantEvent
+from .models import db, User, Location, Plant, PlantPhoto, PlantNote, PlantEvent, GardenMap
 
 main_bp = Blueprint('main', __name__)
 ALLOWED = {'png', 'jpg', 'jpeg', 'webp', 'gif', 'pdf'}
@@ -57,6 +58,16 @@ def login_required(f):
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED
 
+
+def get_or_create_garden_map(owner_user_id):
+    garden_map = GardenMap.query.order_by(GardenMap.id.asc()).first()
+    if garden_map:
+        return garden_map
+    garden_map = GardenMap(user_id=owner_user_id, calibration_points='[]')
+    db.session.add(garden_map)
+    db.session.flush()
+    return garden_map
+
 def get_or_create_trash_location(user_id):
     trash = Location.query.filter_by(user_id=user_id, name=TRASH_LOCATION_NAME).first()
     if trash:
@@ -102,17 +113,18 @@ def avatars(filename):
 def index():
     user = current_user()
     locations = Location.query.all()
+    garden_map = GardenMap.query.order_by(GardenMap.id.asc()).first()
     location_plant_counts = {
         location_id: count
         for location_id, count in db.session.query(Plant.location_id, db.func.count(Plant.id)).group_by(Plant.location_id).all()
     }
-    return render_template('index.html', user=user, locations=locations, location_plant_counts=location_plant_counts)
+    return render_template('index.html', user=user, locations=locations, location_plant_counts=location_plant_counts, garden_map=garden_map)
 
 @main_bp.route('/locations/new', methods=['POST'])
 @login_required
 def new_location():
     user = current_user()
-    loc = Location(name=request.form['name'], description=request.form.get('description'), user_id=user.id, creator_id=user.id)
+    loc = Location(name=request.form['name'], description=request.form.get('description'), color=request.form.get('color') or '#2f6d40', user_id=user.id, creator_id=user.id)
     db.session.add(loc)
     db.session.commit()
     return redirect(url_for('main.index'))
@@ -122,7 +134,8 @@ def new_location():
 def location_detail(location_id):
     loc = Location.query.get_or_404(location_id)
     plants = Plant.query.filter_by(location_id=loc.id).all()
-    return render_template('location.html', location=loc, plants=plants, user=current_user(), creators={u.id: u for u in User.query.all()})
+    garden_map = GardenMap.query.order_by(GardenMap.id.asc()).first()
+    return render_template('location.html', location=loc, plants=plants, user=current_user(), creators={u.id: u for u in User.query.all()}, garden_map=garden_map)
 
 @main_bp.route('/locations/<int:location_id>/plants/new', methods=['POST'])
 @login_required
@@ -185,6 +198,7 @@ def plant_detail(plant_id):
     last_plant_event = next((ev for ev in events if ev.event_type == 'plant_event' and ev.title in PLANTING_STATE_TYPES), None)
     is_planted = bool(last_plant_event and PLANTING_STATE_TYPES[last_plant_event.title] in {'planting', 'transplant'})
     location = Location.query.get(plant.location_id)
+    garden_map = GardenMap.query.order_by(GardenMap.id.asc()).first()
     return render_template(
         'plant.html',
         plant=plant,
@@ -198,7 +212,58 @@ def plant_detail(plant_id):
         today_date=datetime.utcnow().date().isoformat(),
         month_names=month_names,
         is_planted=is_planted,
+        garden_map=garden_map,
     )
+
+
+@main_bp.route('/maps/<path:filename>')
+@login_required
+def maps(filename):
+    return send_from_directory(current_app.config['MAP_FOLDER'], filename)
+
+
+@main_bp.route('/map/upload', methods=['POST'])
+@login_required
+def upload_map():
+    file = request.files.get('map_image')
+    if file and file.filename and allowed_file(file.filename):
+        fn = secure_filename(file.filename)
+        unique = f"{datetime.utcnow().timestamp()}_{fn}"
+        file.save(os.path.join(current_app.config['MAP_FOLDER'], unique))
+        garden_map = get_or_create_garden_map(current_user().id)
+        garden_map.filename = unique
+        db.session.commit()
+    return redirect(request.referrer or url_for('main.index'))
+
+
+@main_bp.route('/map/calibration', methods=['POST'])
+@login_required
+def save_calibration():
+    payload = request.form.get('calibration_points', '[]')
+    garden_map = get_or_create_garden_map(current_user().id)
+    garden_map.calibration_points = payload
+    db.session.commit()
+    return redirect(request.referrer or url_for('main.index'))
+
+
+@main_bp.route('/locations/<int:location_id>/map', methods=['POST'])
+@login_required
+def save_location_map(location_id):
+    loc = Location.query.get_or_404(location_id)
+    loc.color = request.form.get('color') or '#2f6d40'
+    loc.polygon_points = request.form.get('polygon_points') or '[]'
+    db.session.commit()
+    return redirect(url_for('main.location_detail', location_id=location_id))
+
+
+@main_bp.route('/plants/<int:plant_id>/position', methods=['POST'])
+@login_required
+def save_plant_position(plant_id):
+    plant = Plant.query.get_or_404(plant_id)
+    plant.map_x = request.form.get('map_x', type=float)
+    plant.map_y = request.form.get('map_y', type=float)
+    db.session.commit()
+    return redirect(url_for('main.plant_detail', plant_id=plant_id))
 
 
 
