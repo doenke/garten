@@ -101,19 +101,22 @@ def create_app():
                 SELECT p.id, 'plant_event', COALESCE(p.planting_date, CURRENT_TIMESTAMP), 'Eingepflanzt', 'Pflanze wurde eingepflanzt.', p.creator_id
                 FROM plant p
                 WHERE p.planting_date IS NOT NULL
+                  AND p.creator_id IS NOT NULL
                   AND NOT EXISTS (SELECT 1 FROM plant_event pe WHERE pe.plant_id = p.id AND pe.title = 'Eingepflanzt')
             """))
         db.session.execute(text("""
             INSERT INTO plant_event (plant_id, event_type, event_at, title, description, attachment_filename, attachment_kind, creator_id)
             SELECT plant_id, 'user_comment', COALESCE(uploaded_at, CURRENT_TIMESTAMP), COALESCE(comment, 'Foto'), comment, filename, 'image', creator_id
             FROM plant_photo pp
-            WHERE NOT EXISTS (SELECT 1 FROM plant_event pe WHERE pe.plant_id = pp.plant_id AND pe.attachment_filename = pp.filename)
+            WHERE pp.creator_id IS NOT NULL
+              AND NOT EXISTS (SELECT 1 FROM plant_event pe WHERE pe.plant_id = pp.plant_id AND pe.attachment_filename = pp.filename)
         """))
         db.session.execute(text("""
             INSERT INTO plant_event (plant_id, event_type, event_at, title, description, creator_id)
             SELECT plant_id, 'user_comment', COALESCE(created_at, CURRENT_TIMESTAMP), 'Kommentar', comment, creator_id
             FROM plant_note pn
-            WHERE NOT EXISTS (SELECT 1 FROM plant_event pe WHERE pe.plant_id = pn.plant_id AND pe.description = pn.comment AND pe.creator_id = pn.creator_id)
+            WHERE pn.creator_id IS NOT NULL
+              AND NOT EXISTS (SELECT 1 FROM plant_event pe WHERE pe.plant_id = pn.plant_id AND pe.description = pn.comment AND pe.creator_id = pn.creator_id)
         """))
         db.session.commit()
 
