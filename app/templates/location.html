@@ -10,14 +10,17 @@
 <h3>Luftbild & Polygon</h3>
 <form method="post" action="/map/upload" enctype="multipart/form-data" class="grid" style="margin-bottom:.75rem;">
   <input type="file" name="map_image" accept="image/*">
-  <button>Luftbild aktualisieren</button>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+    <button>Luftbild aktualisieren</button>
+    <button type="submit" form="map-calibration-form" {% if not garden_map or not garden_map.filename %}disabled title="Bitte zuerst ein Luftbild hochladen"{% endif %}>Kalibrierung speichern</button>
+  </div>
 </form>
 {% if garden_map and garden_map.filename %}
 <div style="position:relative;display:inline-block;max-width:100%;margin-bottom:.75rem;">
   <img id="location-map-image" src="/maps/{{ garden_map.filename }}" style="max-width:100%;border-radius:10px;">
   <svg id="location-map-overlay" style="position:absolute;left:0;top:0;width:100%;height:100%;"></svg>
 </div>
-<form method="post" action="/map/calibration" class="grid" style="margin-bottom:.75rem;">
+<form method="post" action="/map/calibration" id="map-calibration-form" class="grid" style="margin-bottom:.75rem;">
   <input type="hidden" name="calibration_points" id="calibration-points-field" value='{{ garden_map.calibration_points or "[]" }}'>
   <label>Punkt 1 GPS <input id="gps-1" placeholder="lat,lon"></label>
   <label>Punkt 2 GPS <input id="gps-2" placeholder="lat,lon"></label>
@@ -56,9 +59,12 @@
 
   const renderOverlay = () => {
     if (!locationImage || !locationOverlay) return;
-    locationOverlay.setAttribute('viewBox', `0 0 ${locationImage.naturalWidth} ${locationImage.naturalHeight}`);
-    const polygon = polygonPoints.map((point) => `${point.x * locationImage.naturalWidth},${point.y * locationImage.naturalHeight}`).join(' ');
-    const calibration = calibrationPoints.map((point, index) => `<circle cx="${point.x * locationImage.naturalWidth}" cy="${point.y * locationImage.naturalHeight}" r="7" fill="${index === 0 ? '#ff4d4d' : '#3388ff'}"></circle>`).join('');
+    const overlayWidth = locationImage.clientWidth || locationImage.naturalWidth;
+    const overlayHeight = locationImage.clientHeight || locationImage.naturalHeight;
+    locationOverlay.setAttribute('viewBox', `0 0 ${overlayWidth} ${overlayHeight}`);
+    locationOverlay.setAttribute('preserveAspectRatio', 'none');
+    const polygon = polygonPoints.map((point) => `${point.x * overlayWidth},${point.y * overlayHeight}`).join(' ');
+    const calibration = calibrationPoints.map((point, index) => `<circle cx="${point.x * overlayWidth}" cy="${point.y * overlayHeight}" r="7" fill="${index === 0 ? '#ff4d4d' : '#3388ff'}"></circle>`).join('');
     locationOverlay.innerHTML = polygonPoints.length > 2 ? `<polygon points="${polygon}" fill="{{ location.color or '#2f6d40' }}66" stroke="{{ location.color or '#2f6d40' }}" stroke-width="2"></polygon>${calibration}` : calibration;
   };
 
