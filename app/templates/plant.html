@@ -215,6 +215,7 @@
   const cameraCanvas = document.getElementById('camera-canvas');
   const cameraStatus = document.getElementById('camera-status');
   const attachmentInput = document.getElementById('event-attachment');
+  const isMobileCameraPreferred = window.matchMedia('(pointer: coarse)').matches;
   let cameraStream;
 
   const stopCamera = () => {
@@ -228,7 +229,19 @@
   };
 
   if (cameraStartButton && cameraCaptureButton && cameraStopButton && cameraPreview && cameraCanvas && cameraStatus && attachmentInput) {
+    if (isMobileCameraPreferred) {
+      cameraStartButton.textContent = 'Handy-Kamera öffnen';
+      cameraCaptureButton.style.display = 'none';
+      cameraStopButton.style.display = 'none';
+      cameraStatus.textContent = 'Am Handy wird direkt die Kamera-App verwendet.';
+    }
+
     cameraStartButton.addEventListener('click', async () => {
+      if (isMobileCameraPreferred) {
+        attachmentInput.click();
+        cameraStatus.textContent = 'Bitte in der Kamera-App ein Foto aufnehmen.';
+        return;
+      }
       if (!navigator.mediaDevices?.getUserMedia) {
         cameraStatus.textContent = 'Kamera wird von diesem Browser nicht unterstützt.';
         return;
