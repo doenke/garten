@@ -1,12 +1,13 @@
 {% extends 'base.html' %}
 {% block content %}
+<section class="card">
 <h2>{{ location.name }}</h2>
-<p><a href="/">← Zurück zur Übersicht</a></p>
-<form method="post" action="/locations/{{ location.id }}/delete" onsubmit="return confirm('Location wirklich löschen? Alle enthaltenen Pflanzen werden in den Papierkorb verschoben.');" style="margin-bottom:1rem;">
+<p><a href="/" class="btn secondary">← Zurück zur Übersicht</a></p>
+<form method="post" action="/locations/{{ location.id }}/delete" onsubmit="return confirm('Location wirklich löschen? Alle enthaltenen Pflanzen werden in den Papierkorb verschoben.');" class="actions-inline" style="margin-bottom:1rem;">
   <button type="submit">Location löschen</button>
 </form>
 <button type="button" id="toggle-plant-form" style="margin-bottom:1rem;">Pflanze anlegen</button>
-<form method="post" action="/locations/{{location.id}}/plants/new" id="plant-form" style="display:none;">
+<form method="post" action="/locations/{{location.id}}/plants/new" id="plant-form" class="grid" style="display:none;">
 <input name="name" placeholder="Namen" required>
 <input name="common_name" placeholder="Umgangssprachlicher Name">
 <label>Erstes Pflanzevent (Eingepflanzt): <input type="date" name="planting_date"></label>
@@ -29,5 +30,6 @@
     togglePlantFormButton.textContent = isHidden ? 'Pflanze anlegen ausblenden' : 'Pflanze anlegen';
   });
 </script>
-<ul>{% for p in plants %}<li><a href="/plants/{{p.id}}">{{p.name}}</a></li>{% endfor %}</ul>
+<h3>Pflanzen</h3><ul>{% for p in plants %}<li><a href="/plants/{{p.id}}">{{p.name}}</a></li>{% endfor %}</ul>
+</section>
 {% endblock %}
