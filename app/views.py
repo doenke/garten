@@ -9,6 +9,15 @@ main_bp = Blueprint('main', __name__)
 ALLOWED = {'png', 'jpg', 'jpeg', 'webp', 'gif', 'pdf'}
 IMAGE_TYPES = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
 
+EVENT_TYPE_MAP = {
+    'planting': 'plant_event',
+    'outplant': 'plant_event',
+    'transplant': 'plant_event',
+    'user_comment': 'user_event',
+    'care_event': 'care_event',
+    'measurement': 'measurement_event',
+}
+
 SYSTEM_EVENT_TEMPLATES = {
     'planting': {'title': 'Eingepflanzt', 'description': 'Pflanze wurde eingepflanzt.'},
     'transplant': {'title': 'Umgepflanzt', 'description': 'Pflanze wurde umgepflanzt.'},
@@ -143,16 +152,17 @@ def delete_plant(plant_id):
 @main_bp.route('/plants/<int:plant_id>/events', methods=['POST'])
 @login_required
 def add_event(plant_id):
-    event_type = request.form.get('event_type')
+    selected_type = request.form.get('event_type')
+    event_type = EVENT_TYPE_MAP.get(selected_type, 'user_event')
     event_at_raw = request.form.get('event_at')
     event_at = datetime.strptime(event_at_raw, '%Y-%m-%d') if event_at_raw else datetime.utcnow()
     title = request.form.get('title', '').strip()
     description = request.form.get('description', '').strip()
 
-    if event_type in SYSTEM_EVENT_TEMPLATES:
-        title = SYSTEM_EVENT_TEMPLATES[event_type]['title']
+    if selected_type in SYSTEM_EVENT_TEMPLATES:
+        title = SYSTEM_EVENT_TEMPLATES[selected_type]['title']
         if not description:
-            description = SYSTEM_EVENT_TEMPLATES[event_type]['description']
+            description = SYSTEM_EVENT_TEMPLATES[selected_type]['description']
 
     file = request.files.get('attachment')
     attachment_filename = None
