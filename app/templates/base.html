@@ -16,7 +16,7 @@
   <div>
     {% if user %}
       {% if user.avatar_filename %}<img class="avatar" src="/avatars/{{ user.avatar_filename }}">{% elif user.avatar_url %}<img class="avatar" src="{{ user.avatar_url }}">{% endif %}
-      {{ user.name or user.email }} | <a href="/logout">Logout</a>
+      <a href="/logout">Logout</a>
     {% endif %}
   </div>
 </header>
