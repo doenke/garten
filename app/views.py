@@ -314,6 +314,19 @@ def add_event(plant_id):
     return redirect(url_for('main.plant_detail', plant_id=plant_id))
 
 
+@main_bp.route('/plants/<int:plant_id>/events/<int:event_id>/delete', methods=['POST'])
+@login_required
+def delete_event(plant_id, event_id):
+    event = PlantEvent.query.filter_by(id=event_id, plant_id=plant_id).first_or_404()
+    if event.attachment_filename:
+        attachment_path = os.path.join(current_app.config['UPLOAD_FOLDER'], event.attachment_filename)
+        if os.path.exists(attachment_path):
+            os.remove(attachment_path)
+    db.session.delete(event)
+    db.session.commit()
+    return redirect(url_for('main.plant_detail', plant_id=plant_id))
+
+
 @main_bp.route('/plants/<int:plant_id>/events/system/<string:event_key>', methods=['POST'])
 @login_required
 def add_system_event(plant_id, event_key):
