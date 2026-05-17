@@ -62,7 +62,6 @@ def index():
         'index.html',
         user=user,
         locations=locations,
-        creators={u.id: u for u in User.query.all()},
         location_plant_counts=location_plant_counts,
     )
 
