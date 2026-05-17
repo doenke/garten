@@ -7,25 +7,14 @@
       <th>Location</th>
       <th>Beschreibung</th>
       <th>Pflanzen</th>
-      <th>Angelegt von</th>
     </tr>
   </thead>
   <tbody>
   {% for l in locations %}
-    {% set c = creators.get(l.creator_id) %}
     <tr>
       <td><a href="/locations/{{l.id}}">{{l.name}}</a></td>
       <td>{{ l.description or '-' }}</td>
       <td>{{ location_plant_counts.get(l.id, 0) }}</td>
-      <td>
-        {% if c and c.avatar_filename %}
-          <img class="avatar-sm" src="/avatars/{{ c.avatar_filename }}" title="{{ c.name or c.email or 'Unbekannt' }}" alt="{{ c.name or c.email or 'Unbekannt' }}">
-        {% elif c and c.avatar_url %}
-          <img class="avatar-sm" src="{{ c.avatar_url }}" title="{{ c.name or c.email or 'Unbekannt' }}" alt="{{ c.name or c.email or 'Unbekannt' }}">
-        {% else %}
-          <span title="{{ c.name if c else 'Unbekannt' }}">👤</span>
-        {% endif %}
-      </td>
     </tr>
   {% endfor %}
   </tbody>
