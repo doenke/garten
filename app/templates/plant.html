@@ -4,8 +4,17 @@
 <p>Lichtbedarf: {{plant.light_need}} | Blühmonate: {{plant.bloom_months}} | Blütenfarbe: {{plant.flower_color}}</p>
 <p>{{plant.info}}</p>
 <p><a href="/locations/{{ plant.location_id }}">← Zurück zur Location</a></p>
+<form method="post" action="/plants/{{ plant.id }}/move" style="margin-bottom:1rem;">
+  <label for="location_id">In andere Location verschieben:</label>
+  <select id="location_id" name="location_id" required>
+    {% for location in locations %}
+      <option value="{{ location.id }}" {% if location.id == plant.location_id %}selected{% endif %}>{{ location.name }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit">Verschieben</button>
+</form>
 <form method="post" action="/plants/{{ plant.id }}/delete" onsubmit="return confirm('Pflanze wirklich löschen?');" style="margin-bottom:1rem;">
-  <button type="submit">Pflanze löschen</button>
+  <button type="submit">In Papierkorb verschieben</button>
 </form>
 <h3>Foto hochladen</h3>
 <form method="post" action="/plants/{{plant.id}}/photos" enctype="multipart/form-data">

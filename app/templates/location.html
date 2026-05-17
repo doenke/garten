@@ -2,7 +2,7 @@
 {% block content %}
 <h2>{{ location.name }}</h2>
 <p><a href="/">← Zurück zur Übersicht</a></p>
-<form method="post" action="/locations/{{ location.id }}/delete" onsubmit="return confirm('Location wirklich löschen? Alle enthaltenen Pflanzen werden ebenfalls gelöscht.');" style="margin-bottom:1rem;">
+<form method="post" action="/locations/{{ location.id }}/delete" onsubmit="return confirm('Location wirklich löschen? Alle enthaltenen Pflanzen werden in den Papierkorb verschoben.');" style="margin-bottom:1rem;">
   <button type="submit">Location löschen</button>
 </form>
 <form method="post" action="/locations/{{location.id}}/plants/new">

@@ -7,6 +7,7 @@ from .models import db, User, Location, Plant, PlantPhoto, PlantNote
 
 main_bp = Blueprint('main', __name__)
 ALLOWED = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
+TRASH_LOCATION_NAME = "Papierkorb"
 
 def current_user():
     uid = session.get('user_id')
@@ -22,6 +23,20 @@ def login_required(f):
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED
+
+def get_or_create_trash_location(user_id):
+    trash = Location.query.filter_by(user_id=user_id, name=TRASH_LOCATION_NAME).first()
+    if trash:
+        return trash
+    trash = Location(
+        name=TRASH_LOCATION_NAME,
+        description="Automatisch erstellt. Gelöschte Pflanzen landen hier.",
+        user_id=user_id,
+        creator_id=user_id
+    )
+    db.session.add(trash)
+    db.session.flush()
+    return trash
 
 @main_bp.route('/healthz')
 def healthz():
@@ -106,11 +121,12 @@ def new_plant(location_id):
 @login_required
 def delete_location(location_id):
     location = Location.query.get_or_404(location_id)
+    if location.name == TRASH_LOCATION_NAME:
+        return redirect(url_for('main.index'))
+    trash = get_or_create_trash_location(location.user_id)
     plants = Plant.query.filter_by(location_id=location.id).all()
     for plant in plants:
-        PlantPhoto.query.filter_by(plant_id=plant.id).delete()
-        PlantNote.query.filter_by(plant_id=plant.id).delete()
-        db.session.delete(plant)
+        plant.location_id = trash.id
     db.session.delete(location)
     db.session.commit()
     return redirect(url_for('main.index'))
@@ -127,6 +143,7 @@ def plant_detail(plant_id):
         photos=photos,
         notes=notes,
         user=current_user(),
+        locations=Location.query.order_by(Location.name.asc()).all(),
         creators={u.id: u for u in User.query.all()},
         today_date=datetime.utcnow().date().isoformat(),
     )
@@ -135,12 +152,20 @@ def plant_detail(plant_id):
 @login_required
 def delete_plant(plant_id):
     plant = Plant.query.get_or_404(plant_id)
-    location_id = plant.location_id
-    PlantPhoto.query.filter_by(plant_id=plant.id).delete()
-    PlantNote.query.filter_by(plant_id=plant.id).delete()
-    db.session.delete(plant)
+    trash = get_or_create_trash_location(current_user().id)
+    plant.location_id = trash.id
     db.session.commit()
-    return redirect(url_for('main.location_detail', location_id=location_id))
+    return redirect(url_for('main.plant_detail', plant_id=plant.id))
+
+@main_bp.route('/plants/<int:plant_id>/move', methods=['POST'])
+@login_required
+def move_plant(plant_id):
+    plant = Plant.query.get_or_404(plant_id)
+    target_location_id = request.form.get('location_id', type=int)
+    target_location = Location.query.get_or_404(target_location_id)
+    plant.location_id = target_location.id
+    db.session.commit()
+    return redirect(url_for('main.plant_detail', plant_id=plant.id))
 
 @main_bp.route('/plants/<int:plant_id>/photos', methods=['POST'])
 @login_required
