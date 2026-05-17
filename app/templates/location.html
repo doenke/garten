@@ -5,7 +5,8 @@
 <form method="post" action="/locations/{{ location.id }}/delete" onsubmit="return confirm('Location wirklich löschen? Alle enthaltenen Pflanzen werden in den Papierkorb verschoben.');" style="margin-bottom:1rem;">
   <button type="submit">Location löschen</button>
 </form>
-<form method="post" action="/locations/{{location.id}}/plants/new">
+<button type="button" id="toggle-plant-form" style="margin-bottom:1rem;">Pflanze anlegen</button>
+<form method="post" action="/locations/{{location.id}}/plants/new" id="plant-form" style="display:none;">
 <input name="name" placeholder="Namen" required>
 <input name="common_name" placeholder="Umgangssprachlicher Name">
 <label>Erstes Pflanzevent (Eingepflanzt): <input type="date" name="planting_date"></label>
@@ -19,5 +20,14 @@
 <textarea name="info" placeholder="Weitere Info"></textarea>
 <button>Pflanze anlegen</button>
 </form>
+<script>
+  const togglePlantFormButton = document.getElementById('toggle-plant-form');
+  const plantForm = document.getElementById('plant-form');
+  togglePlantFormButton.addEventListener('click', () => {
+    const isHidden = plantForm.style.display === 'none';
+    plantForm.style.display = isHidden ? 'block' : 'none';
+    togglePlantFormButton.textContent = isHidden ? 'Pflanze anlegen ausblenden' : 'Pflanze anlegen';
+  });
+</script>
 <ul>{% for p in plants %}<li><a href="/plants/{{p.id}}">{{p.name}}</a></li>{% endfor %}</ul>
 {% endblock %}
