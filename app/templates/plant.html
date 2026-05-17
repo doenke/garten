@@ -8,7 +8,7 @@
     <span class="separator" aria-hidden="true">/</span>
     <span aria-current="page">{{ plant.name }}</span>
   </nav>
-  <h2 style="margin-top:0;">{{ plant.name }} ({{ plant.common_name or '-' }})</h2>
+  <h2 style="margin-top:0;">{{ plant.name }}{% if plant.common_name %} ({{ plant.common_name }}){% endif %}</h2>
 
   <h3 style="margin-top:0;">Stammdaten</h3>
   <p><strong>Name:</strong> {{ plant.name }}</p>
@@ -69,14 +69,15 @@
     <button type="submit">Verschieben</button>
   </form>
 
-  <form method="post" action="/plants/{{ plant.id }}/delete" onsubmit="return confirm('Pflanze wirklich löschen?');" class="floating-trash">
-    <button type="submit" aria-label="Pflanze löschen" title="Pflanze löschen">🗑️</button>
-  </form>
 
   {% if not is_planted %}
   <div style="background:#ffe5e5; border:2px solid #e11; color:#900; padding:1rem; border-radius:8px; font-weight:700; margin-bottom:.75rem;">
     Pflanze ist nicht eingepflanzt
   </div>
+  {% endif %}
+
+  <div class="actions-inline" style="margin-bottom:.75rem;">
+  {% if not is_planted %}
   <form method="post" action="/plants/{{ plant.id }}/events/system/planting" style="display:inline-block; margin-right:.5rem; margin-bottom:.75rem;">
     <button type="submit">Einpflanzen</button>
   </form>
@@ -91,6 +92,7 @@
   <form method="post" action="/plants/{{ plant.id }}/events/system/measurement" style="display:inline-block; margin-bottom:.75rem;">
     <button type="submit">Messen</button>
   </form>
+  </div>
 
   <h4>Timeline-Event hinzufügen</h4>
   <form method="post" action="/plants/{{ plant.id }}/events" enctype="multipart/form-data" class="grid">
@@ -140,6 +142,9 @@
   </form>
 </div>
 {% endfor %}
+<form method="post" action="/plants/{{ plant.id }}/delete" onsubmit="return confirm('Pflanze wirklich löschen?');" class="floating-trash">
+  <button type="submit" aria-label="Pflanze löschen" title="Pflanze löschen">🗑️</button>
+</form>
 
 <div id="image-modal" style="display:none;position:fixed;inset:0;background:#000c;z-index:9999;align-items:center;justify-content:center;padding:1rem;">
   <div style="position:relative;max-width:92vw;max-height:92vh;display:flex;align-items:center;gap:.5rem;">
