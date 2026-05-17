@@ -7,9 +7,6 @@
   <span aria-current="page">{{ location.name }}</span>
 </nav>
 <h2>{{ location.name }}</h2>
-<form method="post" action="/locations/{{ location.id }}/delete" onsubmit="return confirm('Location wirklich löschen? Alle enthaltenen Pflanzen werden in den Papierkorb verschoben.');" class="floating-trash">
-  <button type="submit" aria-label="Location löschen" title="Location löschen">🗑️</button>
-</form>
 <button type="button" id="toggle-plant-form" style="margin-bottom:1rem;">Pflanze anlegen</button>
 <form method="post" action="/locations/{{location.id}}/plants/new" id="plant-form" class="grid" style="display:none;">
 <input name="name" placeholder="Namen" required>
@@ -35,5 +32,8 @@
   });
 </script>
 <h3>Pflanzen</h3><ul>{% for p in plants %}<li><a href="/plants/{{p.id}}">{{p.name}}</a></li>{% endfor %}</ul>
+<form method="post" action="/locations/{{ location.id }}/delete" onsubmit="return confirm('Location wirklich löschen? Alle enthaltenen Pflanzen werden in den Papierkorb verschoben.');" class="floating-trash">
+  <button type="submit" aria-label="Location löschen" title="Location löschen">🗑️</button>
+</form>
 </section>
 {% endblock %}
