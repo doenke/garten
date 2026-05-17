@@ -122,7 +122,15 @@ def plant_detail(plant_id):
     plant = Plant.query.get_or_404(plant_id)
     photos = PlantPhoto.query.filter_by(plant_id=plant.id).order_by(PlantPhoto.uploaded_at.desc()).all()
     notes = PlantNote.query.filter_by(plant_id=plant.id).order_by(PlantNote.created_at.desc()).all()
-    return render_template('plant.html', plant=plant, photos=photos, notes=notes, user=current_user(), creators={u.id: u for u in User.query.all()})
+    return render_template(
+        'plant.html',
+        plant=plant,
+        photos=photos,
+        notes=notes,
+        user=current_user(),
+        creators={u.id: u for u in User.query.all()},
+        today_date=datetime.utcnow().date().isoformat(),
+    )
 
 @main_bp.route('/plants/<int:plant_id>/delete', methods=['POST'])
 @login_required

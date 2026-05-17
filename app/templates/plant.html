@@ -9,7 +9,7 @@
 <h3>Foto hochladen</h3>
 <form method="post" action="/plants/{{plant.id}}/photos" enctype="multipart/form-data">
   <input type="file" name="photo" required>
-  <input type="date" name="taken_on">
+  <input type="date" name="taken_on" value="{{ today_date }}">
   <input name="comment" placeholder="Kommentar">
   <button>Hochladen</button>
 </form>
