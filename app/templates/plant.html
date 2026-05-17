@@ -10,15 +10,15 @@
   </nav>
   <h2 style="margin-top:0;">{{ plant.name }}{% if plant.common_name %} ({{ plant.common_name }}){% endif %}</h2>
 
-  <h3 style="margin-top:0;">Stammdaten</h3>
   <p><strong>Name:</strong> {{ plant.name }}</p>
-  <p><strong>Botanischer Name:</strong> {{ plant.common_name or '-' }}</p>
-  <p><strong>Quelle:</strong> {{ plant.source or '-' }}</p>
-  <p><strong>Lichtbedarf:</strong> {{ plant.light_need or '-' }}</p>
-  <p><strong>Blütenfarbe:</strong> {{ plant.flower_color or '-' }}</p>
-  <p><strong>Boden:</strong> {{ plant.soil or '-' }}</p>
-  <p><strong>Höhe ohne Blüte:</strong> {{ plant.height_without_bloom_cm or '-' }} cm</p>
-  <p><strong>Höhe mit Blüte:</strong> {{ plant.height_with_bloom_cm or '-' }} cm</p>
+  {% if plant.common_name %}<p><strong>Botanischer Name:</strong> {{ plant.common_name }}</p>{% endif %}
+  {% if plant.source %}<p><strong>Quelle:</strong> {{ plant.source }}</p>{% endif %}
+  {% if plant.light_need %}<p><strong>Lichtbedarf:</strong> {{ plant.light_need }}</p>{% endif %}
+  {% if plant.flower_color %}<p><strong>Blütenfarbe:</strong> {{ plant.flower_color }}</p>{% endif %}
+  {% if plant.soil %}<p><strong>Boden:</strong> {{ plant.soil }}</p>{% endif %}
+  {% if plant.height_without_bloom_cm is not none and plant.height_with_bloom_cm is not none %}
+  <p><strong>Höhe:</strong> {{ plant.height_without_bloom_cm }} / {{ plant.height_with_bloom_cm }} cm</p>
+  {% endif %}
   {% if plant.bloom_start_month and plant.bloom_end_month %}
   {% set start_idx = plant.bloom_start_month - 1 %}
   {% set end_idx = plant.bloom_end_month - 1 %}
@@ -32,7 +32,7 @@
     </div>
   </div>
   {% endif %}
-  <p><strong>Info:</strong> {{ plant.info or '-' }}</p>
+  {% if plant.info %}<p><strong>Info:</strong> {{ plant.info }}</p>{% endif %}
 
   <details>
     <summary>Stammdaten ändern</summary>
