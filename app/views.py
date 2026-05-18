@@ -2,6 +2,7 @@ import os
 import json
 from functools import wraps
 from datetime import datetime
+from uuid import uuid4
 from flask import Blueprint, current_app, render_template, request, redirect, url_for, session, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 from .models import db, User, Location, Plant, PlantPhoto, PlantNote, PlantEvent, GardenMap, LocationTimelineEntry
@@ -65,6 +66,13 @@ def login_required(f):
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED
+
+
+def build_unique_upload_name(filename):
+    sanitized = secure_filename(filename)
+    if not sanitized:
+        return f"{uuid4().hex}_upload"
+    return f"{uuid4().hex}_{sanitized}"
 
 
 def parse_bloom_months(form):
@@ -222,8 +230,7 @@ def new_location_timeline_entry(location_id):
     if not comment or not photo or not photo.filename or not allowed_file(photo.filename):
         return redirect(url_for('main.location_detail', location_id=location.id))
 
-    filename = secure_filename(photo.filename)
-    unique = f"{datetime.utcnow().timestamp()}_{filename}"
+    unique = build_unique_upload_name(photo.filename)
     photo.save(os.path.join(current_app.config['UPLOAD_FOLDER'], unique))
     db.session.add(LocationTimelineEntry(
         location_id=location.id,
@@ -357,8 +364,7 @@ def maps(filename):
 def upload_map():
     file = request.files.get('map_image')
     if file and file.filename and allowed_file(file.filename):
-        fn = secure_filename(file.filename)
-        unique = f"{datetime.utcnow().timestamp()}_{fn}"
+        unique = build_unique_upload_name(file.filename)
         file.save(os.path.join(current_app.config['MAP_FOLDER'], unique))
         garden_map = get_or_create_garden_map()
         garden_map.filename = unique
@@ -531,11 +537,10 @@ def add_event(plant_id):
     attachment_filename = None
     attachment_kind = None
     if file and file.filename and allowed_file(file.filename):
-        fn = secure_filename(file.filename)
-        unique = f"{datetime.utcnow().timestamp()}_{fn}"
+        unique = build_unique_upload_name(file.filename)
         file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], unique))
         attachment_filename = unique
-        ext = fn.rsplit('.', 1)[1].lower()
+        ext = unique.rsplit('.', 1)[1].lower()
         attachment_kind = 'image' if ext in IMAGE_TYPES else 'pdf'
 
     if title or description or attachment_filename:

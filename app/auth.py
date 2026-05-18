@@ -1,4 +1,5 @@
 import os
+from uuid import uuid4
 from urllib.parse import urlparse
 import requests
 from authlib.integrations.base_client.errors import MismatchingStateError
@@ -36,7 +37,7 @@ def _download_avatar(user, avatar_url):
     avatar_folder = current_app.config['AVATAR_FOLDER']
     os.makedirs(avatar_folder, exist_ok=True)
     ext = os.path.splitext(urlparse(avatar_url).path)[1] or '.jpg'
-    filename = f"{user.sub}{ext}"
+    filename = f"{user.sub}_{uuid4().hex}{ext}"
     target = os.path.join(avatar_folder, filename)
     try:
         res = requests.get(avatar_url, timeout=10)
