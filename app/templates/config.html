@@ -78,7 +78,9 @@
     svg.innerHTML = '';
     allLocations.forEach((location) => {
       if (!location.polygon || location.polygon.length < 3) return;
-      const points = location.polygon.map((point) => `${point.x * img.naturalWidth},${point.y * img.naturalHeight}`).join(' ');
+      const width = img.clientWidth || img.naturalWidth;
+    const height = img.clientHeight || img.naturalHeight;
+      const points = location.polygon.map((point) => `${point.x * width},${point.y * height}`).join(' ');
       const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
       polygon.setAttribute('points', points);
       polygon.setAttribute('fill', location.color + '66');
@@ -89,8 +91,10 @@
 
     activeCalibration.forEach((point, index) => {
       if (typeof point.x !== 'number' || typeof point.y !== 'number') return;
-      const px = point.x * img.naturalWidth;
-      const py = point.y * img.naturalHeight;
+      const width = img.clientWidth || img.naturalWidth;
+      const height = img.clientHeight || img.naturalHeight;
+      const px = point.x * width;
+      const py = point.y * height;
       const marker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       marker.setAttribute('cx', px);
       marker.setAttribute('cy', py);
@@ -113,7 +117,12 @@
 
   if (img && svg) {
     img.addEventListener('load', () => {
-      svg.setAttribute('viewBox', `0 0 ${img.naturalWidth} ${img.naturalHeight}`);
+      svg.setAttribute('viewBox', `0 0 ${img.clientWidth || img.naturalWidth} ${img.clientHeight || img.naturalHeight}`);
+      renderOverlay();
+    });
+
+    window.addEventListener('resize', () => {
+      svg.setAttribute('viewBox', `0 0 ${img.clientWidth || img.naturalWidth} ${img.clientHeight || img.naturalHeight}`);
       renderOverlay();
     });
 
