@@ -87,4 +87,5 @@ class LocationTimelineEntry(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     comment = db.Column(db.Text, nullable=False)
     photo_filename = db.Column(db.String(255), nullable=False)
+    is_title_entry = db.Column(db.Boolean, nullable=False, default=False)
     creator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
