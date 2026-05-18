@@ -326,6 +326,7 @@ def plant_detail(plant_id):
         {'id': item.id, 'name': item.name, 'map_x': item.map_x, 'map_y': item.map_y}
         for item in location_plants
     ]
+    title_event = next((event for event in events if event.is_title_entry), None)
     return render_template(
         'plant.html',
         plant=plant,
@@ -341,6 +342,7 @@ def plant_detail(plant_id):
         is_planted=is_planted,
         garden_map=garden_map,
         location_plant_markers=location_plant_markers,
+        title_event=title_event,
     )
 
 

@@ -11,7 +11,8 @@
   <h1 style="margin-top:0;font-size:2.25rem;line-height:1.2;">{{ plant.name }}{% if plant.common_name %} ({{ plant.common_name }}){% endif %}</h1>
 
   <div class="plant-detail-layout">
-    <div class="plant-masterdata">
+    <div class="plant-top-row">
+      <div class="plant-masterdata">
   <p><strong>Name:</strong> {{ plant.name }}</p>
   {% if plant.common_name %}<p><strong>Bürgerlicher Name:</strong> {{ plant.common_name }}</p>{% endif %}
   {% if plant.source %}<p><strong>Quelle:</strong> {{ plant.source }}</p>{% endif %}
@@ -71,6 +72,17 @@
       <button type="submit">Stammdaten speichern</button>
     </form>
   </details>
+      </div>
+      {% if title_event and (title_event.attachment_kind == 'image' and title_event.attachment_filename or title_event.description) %}
+      <aside class="plant-title-entry-panel">
+        {% if title_event.attachment_kind == 'image' and title_event.attachment_filename %}
+        <img src="/uploads/{{ title_event.attachment_filename }}" alt="Titelbeitrag von {{ plant.name }}" class="plant-title-entry-image">
+        {% endif %}
+        {% if title_event.description %}
+        <p class="plant-title-entry-text">{{ title_event.description }}</p>
+        {% endif %}
+      </aside>
+      {% endif %}
     </div>
     {% if garden_map and garden_map.filename and location %}
     <div class="plant-map-panel">
@@ -198,13 +210,22 @@
 
 <style>
 .plant-detail-layout{display:block}
-.plant-masterdata{min-width:280px}
+.plant-top-row{display:flex;gap:1rem;align-items:flex-start;flex-wrap:wrap}
+.plant-masterdata{min-width:280px;flex:1 1 360px}
+.plant-title-entry-panel{margin-left:auto;max-width:min(420px,100%);display:flex;flex-direction:column;gap:.5rem;align-items:flex-end;text-align:right}
+.plant-title-entry-image{max-width:100%;max-height:280px;border-radius:10px;display:block}
+.plant-title-entry-text{margin:0;white-space:pre-line;color:var(--muted)}
 .plant-map-panel{margin-top:1rem}
 .plant-map-wrapper{position:relative;width:100%;max-width:920px;aspect-ratio:16/9;background:var(--surface-soft);border-radius:10px;overflow:hidden}
 #plant-map-image{position:absolute;left:0;top:0;display:block;transform-origin:0 0}
 #plant-map-overlay{position:absolute;left:0;top:0;transform-origin:0 0}
 #plant-map-overlay .plant-marker{cursor:pointer}
 .plant-position-edit-icon{position:absolute;top:.5rem;right:.5rem;z-index:2;border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:.35rem .5rem;line-height:1;cursor:pointer}
+@media (max-width: 760px){
+  .plant-top-row{flex-direction:column}
+  .plant-title-entry-panel{margin-left:0;align-items:flex-start;text-align:left;max-width:100%}
+}
+
 </style>
 
 <script>
