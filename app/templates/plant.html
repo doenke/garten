@@ -397,6 +397,7 @@
 
   const positionEditToggleButton = document.getElementById('plant-position-edit-toggle');
   const positionSaveButton = document.getElementById('plant-position-save');
+  const positionForm = positionSaveButton?.closest('form');
   if (positionEditToggleButton && positionSaveButton) {
     positionEditToggleButton.addEventListener('click', () => {
       const currentMarker = getCurrentPlantMarker();
@@ -418,9 +419,17 @@
         alert('Die Pflanzenposition lag außerhalb der Location und wurde in die Mitte des Polygons verschoben.');
       }
       positionEditMode = true;
+      positionEditToggleButton.style.display = 'none';
       positionSaveButton.style.display = '';
-      positionEditToggleButton.textContent = 'Position bearbeiten';
     });
+
+    if (positionForm) {
+      positionForm.addEventListener('submit', () => {
+        positionEditMode = false;
+        positionSaveButton.style.display = 'none';
+        positionEditToggleButton.style.display = '';
+      });
+    }
   }
 
   const imageButtons = Array.from(document.querySelectorAll('.timeline-image-btn'));
