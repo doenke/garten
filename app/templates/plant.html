@@ -34,6 +34,7 @@
     </div>
   </div>
   {% endif %}
+  {% if plant.map_x is not none and plant.map_y is not none %}<p><strong>Position (Lat/Lon):</strong> {{ '%.6f'|format(plant.map_x) }}, {{ '%.6f'|format(plant.map_y) }}</p>{% endif %}
   {% if plant.info %}<p><strong>Info:</strong> {{ plant.info }}</p>{% endif %}
 
   <details>
@@ -70,8 +71,7 @@
     </div>
     {% if garden_map and garden_map.filename and location %}
     <div class="plant-map-panel">
-      <h3 style="margin-top:0;">Beet auf Luftbild</h3>
-      <p>Klick in das Beet, um den Standort sofort zu setzen. Deinen Marker kannst du per Drag & Drop verschieben.</p>
+      <p>Klick auf „Position setzen", um den Standort zu bearbeiten. Anschließend kannst du den Marker per Klick oder Drag & Drop platzieren und speichern.</p>
       <div class="plant-map-wrapper">
         <img id="plant-map-image" src="/maps/{{ garden_map.filename }}" style="max-width:100%;border-radius:10px;display:block;">
         <svg id="plant-map-overlay" style="position:absolute;left:0;top:0;width:100%;height:100%;"></svg>
@@ -79,14 +79,12 @@
       <form method="post" action="/plants/{{ plant.id }}/position" class="grid" style="margin-top:.75rem;">
         <input type="hidden" id="plant-map-x" name="map_x" value="{{ plant.map_x if plant.map_x is not none else '' }}">
         <input type="hidden" id="plant-map-y" name="map_y" value="{{ plant.map_y if plant.map_y is not none else '' }}">
-        <button type="button" id="plant-position-save-fallback">Standort speichern (Fallback)</button>
+        <div class="actions-inline">
+          <button type="button" id="plant-position-edit-toggle">Position setzen</button>
+          <button type="submit" id="plant-position-save" style="display:none;">Speichern</button>
+        </div>
       </form>
     </div>
-    <form method="post" action="/plants/{{ plant.id }}/position" class="grid" style="margin-top:.75rem;">
-      <input type="hidden" id="plant-map-x" name="map_x" value="{{ plant.map_x if plant.map_x is not none else '' }}">
-      <input type="hidden" id="plant-map-y" name="map_y" value="{{ plant.map_y if plant.map_y is not none else '' }}">
-      <button>Standort speichern</button>
-    </form>
   </div>
   {% endif %}
 </section>
@@ -213,6 +211,7 @@
   const plantsInLocation = {{ location_plant_markers | tojson }};
   const currentPlantId = Number({{ plant.id }});
   let draggedCurrentMarker = false;
+  let positionEditMode = false;
 
   const persistPlantPosition = async (x, y) => {
     mapX.value = x;
@@ -313,14 +312,6 @@
 
     mapOverlay.innerHTML = `${clipMarkup}${polygonMarkup}${markers}`;
   };
-  const fallbackSaveButton = document.getElementById('plant-position-save-fallback');
-  if (fallbackSaveButton && mapX && mapY) {
-    fallbackSaveButton.addEventListener('click', async () => {
-      if (!mapX.value || !mapY.value) return;
-      await persistPlantPosition(Number(mapX.value), Number(mapY.value));
-    });
-  }
-
   if (mapImage && mapOverlay && mapX && mapY) {
     mapImage.addEventListener('load', renderPlantMap);
     mapOverlay.addEventListener('mousedown', (event) => {
@@ -331,7 +322,7 @@
     });
 
     window.addEventListener('mousemove', (event) => {
-      if (!draggedCurrentMarker) return;
+      if (!positionEditMode || !draggedCurrentMarker) return;
       const rect = mapOverlay.getBoundingClientRect();
       const g = toGeo((event.clientX - rect.left) / rect.width, (event.clientY - rect.top) / rect.height);
       if (!g) return;
@@ -342,19 +333,31 @@
       renderPlantMap();
     });
 
-    window.addEventListener('mouseup', async () => {
-      if (!draggedCurrentMarker) return;
+    window.addEventListener('mouseup', () => {
+      if (!positionEditMode || !draggedCurrentMarker) return;
       draggedCurrentMarker = false;
-      if (mapX.value && mapY.value) await persistPlantPosition(Number(mapX.value), Number(mapY.value));
     });
 
-    mapOverlay.addEventListener('click', async (event) => {
-      if (event.target.closest('.plant-marker-current')) return;
+    mapOverlay.addEventListener('click', (event) => {
+      if (!positionEditMode || event.target.closest('.plant-marker-current')) return;
       const rect = mapOverlay.getBoundingClientRect();
       const g = toGeo((event.clientX - rect.left) / rect.width, (event.clientY - rect.top) / rect.height);
       if (!g) return;
-      await persistPlantPosition(g.x, g.y);
+      mapX.value = g.x;
+      mapY.value = g.y;
+      const marker = plantsInLocation.find((entry) => Number(entry.id) === currentPlantId);
+      if (marker) { marker.map_x = g.x; marker.map_y = g.y; }
       renderPlantMap();
+    });
+  }
+
+  const positionEditToggleButton = document.getElementById('plant-position-edit-toggle');
+  const positionSaveButton = document.getElementById('plant-position-save');
+  if (positionEditToggleButton && positionSaveButton) {
+    positionEditToggleButton.addEventListener('click', () => {
+      positionEditMode = true;
+      positionSaveButton.style.display = '';
+      positionEditToggleButton.textContent = 'Position bearbeiten';
     });
   }
 
