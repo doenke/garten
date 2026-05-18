@@ -554,7 +554,7 @@ def add_event(plant_id):
         attachment_kind = 'image' if ext in IMAGE_TYPES else 'pdf'
 
     if title or description or attachment_filename:
-        db.session.add(PlantEvent(plant_id=plant_id, event_type=event_type, event_at=event_at, title=title or 'Kommentar', description=description or None, attachment_filename=attachment_filename, attachment_kind=attachment_kind, creator_id=current_user().id))
+        db.session.add(PlantEvent(plant_id=plant_id, event_type=event_type, event_at=event_at, title=title, description=description or None, attachment_filename=attachment_filename, attachment_kind=attachment_kind, creator_id=current_user().id))
         db.session.commit()
     return redirect(url_for('main.plant_detail', plant_id=plant_id))
 
