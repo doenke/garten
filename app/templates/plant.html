@@ -202,13 +202,16 @@
   const mapX = document.getElementById('plant-map-x');
   const mapY = document.getElementById('plant-map-y');
   const locationPolygon = {{ (location.polygon_points or '[]') | safe if location else '[]' }};
+  const calibrationPoints = {{ ((garden_map.calibration_points or '[]') if garden_map else '[]') | safe }};
+  const toGeo = (px, py) => { if (!Array.isArray(calibrationPoints)||calibrationPoints.length<2) return null; const [p1,p2]=calibrationPoints; return {x:Number(p1.coord_x)+((px-Number(p1.x))/(Number(p2.x)-Number(p1.x)))*(Number(p2.coord_x)-Number(p1.coord_x)), y:Number(p1.coord_y)+((py-Number(p1.y))/(Number(p2.y)-Number(p1.y)))*(Number(p2.coord_y)-Number(p1.coord_y))}; };
+  const toPixel = (gx, gy) => { if (!Array.isArray(calibrationPoints)||calibrationPoints.length<2) return null; const [p1,p2]=calibrationPoints; return {x:Number(p1.x)+((gx-Number(p1.coord_x))/(Number(p2.coord_x)-Number(p1.coord_x)))*(Number(p2.x)-Number(p1.x)), y:Number(p1.y)+((gy-Number(p1.coord_y))/(Number(p2.coord_y)-Number(p1.coord_y)))*(Number(p2.y)-Number(p1.y))}; };
   const locationColor = "{{ location.color or '#2f6d40' if location else '#2f6d40' }}";
   const plantsInLocation = {{ location_plant_markers | tojson }};
 
   const renderPlantMap = () => {
     if (!mapImage || !mapOverlay) return;
     mapOverlay.setAttribute('viewBox', `0 0 ${mapImage.naturalWidth} ${mapImage.naturalHeight}`);
-    const polygonPoints = locationPolygon.map((point) => `${point.x * mapImage.naturalWidth},${point.y * mapImage.naturalHeight}`).join(' ');
+    const polygonPoints = locationPolygon.map((point) => { const p = toPixel(Number(point.x), Number(point.y)); return p ? `${p.x * mapImage.naturalWidth},${p.y * mapImage.naturalHeight}` : ''; }).filter(Boolean).join(' ');
     const polygonMarkup = locationPolygon.length > 2
       ? `<polygon points="${polygonPoints}" fill="${locationColor}55" stroke="${locationColor}" stroke-width="2"></polygon>`
       : '';
@@ -216,15 +219,17 @@
     const markers = plantsInLocation
       .filter((entry) => entry.map_x !== null && entry.map_y !== null)
       .map((entry) => {
-        const x = Number(entry.map_x) * mapImage.naturalWidth;
-        const y = Number(entry.map_y) * mapImage.naturalHeight;
+        const px = toPixel(Number(entry.map_x), Number(entry.map_y));
+        if (!px) return '';
+        const x = px.x * mapImage.naturalWidth;
+        const y = px.y * mapImage.naturalHeight;
         const isCurrentPlant = Number(entry.id) === Number({{ plant.id }});
         const radius = isCurrentPlant ? 9 : 6;
         const color = isCurrentPlant ? '#d7263d' : '#2663eb';
         const stroke = isCurrentPlant ? '#ffffff' : '#dce7ff';
         return `<a href="/plants/${entry.id}" aria-label="${entry.name}"><circle class="plant-marker" data-name="${entry.name}" cx="${x}" cy="${y}" r="${radius}" fill="${color}" stroke="${stroke}" stroke-width="2"><title>${entry.name}</title></circle></a>`;
       })
-      .join('');
+      .filter(Boolean).join('');
 
     mapOverlay.innerHTML = `${polygonMarkup}${markers}`;
   };
@@ -232,8 +237,10 @@
     mapImage.addEventListener('load', renderPlantMap);
     mapOverlay.addEventListener('click', (event) => {
       const rect = mapOverlay.getBoundingClientRect();
-      mapX.value = (event.clientX - rect.left) / rect.width;
-      mapY.value = (event.clientY - rect.top) / rect.height;
+      const g = toGeo((event.clientX - rect.left) / rect.width, (event.clientY - rect.top) / rect.height);
+      if (!g) return;
+      mapX.value = g.x;
+      mapY.value = g.y;
       renderPlantMap();
     });
   }

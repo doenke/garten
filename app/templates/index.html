@@ -88,6 +88,8 @@
 
 <script>
   const gardenBoundary = {{ ((garden_map.boundary_points or '[]') if garden_map else '[]') | safe }};
+  const calibrationPoints = {{ ((garden_map.calibration_points or '[]') if garden_map else '[]') | safe }};
+  const toPixel = (gx, gy) => { if (!Array.isArray(calibrationPoints)||calibrationPoints.length<2) return null; const [p1,p2]=calibrationPoints; return {x:Number(p1.x)+((gx-Number(p1.coord_x))/(Number(p2.coord_x)-Number(p1.coord_x)))*(Number(p2.x)-Number(p1.x)), y:Number(p1.y)+((gy-Number(p1.coord_y))/(Number(p2.coord_y)-Number(p1.coord_y)))*(Number(p2.y)-Number(p1.y))}; };
   const locationPolygons = [
     {% for l in locations %}
       {
@@ -152,7 +154,7 @@
 
     locationPolygons.forEach((location) => {
       if (!Array.isArray(location.polygon) || location.polygon.length < 3) return;
-      const points = location.polygon.map((point) => `${point.x * width},${point.y * height}`).join(' ');
+      const points = location.polygon.map((point) => { const p = toPixel(Number(point.x), Number(point.y)); return p ? `${p.x * width},${p.y * height}` : ''; }).filter(Boolean).join(' ');
       const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
       polygon.setAttribute('points', points);
       polygon.setAttribute('fill', `${location.color}66`);
@@ -185,7 +187,7 @@
     }
     const width = indexMapImage.clientWidth || indexMapImage.naturalWidth;
     const height = indexMapImage.clientHeight || indexMapImage.naturalHeight;
-    const innerBoundary = gardenBoundary;
+    const innerBoundary = gardenBoundary.map((point) => toPixel(Number(point.x), Number(point.y))).filter(Boolean);
     const outerBoundary = expandPolygon(innerBoundary, MAP_BORDER_FADE_PX, width, height);
     const innerPolygon = innerBoundary.map((p) => `${p.x * width},${p.y * height}`).join(' ');
     const outerPolygon = outerBoundary.map((p) => `${p.x * width},${p.y * height}`).join(' ');
