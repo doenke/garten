@@ -40,7 +40,7 @@
   {% if plant.info %}<p><strong>Info:</strong> {{ plant.info }}</p>{% endif %}
 
   <details>
-    <summary>Stammdaten ändern</summary>
+    <summary>Pflanzendaten ändern</summary>
     <form method="post" action="/plants/{{ plant.id }}/masterdata" class="grid" style="margin-top:.75rem;">
       <input name="name" value="{{ plant.name }}" placeholder="Name" required>
       <input name="common_name" value="{{ plant.common_name or '' }}" placeholder="Bürgerlicher Name">
@@ -71,7 +71,7 @@
         <input type="number" step="any" name="map_y" value="{{ plant.map_y if plant.map_y is not none else '' }}" placeholder="Position Y (Lon)">
       </div>
       <textarea name="info" placeholder="Info">{{ plant.info or '' }}</textarea>
-      <button type="submit">Stammdaten speichern</button>
+      <button type="submit">Pflanzendaten speichern</button>
     </form>
   </details>
         </div>
