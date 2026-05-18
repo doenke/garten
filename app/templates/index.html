@@ -89,6 +89,7 @@
 <script>
   const gardenBoundary = {{ ((garden_map.boundary_points or '[]') if garden_map else '[]') | safe }};
   const MAP_BORDER_FADE_PX = 18;
+  const MAP_BORDER_FADE_STEPS = 14;
   const toggleButton = document.getElementById('toggle-new-location');
   const newLocationForm = document.getElementById('new-location-form');
   const locationColorDialog = document.getElementById('location-color-dialog');
@@ -136,20 +137,45 @@
     if (!indexMapImage || !indexMapOverlay || !Array.isArray(gardenBoundary) || gardenBoundary.length < 3) return;
     const width = indexMapImage.clientWidth || indexMapImage.naturalWidth;
     const height = indexMapImage.clientHeight || indexMapImage.naturalHeight;
-    const expandedBoundary = expandPolygon(gardenBoundary, MAP_BORDER_FADE_PX, width, height);
-    const polygon = expandedBoundary.map((p) => `${p.x * width},${p.y * height}`).join(' ');
+    const innerBoundary = gardenBoundary;
+    const outerBoundary = expandPolygon(innerBoundary, MAP_BORDER_FADE_PX, width, height);
+    const innerPolygon = innerBoundary.map((p) => `${p.x * width},${p.y * height}`).join(' ');
+    const outerPolygon = outerBoundary.map((p) => `${p.x * width},${p.y * height}`).join(' ');
+
+    const fadePolygons = Array.from({ length: MAP_BORDER_FADE_STEPS }, (_, idx) => {
+      const ratio = (idx + 1) / MAP_BORDER_FADE_STEPS;
+      const interpolated = innerBoundary.map((point, pointIdx) => {
+        const outerPoint = outerBoundary[pointIdx];
+        return {
+          x: point.x + (outerPoint.x - point.x) * ratio,
+          y: point.y + (outerPoint.y - point.y) * ratio,
+        };
+      });
+      const points = interpolated.map((p) => `${p.x * width},${p.y * height}`).join(' ');
+      const opacity = Math.max(0, 1 - ratio);
+      return `<polygon points="${points}" fill="white" fill-opacity="${opacity.toFixed(3)}"></polygon>`;
+    }).join('');
+
     indexMapOverlay.innerHTML = `
       <defs>
-        <clipPath id="garden-clip" clipPathUnits="userSpaceOnUse"><polygon points="${polygon}"></polygon></clipPath>
-        <mask id="garden-fade-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="${width}" height="${height}">
+        <clipPath id="garden-clip" clipPathUnits="userSpaceOnUse">
+          <polygon points="${outerPolygon}"></polygon>
+        </clipPath>
+        <mask id="garden-image-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="${width}" height="${height}">
           <rect width="${width}" height="${height}" fill="black"></rect>
-          <polygon points="${polygon}" fill="white" stroke="white" stroke-width="${MAP_BORDER_FADE_PX * 2}" stroke-linejoin="round"></polygon>
+          ${fadePolygons}
+          <polygon points="${innerPolygon}" fill="white"></polygon>
         </mask>
       </defs>
-      <rect width="${width}" height="${height}" fill="rgba(17,24,39,0.75)" mask="url(#garden-fade-mask)"></rect>
     `;
     indexMapImage.style.clipPath = `url(#garden-clip)`;
     indexMapImage.style.webkitClipPath = `url(#garden-clip)`;
+    indexMapImage.style.mask = `url(#garden-image-mask)`;
+    indexMapImage.style.webkitMask = `url(#garden-image-mask)`;
+    indexMapImage.style.maskRepeat = 'no-repeat';
+    indexMapImage.style.webkitMaskRepeat = 'no-repeat';
+    indexMapImage.style.maskSize = '100% 100%';
+    indexMapImage.style.webkitMaskSize = '100% 100%';
   };
 
   toggleButton.addEventListener('click', () => {
