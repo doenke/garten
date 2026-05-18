@@ -213,6 +213,29 @@
   let draggedCurrentMarker = false;
   let positionEditMode = false;
 
+  const getCurrentPlantMarker = () => plantsInLocation.find((entry) => Number(entry.id) === currentPlantId);
+
+  const isPointInPolygon = (point, polygon) => {
+    if (!point || !Array.isArray(polygon) || polygon.length < 3) return false;
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = Number(polygon[i].x);
+      const yi = Number(polygon[i].y);
+      const xj = Number(polygon[j].x);
+      const yj = Number(polygon[j].y);
+      const intersects = ((yi > point.y) !== (yj > point.y))
+        && (point.x < ((xj - xi) * (point.y - yi)) / ((yj - yi) || Number.EPSILON) + xi);
+      if (intersects) inside = !inside;
+    }
+    return inside;
+  };
+
+  const polygonCenter = (polygon) => {
+    if (!Array.isArray(polygon) || !polygon.length) return null;
+    const sum = polygon.reduce((acc, p) => ({ x: acc.x + Number(p.x), y: acc.y + Number(p.y) }), { x: 0, y: 0 });
+    return { x: sum.x / polygon.length, y: sum.y / polygon.length };
+  };
+
   const persistPlantPosition = async (x, y) => {
     mapX.value = x;
     mapY.value = y;
@@ -355,6 +378,24 @@
   const positionSaveButton = document.getElementById('plant-position-save');
   if (positionEditToggleButton && positionSaveButton) {
     positionEditToggleButton.addEventListener('click', () => {
+      const currentMarker = getCurrentPlantMarker();
+      const hasValidMarker = currentMarker && currentMarker.map_x !== null && currentMarker.map_y !== null;
+      const isInPolygon = hasValidMarker
+        ? isPointInPolygon({ x: Number(currentMarker.map_x), y: Number(currentMarker.map_y) }, locationPolygon)
+        : false;
+      if (!isInPolygon) {
+        const center = polygonCenter(locationPolygon);
+        if (center) {
+          if (currentMarker) {
+            currentMarker.map_x = center.x;
+            currentMarker.map_y = center.y;
+          }
+          mapX.value = center.x;
+          mapY.value = center.y;
+          renderPlantMap();
+        }
+        alert('Die Pflanzenposition lag außerhalb der Location und wurde in die Mitte des Polygons verschoben.');
+      }
       positionEditMode = true;
       positionSaveButton.style.display = '';
       positionEditToggleButton.textContent = 'Position bearbeiten';
