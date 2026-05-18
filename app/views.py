@@ -263,7 +263,7 @@ def new_plant(location_id):
     tpl = SYSTEM_EVENT_TEMPLATES['planting']
     db.session.add(PlantEvent(plant_id=p.id, event_type='plant_event', event_at=event_at, title=tpl['title'], description=tpl['description'], creator_id=current_user().id))
     db.session.commit()
-    return redirect(url_for('main.location_detail', location_id=location_id))
+    return redirect(url_for('main.plant_detail', plant_id=p.id))
 
 @main_bp.route('/locations/<int:location_id>/delete', methods=['POST'])
 @login_required
