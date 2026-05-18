@@ -71,16 +71,15 @@
     </div>
     {% if garden_map and garden_map.filename and location %}
     <div class="plant-map-panel">
-      <p>Klick auf „Position setzen", um den Standort zu bearbeiten. Anschließend kannst du den Marker per Klick oder Drag & Drop platzieren und speichern.</p>
       <div class="plant-map-wrapper">
-        <img id="plant-map-image" src="/maps/{{ garden_map.filename }}" alt="Luftbild der Location">
-        <svg id="plant-map-overlay"></svg>
+        <img id="plant-map-image" src="/maps/{{ garden_map.filename }}" style="max-width:100%;border-radius:10px;display:block;">
+        <button type="button" id="plant-position-edit-toggle" class="plant-position-edit-icon" aria-label="Position setzen" title="Position setzen">✏️</button>
+        <svg id="plant-map-overlay" style="position:absolute;left:0;top:0;width:100%;height:100%;"></svg>
       </div>
       <form method="post" action="/plants/{{ plant.id }}/position" class="grid" style="margin-top:.75rem;">
         <input type="hidden" id="plant-map-x" name="map_x" value="{{ plant.map_x if plant.map_x is not none else '' }}">
         <input type="hidden" id="plant-map-y" name="map_y" value="{{ plant.map_y if plant.map_y is not none else '' }}">
         <div class="actions-inline">
-          <button type="button" id="plant-position-edit-toggle">Position setzen</button>
           <button type="submit" id="plant-position-save" style="display:none;">Speichern</button>
         </div>
       </form>
@@ -197,6 +196,7 @@
 #plant-map-image{position:absolute;left:0;top:0;display:block;transform-origin:0 0}
 #plant-map-overlay{position:absolute;left:0;top:0;transform-origin:0 0}
 #plant-map-overlay .plant-marker{cursor:pointer}
+.plant-position-edit-icon{position:absolute;top:.5rem;right:.5rem;z-index:2;border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:.35rem .5rem;line-height:1;cursor:pointer}
 </style>
 
 <script>
