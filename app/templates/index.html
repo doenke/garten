@@ -2,8 +2,8 @@
 {% block content %}
 <section class="card">
 {% if garden_map and garden_map.filename %}
-<div style="position:relative; margin-bottom:1rem;">
-  <img id="index-map-image" src="/maps/{{ garden_map.filename }}" alt="Luftbild des Gartens" style="max-width:100%;border-radius:10px;">
+<div style="position:relative; margin:0 auto 1rem; width:fit-content; max-width:100%;">
+  <img id="index-map-image" src="/maps/{{ garden_map.filename }}" alt="Luftbild des Gartens" style="max-width:100%;border-radius:10px;display:block;margin:0 auto;">
   <svg id="index-map-overlay" style="position:absolute;left:0;top:0;width:100%;height:100%;" preserveAspectRatio="none"></svg>
 </div>
 {% endif %}
