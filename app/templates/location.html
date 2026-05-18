@@ -42,12 +42,20 @@
   const polygonField = document.getElementById('polygon-points-field');
   let polygonPoints = polygonField ? JSON.parse(polygonField.value || '[]') : [];
 
+  const syncOverlayGeometry = () => {
+    if (!locationImage || !locationOverlay) return;
+    const overlayWidth = locationImage.clientWidth || locationImage.naturalWidth;
+    const overlayHeight = locationImage.clientHeight || locationImage.naturalHeight;
+    locationOverlay.style.width = `${overlayWidth}px`;
+    locationOverlay.style.height = `${overlayHeight}px`;
+    locationOverlay.setAttribute('viewBox', `0 0 ${overlayWidth} ${overlayHeight}`);
+    locationOverlay.setAttribute('preserveAspectRatio', 'none');
+  };
+
   const renderOverlay = () => {
     if (!locationImage || !locationOverlay) return;
     const overlayWidth = locationImage.clientWidth || locationImage.naturalWidth;
     const overlayHeight = locationImage.clientHeight || locationImage.naturalHeight;
-    locationOverlay.setAttribute('viewBox', `0 0 ${overlayWidth} ${overlayHeight}`);
-    locationOverlay.setAttribute('preserveAspectRatio', 'none');
     const polygon = polygonPoints.map((point) => `${point.x * overlayWidth},${point.y * overlayHeight}`).join(' ');
     locationOverlay.innerHTML = polygonPoints.length > 2 ? `<polygon points="${polygon}" fill="{{ location.color or '#2f6d40' }}66" stroke="{{ location.color or '#2f6d40' }}" stroke-width="2"></polygon>` : '';
   };
@@ -63,9 +71,16 @@
   };
 
   if (locationImage && locationOverlay && polygonField) {
-    locationImage.addEventListener('load', renderOverlay);
+    locationImage.addEventListener('load', () => {
+      syncOverlayGeometry();
+      renderOverlay();
+    });
     locationImage.addEventListener('click', handleMapClick);
-    window.addEventListener('resize', renderOverlay);
+    window.addEventListener('resize', () => {
+      syncOverlayGeometry();
+      renderOverlay();
+    });
+    syncOverlayGeometry();
     renderOverlay();
   }
 
