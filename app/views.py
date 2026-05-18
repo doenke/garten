@@ -118,7 +118,21 @@ def index():
         location_id: count
         for location_id, count in db.session.query(Plant.location_id, db.func.count(Plant.id)).group_by(Plant.location_id).all()
     }
-    return render_template('index.html', user=user, locations=locations, location_plant_counts=location_plant_counts, garden_map=garden_map)
+    plants = (
+        db.session.query(Plant, Location)
+        .join(Location, Plant.location_id == Location.id)
+        .filter(Location.name != TRASH_LOCATION_NAME)
+        .order_by(Location.name.asc(), Plant.name.asc())
+        .all()
+    )
+    return render_template(
+        'index.html',
+        user=user,
+        locations=locations,
+        location_plant_counts=location_plant_counts,
+        garden_map=garden_map,
+        plants=plants,
+    )
 
 @main_bp.route('/locations/new', methods=['POST'])
 @login_required
