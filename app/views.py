@@ -284,6 +284,15 @@ def save_location_map(location_id):
     return redirect(url_for('main.location_detail', location_id=location_id))
 
 
+@main_bp.route('/locations/<int:location_id>/color', methods=['POST'])
+@login_required
+def save_location_color(location_id):
+    loc = Location.query.get_or_404(location_id)
+    loc.color = request.form.get('color') or '#2f6d40'
+    db.session.commit()
+    return redirect(request.referrer or url_for('main.index'))
+
+
 @main_bp.route('/plants/<int:plant_id>/position', methods=['POST'])
 @login_required
 def save_plant_position(plant_id):

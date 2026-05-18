@@ -1,6 +1,12 @@
 {% extends 'base.html' %}
 {% block content %}
 <section class="card">
+{% if garden_map and garden_map.filename %}
+<h2>Luftbild</h2>
+<div style="position:relative; margin-bottom:1rem;">
+  <img src="/maps/{{ garden_map.filename }}" alt="Luftbild des Gartens" style="max-width:100%;border-radius:10px;">
+</div>
+{% endif %}
 <h2>Pflanzorte</h2>
 <table>
   <thead>
@@ -14,7 +20,16 @@
   <tbody>
   {% for l in locations %}
     <tr>
-      <td data-label="Farbe"><span class="color-dot" style="background-color: {{ l.color or "#2f6d40" }};" aria-hidden="true"></span></td>
+      <td data-label="Farbe">
+        <button
+          type="button"
+          class="location-color-trigger color-dot"
+          style="background-color: {{ l.color or "#2f6d40" }};"
+          data-location-id="{{ l.id }}"
+          data-location-name="{{ l.name }}"
+          data-location-color="{{ l.color or '#2f6d40' }}"
+          aria-label="Farbe für {{ l.name }} ändern"></button>
+      </td>
       <td data-label="Location"><a href="/locations/{{l.id}}">{{l.name}}</a></td>
       <td data-label="Beschreibung">{{ l.description }}</td>
       <td data-label="Pflanzen">{{ location_plant_counts.get(l.id, 0) }}</td>
@@ -22,6 +37,17 @@
   {% endfor %}
   </tbody>
 </table>
+
+<dialog id="location-color-dialog">
+  <form method="post" id="location-color-form" class="grid">
+    <h3 id="location-color-title" style="margin:0;">Farbe ändern</h3>
+    <input type="color" id="location-color-input" name="color" value="#2f6d40" required>
+    <div class="actions-inline">
+      <button type="submit">Speichern</button>
+      <button type="button" class="btn secondary" id="close-color-dialog">Abbrechen</button>
+    </div>
+  </form>
+</dialog>
 
 <div class="actions-inline" style="margin-top:1rem;">
   <button type="button" id="toggle-new-location">Neue Location anlegen</button>
@@ -61,6 +87,12 @@
 <script>
   const toggleButton = document.getElementById('toggle-new-location');
   const newLocationForm = document.getElementById('new-location-form');
+  const locationColorDialog = document.getElementById('location-color-dialog');
+  const locationColorForm = document.getElementById('location-color-form');
+  const locationColorTitle = document.getElementById('location-color-title');
+  const locationColorInput = document.getElementById('location-color-input');
+  const closeColorDialog = document.getElementById('close-color-dialog');
+  const colorTriggers = document.querySelectorAll('.location-color-trigger');
 
   toggleButton.addEventListener('click', () => {
     const isHidden = newLocationForm.style.display === 'none';
@@ -68,6 +100,21 @@
     toggleButton.textContent = isHidden ? 'Formular schließen' : 'Neue Location anlegen';
   });
 
+  colorTriggers.forEach((trigger) => {
+    trigger.addEventListener('click', () => {
+      const locationId = trigger.dataset.locationId;
+      const locationName = trigger.dataset.locationName;
+      const locationColor = trigger.dataset.locationColor;
+      locationColorTitle.textContent = `Farbe ändern: ${locationName}`;
+      locationColorInput.value = locationColor;
+      locationColorForm.action = `/locations/${locationId}/color`;
+      if (typeof locationColorDialog.showModal === 'function') {
+        locationColorDialog.showModal();
+      }
+    });
+  });
+
+  closeColorDialog.addEventListener('click', () => locationColorDialog.close());
 </script>
 </section>
 {% endblock %}
