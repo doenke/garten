@@ -381,6 +381,8 @@ def update_masterdata(plant_id):
         'height_without_bloom_cm': 'Höhe ohne Blüte (cm)',
         'height_with_bloom_cm': 'Höhe mit Blüte (cm)',
         'info': 'Info',
+        'map_x': 'Position X (Lat)',
+        'map_y': 'Position Y (Lon)',
     }
 
     bloom_start_month, bloom_end_month, bloom_months_valid = parse_bloom_months(request.form)
@@ -399,6 +401,8 @@ def update_masterdata(plant_id):
         'height_without_bloom_cm': request.form.get('height_without_bloom_cm', type=int),
         'height_with_bloom_cm': request.form.get('height_with_bloom_cm', type=int),
         'info': request.form.get('info', '').strip() or None,
+        'map_x': request.form.get('map_x', type=float),
+        'map_y': request.form.get('map_y', type=float),
     }
 
     changes = []
