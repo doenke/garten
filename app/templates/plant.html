@@ -311,7 +311,7 @@
       .map((p) => ({ x: p.x * imageWidth, y: p.y * imageHeight }));
     const polygonPoints = polygonPixels.map((p) => `${p.x},${p.y}`).join(' ');
     const polygonMarkup = locationPolygon.length > 2
-      ? `<polygon points="${polygonPoints}" fill="${locationColor}55" stroke="${locationColor}" stroke-width="2"></polygon>`
+      ? `<polygon points="${polygonPoints}" fill="${locationColor}55"></polygon>`
       : '';
 
     let zoomScale = 1;
