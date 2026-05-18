@@ -28,7 +28,6 @@
 <form method="post" action="/locations/{{location.id}}/plants/new" id="plant-form" class="grid" style="display:none;">
 <input name="name" placeholder="Namen" required>
 <input name="common_name" placeholder="Umgangssprachlicher Name">
-<label>Erstes Pflanzevent (Eingepflanzt): <input type="date" name="planting_date"></label>
 <input name="source" placeholder="gekauft bei / bekommen von">
 <fieldset><legend>Lichtbedarf (Mehrfachauswahl)</legend><label><input type="checkbox" name="light_need" value="Sonnig"> Sonnig</label><label><input type="checkbox" name="light_need" value="Halbschatten"> Halbschatten</label><label><input type="checkbox" name="light_need" value="Schatten"> Schatten</label></fieldset>
 <label>Blütezeit von <select name="bloom_start_month" required><option value="">Monat</option>{% set month_names = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'] %}{% for m in range(1,13) %}<option value="{{ m }}">{{ month_names[m-1] }}</option>{% endfor %}</select> bis <select name="bloom_end_month" required><option value="">Monat</option>{% for m in range(1,13) %}<option value="{{ m }}">{{ month_names[m-1] }}</option>{% endfor %}</select></label>
