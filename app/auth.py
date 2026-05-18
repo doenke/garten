@@ -1,6 +1,7 @@
 import os
 from uuid import uuid4
 from urllib.parse import urlparse
+
 import requests
 from authlib.integrations.base_client.errors import MismatchingStateError
 from authlib.integrations.flask_client import OAuth
@@ -10,6 +11,15 @@ from .models import db, User
 oauth = OAuth()
 auth_bp = Blueprint('auth', __name__)
 
+
+ALLOWED_AVATAR_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.gif'}
+ALLOWED_AVATAR_CONTENT_TYPES = {
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/gif',
+}
+DEFAULT_AVATAR_EXTENSION = '.jpg'
 
 def _register_oidc():
     oauth.register(
@@ -34,14 +44,39 @@ def login():
 def _download_avatar(user, avatar_url):
     if not avatar_url:
         return
+
     avatar_folder = current_app.config['AVATAR_FOLDER']
     os.makedirs(avatar_folder, exist_ok=True)
-    ext = os.path.splitext(urlparse(avatar_url).path)[1] or '.jpg'
+
+    url_extension = os.path.splitext(urlparse(avatar_url).path)[1].lower()
+    ext = (
+        url_extension
+        if url_extension in ALLOWED_AVATAR_EXTENSIONS
+        else DEFAULT_AVATAR_EXTENSION
+    )
+    if url_extension and url_extension not in ALLOWED_AVATAR_EXTENSIONS:
+        current_app.logger.warning(
+            'Rejected avatar extension %s for %s; using %s fallback',
+            url_extension,
+            user.sub,
+            DEFAULT_AVATAR_EXTENSION,
+        )
+
     filename = f"{user.sub}_{uuid4().hex}{ext}"
     target = os.path.join(avatar_folder, filename)
+
     try:
         res = requests.get(avatar_url, timeout=10)
         res.raise_for_status()
+        content_type = res.headers.get('Content-Type', '').split(';', 1)[0].strip().lower()
+        if content_type and content_type not in ALLOWED_AVATAR_CONTENT_TYPES:
+            current_app.logger.warning(
+                'Rejected avatar for %s due to invalid Content-Type: %s',
+                user.sub,
+                content_type,
+            )
+            return
+
         with open(target, 'wb') as f:
             f.write(res.content)
         user.avatar_filename = filename
