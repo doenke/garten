@@ -64,6 +64,20 @@
     {% endfor %}
   ];
   const calibrationPoints = {{ ((garden_map.calibration_points or '[]') if garden_map else '[]') | safe }};
+  const toGeo = (px, py) => {
+    if (!Array.isArray(activeCalibration) || activeCalibration.length < 2) return null;
+    const [p1,p2]=activeCalibration;
+    const nums=[p1.x,p1.y,p2.x,p2.y,p1.coord_x,p1.coord_y,p2.coord_x,p2.coord_y].map(Number);
+    if (nums.some((n)=>!Number.isFinite(n)) || Number(p2.x)===Number(p1.x) || Number(p2.y)===Number(p1.y)) return null;
+    return {x:Number(p1.coord_x)+((px-Number(p1.x))/(Number(p2.x)-Number(p1.x)))*(Number(p2.coord_x)-Number(p1.coord_x)), y:Number(p1.coord_y)+((py-Number(p1.y))/(Number(p2.y)-Number(p1.y)))*(Number(p2.coord_y)-Number(p1.coord_y))};
+  };
+  const toPixel = (gx, gy) => {
+    if (!Array.isArray(activeCalibration) || activeCalibration.length < 2) return null;
+    const [p1,p2]=activeCalibration;
+    const nums=[p1.x,p1.y,p2.x,p2.y,p1.coord_x,p1.coord_y,p2.coord_x,p2.coord_y].map(Number);
+    if (nums.some((n)=>!Number.isFinite(n)) || Number(p2.coord_x)===Number(p1.coord_x) || Number(p2.coord_y)===Number(p1.coord_y)) return null;
+    return {x:Number(p1.x)+((gx-Number(p1.coord_x))/(Number(p2.coord_x)-Number(p1.coord_x)))*(Number(p2.x)-Number(p1.x)), y:Number(p1.y)+((gy-Number(p1.coord_y))/(Number(p2.coord_y)-Number(p1.coord_y)))*(Number(p2.y)-Number(p1.y))};
+  };
   const boundaryPoints = {{ ((garden_map.boundary_points or '[]') if garden_map else '[]') | safe }};
 
   const img = document.getElementById('overview-map-image');
@@ -107,7 +121,7 @@
       if (!location.polygon || location.polygon.length < 3) return;
       const width = img.clientWidth || img.naturalWidth;
     const height = img.clientHeight || img.naturalHeight;
-      const points = location.polygon.map((point) => `${point.x * width},${point.y * height}`).join(' ');
+      const points = location.polygon.map((point) => { const p = toPixel(Number(point.x), Number(point.y)); return p ? `${p.x * width},${p.y * height}` : ''; }).filter(Boolean).join(' ');
       const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
       polygon.setAttribute('points', points);
       polygon.setAttribute('fill', location.color + '66');
@@ -119,7 +133,7 @@
     if (activeBoundary.length > 2) {
       const width = img.clientWidth || img.naturalWidth;
       const height = img.clientHeight || img.naturalHeight;
-      const points = activeBoundary.map((point) => `${point.x * width},${point.y * height}`).join(' ');
+      const points = activeBoundary.map((point) => { const p = toPixel(Number(point.x), Number(point.y)); return p ? `${p.x * width},${p.y * height}` : ''; }).filter(Boolean).join(' ');
       const boundaryPolygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
       boundaryPolygon.setAttribute('points', points);
       boundaryPolygon.setAttribute('fill', '#0ea5e91a');
@@ -185,7 +199,9 @@
       const x = (event.clientX - rect.left) / rect.width;
       const y = (event.clientY - rect.top) / rect.height;
       if (event.shiftKey) {
-        activeBoundary.push({ x, y });
+        const g = toGeo(x, y);
+        if (!g) return;
+        activeBoundary.push(g);
         syncBoundaryInput();
       } else {
         activeCalibration[nextPointIndex] = {

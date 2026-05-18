@@ -45,6 +45,21 @@
   const polygonField = document.getElementById('polygon-points-field');
   let polygonPoints = polygonField ? JSON.parse(polygonField.value || '[]') : [];
   const otherLocationPolygons = {{ other_location_polygons|tojson }};
+  const calibrationPoints = {{ ((garden_map.calibration_points or '[]') if garden_map else '[]') | safe }};
+  const toGeo = (px, py) => {
+    if (!Array.isArray(calibrationPoints) || calibrationPoints.length < 2) return null;
+    const [p1,p2]=calibrationPoints;
+    const nums=[p1.x,p1.y,p2.x,p2.y,p1.coord_x,p1.coord_y,p2.coord_x,p2.coord_y].map(Number);
+    if (nums.some((n)=>!Number.isFinite(n)) || Number(p2.x)===Number(p1.x) || Number(p2.y)===Number(p1.y)) return null;
+    return {x:Number(p1.coord_x)+((px-Number(p1.x))/(Number(p2.x)-Number(p1.x)))*(Number(p2.coord_x)-Number(p1.coord_x)), y:Number(p1.coord_y)+((py-Number(p1.y))/(Number(p2.y)-Number(p1.y)))*(Number(p2.coord_y)-Number(p1.coord_y))};
+  };
+  const toPixel = (gx, gy) => {
+    if (!Array.isArray(calibrationPoints) || calibrationPoints.length < 2) return null;
+    const [p1,p2]=calibrationPoints;
+    const nums=[p1.x,p1.y,p2.x,p2.y,p1.coord_x,p1.coord_y,p2.coord_x,p2.coord_y].map(Number);
+    if (nums.some((n)=>!Number.isFinite(n)) || Number(p2.coord_x)===Number(p1.coord_x) || Number(p2.coord_y)===Number(p1.coord_y)) return null;
+    return {x:Number(p1.x)+((gx-Number(p1.coord_x))/(Number(p2.coord_x)-Number(p1.coord_x)))*(Number(p2.x)-Number(p1.x)), y:Number(p1.y)+((gy-Number(p1.coord_y))/(Number(p2.coord_y)-Number(p1.coord_y)))*(Number(p2.y)-Number(p1.y))};
+  };
 
   const syncOverlayGeometry = () => {
     if (!locationImage || !locationOverlay) return;
@@ -69,16 +84,16 @@
           otherPoints = [];
         }
         if (otherPoints.length < 3) return '';
-        const points = otherPoints.map((point) => `${point.x * overlayWidth},${point.y * overlayHeight}`).join(' ');
+        const points = otherPoints.map((point) => { const p = toPixel(Number(point.x), Number(point.y)); return p ? `${p.x * overlayWidth},${p.y * overlayHeight}` : ''; }).filter(Boolean).join(' ');
         return `<polygon points="${points}" fill="${otherLocation.color}66"></polygon>`;
       }).join('')
       : '';
-    const polygon = polygonPoints.map((point) => `${point.x * overlayWidth},${point.y * overlayHeight}`).join(' ');
+    const polygon = polygonPoints.map((point) => { const p = toPixel(Number(point.x), Number(point.y)); return p ? `${p.x * overlayWidth},${p.y * overlayHeight}` : ''; }).filter(Boolean).join(' ');
     const polygonMarkup = polygonPoints.length > 2
       ? `<polygon points="${polygon}" fill="{{ location.color or '#2f6d40' }}66" stroke="{{ location.color or '#2f6d40' }}" stroke-width="2"></polygon>`
       : '';
     const pointMarkup = polygonEditEnabled
-      ? polygonPoints.map((point, index) => `<circle cx="${point.x * overlayWidth}" cy="${point.y * overlayHeight}" r="6" fill="#ffffff" stroke="{{ location.color or '#2f6d40' }}" stroke-width="2" data-point-index="${index}" style="cursor:move;pointer-events:all;"></circle>`).join('')
+      ? polygonPoints.map((point, index) => { const p = toPixel(Number(point.x), Number(point.y)); if (!p) return ''; return `<circle cx="${p.x * overlayWidth}" cy="${p.y * overlayHeight}" r="6" fill="#ffffff" stroke="{{ location.color or '#2f6d40' }}" stroke-width="2" data-point-index="${index}" style="cursor:move;pointer-events:all;"></circle>`; }).join('')
       : '';
     locationOverlay.innerHTML = `${otherPolygonsMarkup}${polygonMarkup}${pointMarkup}`;
   };
@@ -97,7 +112,9 @@
     const rect = locationImage.getBoundingClientRect();
     const x = clamp01((event.clientX - rect.left) / rect.width);
     const y = clamp01((event.clientY - rect.top) / rect.height);
-    polygonPoints.push({ x, y });
+    const g = toGeo(x, y);
+    if (!g) return;
+    polygonPoints.push(g);
     syncPolygonField();
     renderOverlay();
   };
@@ -105,10 +122,9 @@
   const handleDragMove = (event) => {
     if (draggedPointIndex === null || !locationImage) return;
     const rect = locationImage.getBoundingClientRect();
-    polygonPoints[draggedPointIndex] = {
-      x: clamp01((event.clientX - rect.left) / rect.width),
-      y: clamp01((event.clientY - rect.top) / rect.height),
-    };
+    const g = toGeo(clamp01((event.clientX - rect.left) / rect.width), clamp01((event.clientY - rect.top) / rect.height));
+    if (!g) return;
+    polygonPoints[draggedPointIndex] = g;
     syncPolygonField();
     renderOverlay();
   };
