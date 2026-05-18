@@ -333,19 +333,15 @@
   };
 
   const clientToNormalized = (clientX, clientY) => {
-    if (!mapOverlay) return null;
-    const rect = mapOverlay.getBoundingClientRect();
-    if (!rect.width || !rect.height) return null;
-    const viewBox = mapOverlay.viewBox.baseVal;
-    const hasViewBox = viewBox && viewBox.width && viewBox.height;
-    const absoluteX = hasViewBox
-      ? viewBox.x + ((clientX - rect.left) / rect.width) * viewBox.width
-      : (clientX - rect.left);
-    const absoluteY = hasViewBox
-      ? viewBox.y + ((clientY - rect.top) / rect.height) * viewBox.height
-      : (clientY - rect.top);
-    const normalizedX = absoluteX / mapImage.naturalWidth;
-    const normalizedY = absoluteY / mapImage.naturalHeight;
+    if (!mapOverlay || !mapImage?.naturalWidth || !mapImage?.naturalHeight) return null;
+    const ctm = mapOverlay.getScreenCTM?.();
+    if (!ctm) return null;
+    const point = mapOverlay.createSVGPoint();
+    point.x = clientX;
+    point.y = clientY;
+    const svgPoint = point.matrixTransform(ctm.inverse());
+    const normalizedX = svgPoint.x / mapImage.naturalWidth;
+    const normalizedY = svgPoint.y / mapImage.naturalHeight;
     return { x: normalizedX, y: normalizedY };
   };
 
