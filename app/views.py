@@ -163,7 +163,23 @@ def location_detail(location_id):
     loc = Location.query.get_or_404(location_id)
     plants = Plant.query.filter_by(location_id=loc.id).all()
     garden_map = GardenMap.query.order_by(GardenMap.id.asc()).first()
-    return render_template('location.html', location=loc, plants=plants, user=current_user(), creators={u.id: u for u in User.query.all()}, garden_map=garden_map)
+    other_locations = Location.query.filter(Location.id != loc.id).all()
+    return render_template(
+        'location.html',
+        location=loc,
+        plants=plants,
+        user=current_user(),
+        creators={u.id: u for u in User.query.all()},
+        garden_map=garden_map,
+        other_location_polygons=[
+            {
+                'id': other.id,
+                'color': other.color or '#2f6d40',
+                'polygon_points': other.polygon_points or '[]',
+            }
+            for other in other_locations
+        ],
+    )
 
 @main_bp.route('/locations/<int:location_id>/plants/new', methods=['POST'])
 @login_required

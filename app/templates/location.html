@@ -44,6 +44,7 @@
   const locationOverlay = document.getElementById('location-map-overlay');
   const polygonField = document.getElementById('polygon-points-field');
   let polygonPoints = polygonField ? JSON.parse(polygonField.value || '[]') : [];
+  const otherLocationPolygons = {{ other_location_polygons | tojson }};
 
   const syncOverlayGeometry = () => {
     if (!locationImage || !locationOverlay) return;
@@ -59,8 +60,30 @@
     if (!locationImage || !locationOverlay) return;
     const overlayWidth = locationImage.clientWidth || locationImage.naturalWidth;
     const overlayHeight = locationImage.clientHeight || locationImage.naturalHeight;
-    const polygon = polygonPoints.map((point) => `${point.x * overlayWidth},${point.y * overlayHeight}`).join(' ');
-    locationOverlay.innerHTML = polygonPoints.length > 2 ? `<polygon points="${polygon}" fill="{{ location.color or '#2f6d40' }}66" stroke="{{ location.color or '#2f6d40' }}" stroke-width="2"></polygon>` : '';
+
+    let polygonsMarkup = '';
+    if (polygonEditEnabled) {
+      polygonsMarkup += otherLocationPolygons.map((otherLocation) => {
+        let otherPoints = [];
+        try {
+          otherPoints = JSON.parse(otherLocation.polygon_points || '[]');
+        } catch (error) {
+          otherPoints = [];
+        }
+        if (!Array.isArray(otherPoints) || otherPoints.length < 3) {
+          return '';
+        }
+        const points = otherPoints.map((point) => `${point.x * overlayWidth},${point.y * overlayHeight}`).join(' ');
+        return `<polygon points="${points}" fill="${otherLocation.color}44"></polygon>`;
+      }).join('');
+    }
+
+    if (polygonPoints.length > 2) {
+      const polygon = polygonPoints.map((point) => `${point.x * overlayWidth},${point.y * overlayHeight}`).join(' ');
+      polygonsMarkup += `<polygon points="${polygon}" fill="{{ location.color or '#2f6d40' }}66" stroke="{{ location.color or '#2f6d40' }}" stroke-width="2"></polygon>`;
+    }
+
+    locationOverlay.innerHTML = polygonsMarkup;
   };
 
   let polygonEditEnabled = false;
@@ -99,6 +122,7 @@
       polygonEditEnabled = !polygonEditEnabled;
       polygonForm.style.display = polygonEditEnabled ? 'grid' : 'none';
       togglePolygonEditButton.textContent = polygonEditEnabled ? 'Polygon bearbeiten beenden' : 'Polygon bearbeiten';
+      renderOverlay();
     });
   }
 
