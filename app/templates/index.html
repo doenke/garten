@@ -10,7 +10,6 @@
 <h2>Pflanzorte</h2>
 <div class="table-search">
   <input type="search" id="locations-search" placeholder="Locations durchsuchen">
-  <button type="button" class="btn secondary" data-clear-search-for="locations-search" aria-label="Suche löschen">✕</button>
 </div>
 <table>
   <thead>
@@ -69,7 +68,6 @@
 <h3>Alle Pflanzen</h3>
 <div class="table-search">
   <input type="search" id="index-plants-search" placeholder="Pflanzen durchsuchen">
-  <button type="button" class="btn secondary" data-clear-search-for="index-plants-search" aria-label="Suche löschen">✕</button>
 </div>
 <table>
   <thead>
@@ -277,9 +275,8 @@
 
   const setupTableSearch = ({ inputId, tableIndex }) => {
     const input = document.getElementById(inputId);
-    const clearButton = document.querySelector(`[data-clear-search-for="${inputId}"]`);
     const table = document.querySelectorAll('table')[tableIndex];
-    if (!input || !clearButton || !table) return;
+    if (!input || !table) return;
     const rows = Array.from(table.querySelectorAll('tbody tr'));
     const applyFilter = () => {
       const query = input.value.trim().toLowerCase();
@@ -288,11 +285,6 @@
       });
     };
     input.addEventListener('input', applyFilter);
-    clearButton.addEventListener('click', () => {
-      input.value = '';
-      input.focus();
-      applyFilter();
-    });
   };
   setupTableSearch({ inputId: 'locations-search', tableIndex: 0 });
   setupTableSearch({ inputId: 'index-plants-search', tableIndex: 1 });
