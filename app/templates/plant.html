@@ -10,16 +10,11 @@
 {% endblock %}
 {% block content %}
 <section class="card">
-  <div class="plant-title-row">
-    <h1 style="margin:0;font-size:2.25rem;line-height:1.2;">{{ plant.name }}{% if plant.common_name %} ({{ plant.common_name }}){% endif %}</h1>
-    {% if title_event and title_event.attachment_kind == 'image' and title_event.attachment_filename %}
-    <img src="/uploads/{{ title_event.attachment_filename }}" alt="Titelbeitrag von {{ plant.name }}" class="plant-title-entry-image">
-    {% endif %}
-  </div>
-
   <div class="plant-detail-layout">
     <div class="plant-top-row">
-      <div class="plant-masterdata">
+      <div class="plant-main-column">
+        <h1 style="margin:0 0 .8rem 0;font-size:2.25rem;line-height:1.2;">{{ plant.name }}{% if plant.common_name %} ({{ plant.common_name }}){% endif %}</h1>
+        <div class="plant-masterdata">
   <p><strong>Name:</strong> {{ plant.name }}</p>
   {% if plant.common_name %}<p><strong>Bürgerlicher Name:</strong> {{ plant.common_name }}</p>{% endif %}
   {% if plant.source %}<p><strong>Quelle:</strong> {{ plant.source }}</p>{% endif %}
@@ -79,12 +74,16 @@
       <button type="submit">Stammdaten speichern</button>
     </form>
   </details>
+        </div>
       </div>
       {% if title_event and title_event.description %}
       <aside class="plant-title-entry-panel">
-        {% if title_event.description %}
         <p class="plant-title-entry-text">{{ title_event.description }}</p>
-        {% endif %}
+      </aside>
+      {% endif %}
+      {% if title_event and title_event.attachment_kind == 'image' and title_event.attachment_filename %}
+      <aside class="plant-title-entry-image-panel">
+        <img src="/uploads/{{ title_event.attachment_filename }}" alt="Titelbeitrag von {{ plant.name }}" class="plant-title-entry-image">
       </aside>
       {% endif %}
     </div>
@@ -214,11 +213,12 @@
 
 <style>
 .plant-detail-layout{display:block}
-.plant-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:.8rem}
-.plant-top-row{display:flex;gap:1rem;align-items:flex-start;flex-wrap:wrap}
-.plant-masterdata{min-width:280px;flex:1 1 360px}
+.plant-top-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,460px);gap:1rem;align-items:start}
+.plant-main-column{min-width:0}
+.plant-masterdata{min-width:0}
 .plant-title-entry-panel{margin-left:auto;max-width:min(420px,100%);display:flex;flex-direction:column;gap:.5rem;align-items:flex-end;text-align:right}
-.plant-title-entry-image{max-width:min(460px,100%);max-height:380px;border-radius:10px;display:block}
+.plant-title-entry-image-panel{grid-column:2;grid-row:1 / span 2;align-self:stretch;display:flex}
+.plant-title-entry-image{width:100%;height:100%;max-height:none;object-fit:cover;border-radius:10px;display:block}
 .plant-title-entry-text{margin:0;white-space:pre-line;color:var(--muted)}
 .plant-map-panel{margin-top:1rem}
 .plant-map-wrapper{position:relative;width:100%;max-width:920px;aspect-ratio:16/9;background:var(--surface-soft);border-radius:10px;overflow:hidden}
@@ -226,8 +226,11 @@
 #plant-map-overlay{position:absolute;left:0;top:0;transform-origin:0 0}
 #plant-map-overlay .plant-marker{cursor:pointer}
 .plant-position-edit-icon{position:absolute;top:.5rem;right:.5rem;z-index:2;border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:.35rem .5rem;line-height:1;cursor:pointer}
+@media (max-width: 900px){
+  .plant-top-row{grid-template-columns:1fr}
+  .plant-title-entry-image-panel{grid-column:1;grid-row:auto}
+}
 @media (max-width: 760px){
-  .plant-top-row{flex-direction:column}
   .plant-title-entry-panel{margin-left:0;align-items:flex-start;text-align:left;max-width:100%}
 }
 
