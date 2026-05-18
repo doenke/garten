@@ -1,0 +1,36 @@
+<article class="timeline-entry">
+  {% if header_html %}
+  <div style="display:flex;align-items:center;gap:.5rem;">{{ header_html|safe }}</div>
+  {% elif meta_text %}
+  <small>{{ meta_text }}</small>
+  {% endif %}
+
+  {% if entry_title %}
+  <div><strong>{{ entry_title }}</strong></div>
+  {% endif %}
+
+  {% if entry_text %}
+  <p style="white-space:pre-line;margin:.4rem 0 .6rem;">{{ entry_text }}</p>
+  {% endif %}
+
+  {% if image_url %}
+    {% if image_button %}
+    <button type="button" class="timeline-image-btn" data-image-src="{{ image_url }}" aria-label="Bild groß anzeigen" style="border:none;background:none;padding:0;cursor:pointer;">
+      <img src="{{ image_url }}" style="max-height:220px" alt="{{ image_alt or 'Anhang' }}">
+    </button>
+    {% else %}
+    <img src="{{ image_url }}" alt="{{ image_alt or 'Timeline-Foto' }}" style="max-width:100%;border-radius:10px;">
+    {% endif %}
+  {% elif pdf_url %}
+  <a href="{{ pdf_url }}" download>PDF herunterladen</a>
+  {% endif %}
+
+  <div style="position:absolute;left:.6rem;bottom:.5rem;display:flex;gap:.35rem;">
+    <form method="post" action="{{ delete_action }}" onsubmit="return confirm('Timeline-Eintrag wirklich löschen?');" style="margin:0;">
+      <button type="submit" aria-label="Timeline-Eintrag löschen" title="Timeline-Eintrag löschen" style="border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text); cursor:pointer; padding:.2rem .45rem; font-size:1rem; line-height:1;">🗑️</button>
+    </form>
+    <form method="post" action="{{ title_action }}" style="margin:0;">
+      <button type="submit" aria-label="Als Titelbeitrag markieren" title="Als Titelbeitrag markieren" style="border:1px solid var(--border); border-radius:6px; background:var(--surface); color:{% if is_title_entry %}#d49b00{% else %}var(--text){% endif %}; cursor:pointer; padding:.2rem .45rem; font-size:1rem; line-height:1;">★</button>
+    </form>
+  </div>
+</article>

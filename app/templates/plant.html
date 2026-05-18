@@ -161,33 +161,25 @@
 
 {% for ev in events %}
 {% set c = creators.get(ev.creator_id) %}
-<div class="timeline-entry">
-  <div style="display:flex;align-items:center;gap:.5rem;">
-    {% if c and c.avatar_filename %}<img class="avatar-sm" src="/avatars/{{ c.avatar_filename }}" title="{{ c.name or c.email or 'Unbekannt' }}" alt="{{ c.name or c.email or 'Unbekannt' }}">{% elif c and c.avatar_url %}<img class="avatar-sm" src="{{ c.avatar_url }}" title="{{ c.name or c.email or 'Unbekannt' }}" alt="{{ c.name or c.email or 'Unbekannt' }}">{% else %}<span title="{{ c.name if c else 'Unbekannt' }}">👤</span>{% endif %}
-    <small>{{ ev.event_at.strftime('%d.%m.%Y') }}</small>
-  </div>
-  {% if ev.title %}
-  <div>
-    <strong>{{ ev.title }}</strong>
-  </div>
-  {% endif %}
-  {% if ev.description %}<p style="white-space:pre-line;">{{ ev.description }}</p>{% endif %}
-  {% if ev.attachment_filename and ev.attachment_kind == 'image' %}
-    <button type="button" class="timeline-image-btn" data-image-src="/uploads/{{ ev.attachment_filename }}" aria-label="Bild groß anzeigen" style="border:none;background:none;padding:0;cursor:pointer;">
-      <img src="/uploads/{{ ev.attachment_filename }}" style="max-height:220px" alt="Anhang">
-    </button>
-  {% elif ev.attachment_filename and ev.attachment_kind == 'pdf' %}
-  <a href="/uploads/{{ ev.attachment_filename }}" download>PDF herunterladen</a>
-  {% endif %}
-  <div style="position:absolute; left:.6rem; bottom:.5rem; margin:0; display:flex; gap:.35rem;">
-    <form method="post" action="/plants/{{ plant.id }}/events/{{ ev.id }}/delete" onsubmit="return confirm('Timeline-Eintrag wirklich löschen?');" style="margin:0;">
-      <button type="submit" aria-label="Timeline-Eintrag löschen" title="Timeline-Eintrag löschen" style="border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text); cursor:pointer; padding:.2rem .45rem; font-size:1rem; line-height:1;">🗑️</button>
-    </form>
-    <form method="post" action="/plants/{{ plant.id }}/events/{{ ev.id }}/set-title" style="margin:0;">
-      <button type="submit" aria-label="Als Titelbeitrag markieren" title="Als Titelbeitrag markieren" style="border:1px solid var(--border); border-radius:6px; background:var(--surface); color:{% if ev.is_title_entry %}#d49b00{% else %}var(--text){% endif %}; cursor:pointer; padding:.2rem .45rem; font-size:1rem; line-height:1;">★</button>
-    </form>
-  </div>
-</div>
+{% if c and c.avatar_filename %}
+  {% set avatar_markup %}<img class="avatar-sm" src="/avatars/{{ c.avatar_filename }}" title="{{ c.name or c.email or 'Unbekannt' }}" alt="{{ c.name or c.email or 'Unbekannt' }}">{% endset %}
+{% elif c and c.avatar_url %}
+  {% set avatar_markup %}<img class="avatar-sm" src="{{ c.avatar_url }}" title="{{ c.name or c.email or 'Unbekannt' }}" alt="{{ c.name or c.email or 'Unbekannt' }}">{% endset %}
+{% else %}
+  {% set avatar_markup %}<span title="{{ c.name if c else 'Unbekannt' }}">👤</span>{% endset %}
+{% endif %}
+{% set header_html %}{{ avatar_markup }}<small>{{ ev.event_at.strftime('%d.%m.%Y') }}</small>{% endset %}
+{% set entry_title = ev.title %}
+{% set entry_text = ev.description %}
+{% set image_url = '/uploads/' ~ ev.attachment_filename if ev.attachment_filename and ev.attachment_kind == 'image' else None %}
+{% set image_alt = 'Anhang' %}
+{% set image_button = ev.attachment_filename and ev.attachment_kind == 'image' %}
+{% set pdf_url = '/uploads/' ~ ev.attachment_filename if ev.attachment_filename and ev.attachment_kind == 'pdf' else None %}
+{% set delete_action = '/plants/' ~ plant.id ~ '/events/' ~ ev.id ~ '/delete' %}
+{% set title_action = '/plants/' ~ plant.id ~ '/events/' ~ ev.id ~ '/set-title' %}
+{% set is_title_entry = ev.is_title_entry %}
+{% set meta_text = None %}
+{% include '_timeline_entry.html' %}
 {% endfor %}
   </section>
 </div>
