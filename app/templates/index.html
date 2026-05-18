@@ -60,6 +60,29 @@
   </tbody>
 </table>
 
+<h3>Alle Pflanzen (ohne Papierkorb)</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Pflanze</th>
+      <th>Location</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for plant, location in plants %}
+    <tr>
+      <td data-label="Pflanze"><a href="/plants/{{ plant.id }}">{{ plant.name }}</a></td>
+      <td data-label="Location"><a href="/locations/{{ location.id }}">{{ location.name }}</a></td>
+    </tr>
+  {% else %}
+    <tr>
+      <td colspan="2">Keine Pflanzen außerhalb des Papierkorbs vorhanden.</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+
 <div class="actions-inline"><button type="button" id="toggle-new-location">Neue Location anlegen</button></div>
 
 <form method="post" action="/locations/new" id="new-location-form" class="grid" style="display:none; margin-top:1rem;">
