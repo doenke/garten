@@ -141,18 +141,20 @@
   </div>
   {% endif %}
 
-  <h4>Timeline-Event hinzufügen</h4>
-  <form method="post" action="/plants/{{ plant.id }}/events" enctype="multipart/form-data" class="grid">
-    <input type="date" name="event_at" value="{{ today_date }}">
-    <input name="title" placeholder="Titel">
-    <textarea name="description" placeholder="Beschreibung"></textarea>
-    <input id="event-attachment" type="file" name="attachment" accept="image/*,application/pdf" capture="environment">
-    <small style="color:var(--muted);">Du kannst ein Bild/ PDF auswählen oder mit der Kamera aufnehmen.</small>
-    <button>Speichern</button>
-  </form>
-</div>
+  <section class="timeline-panel">
+    <h3 class="timeline-panel-title">Timeline</h3>
+    <div class="timeline-toolbar">
+      <h4 class="timeline-toolbar-title">Neues Event</h4>
+      <form method="post" action="/plants/{{ plant.id }}/events" enctype="multipart/form-data" class="grid timeline-form">
+        <input type="date" name="event_at" value="{{ today_date }}">
+        <input name="title" placeholder="Titel">
+        <textarea name="description" placeholder="Beschreibung"></textarea>
+        <input id="event-attachment" type="file" name="attachment" accept="image/*,application/pdf" capture="environment">
+        <small style="color:var(--muted);">Du kannst ein Bild/ PDF auswählen oder mit der Kamera aufnehmen.</small>
+        <button>Speichern</button>
+      </form>
+    </div>
 
-<h3>Timeline</h3>
 {% for ev in events %}
 {% set c = creators.get(ev.creator_id) %}
 <div class="timeline-entry">
@@ -183,6 +185,8 @@
   </div>
 </div>
 {% endfor %}
+  </section>
+</div>
 <form method="post" action="/plants/{{ plant.id }}/delete" onsubmit="return confirm('Pflanze wirklich löschen?');" class="floating-trash">
   <button type="submit" aria-label="Pflanze löschen" title="Pflanze löschen">🗑️</button>
 </form>
@@ -212,6 +216,12 @@
 #plant-map-overlay{position:absolute;left:0;top:0;transform-origin:0 0}
 #plant-map-overlay .plant-marker{cursor:pointer}
 .plant-position-edit-icon{position:absolute;top:.5rem;right:.5rem;z-index:2;border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:.35rem .5rem;line-height:1;cursor:pointer}
+
+.timeline-panel{display:flex;flex-direction:column;gap:.85rem}
+.timeline-panel-title{margin:0}
+.timeline-toolbar{display:flex;flex-direction:column;gap:.6rem}
+.timeline-toolbar-title{margin:0;font-size:1rem}
+.timeline-form{margin:0}
 @media (max-width: 900px){
   .plant-top-row{grid-template-columns:1fr}
   .plant-title-entry-image-panel{grid-column:1;grid-row:auto}
