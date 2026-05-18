@@ -44,6 +44,7 @@
   const locationOverlay = document.getElementById('location-map-overlay');
   const polygonField = document.getElementById('polygon-points-field');
   let polygonPoints = polygonField ? JSON.parse(polygonField.value || '[]') : [];
+  const otherLocationPolygons = {{ other_location_polygons|tojson }};
 
   const syncOverlayGeometry = () => {
     if (!locationImage || !locationOverlay) return;
@@ -59,6 +60,19 @@
     if (!locationImage || !locationOverlay) return;
     const overlayWidth = locationImage.clientWidth || locationImage.naturalWidth;
     const overlayHeight = locationImage.clientHeight || locationImage.naturalHeight;
+    const otherPolygonsMarkup = polygonEditEnabled
+      ? otherLocationPolygons.map((otherLocation) => {
+        let otherPoints = [];
+        try {
+          otherPoints = JSON.parse(otherLocation.polygon_points || '[]');
+        } catch (error) {
+          otherPoints = [];
+        }
+        if (otherPoints.length < 3) return '';
+        const points = otherPoints.map((point) => `${point.x * overlayWidth},${point.y * overlayHeight}`).join(' ');
+        return `<polygon points="${points}" fill="${otherLocation.color}66"></polygon>`;
+      }).join('')
+      : '';
     const polygon = polygonPoints.map((point) => `${point.x * overlayWidth},${point.y * overlayHeight}`).join(' ');
     const polygonMarkup = polygonPoints.length > 2
       ? `<polygon points="${polygon}" fill="{{ location.color or '#2f6d40' }}66" stroke="{{ location.color or '#2f6d40' }}" stroke-width="2"></polygon>`
@@ -66,7 +80,7 @@
     const pointMarkup = polygonEditEnabled
       ? polygonPoints.map((point, index) => `<circle cx="${point.x * overlayWidth}" cy="${point.y * overlayHeight}" r="6" fill="#ffffff" stroke="{{ location.color or '#2f6d40' }}" stroke-width="2" data-point-index="${index}" style="cursor:move;pointer-events:all;"></circle>`).join('')
       : '';
-    locationOverlay.innerHTML = `${polygonMarkup}${pointMarkup}`;
+    locationOverlay.innerHTML = `${otherPolygonsMarkup}${polygonMarkup}${pointMarkup}`;
   };
 
   let polygonEditEnabled = false;
