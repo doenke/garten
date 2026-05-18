@@ -2,10 +2,9 @@ import os
 import json
 from functools import wraps
 from datetime import datetime
-from uuid import uuid4
 from flask import Blueprint, current_app, render_template, request, redirect, url_for, session, jsonify, send_from_directory
-from werkzeug.utils import secure_filename
 from .models import db, User, Location, Plant, PlantPhoto, PlantNote, PlantEvent, GardenMap, LocationTimelineEntry
+from .services.timeline_service import save_uploaded_attachment, set_single_title_entry, delete_timeline_entry, build_unique_upload_name
 
 main_bp = Blueprint('main', __name__)
 ALLOWED = {'png', 'jpg', 'jpeg', 'webp', 'gif', 'pdf'}
@@ -66,13 +65,6 @@ def login_required(f):
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED
-
-
-def build_unique_upload_name(filename):
-    sanitized = secure_filename(filename)
-    if not sanitized:
-        return f"{uuid4().hex}_upload"
-    return f"{uuid4().hex}_{sanitized}"
 
 
 def parse_bloom_months(form):
@@ -246,11 +238,10 @@ def new_location_timeline_entry(location_id):
     comment = (request.form.get('comment') or '').strip()
     photo = request.files.get('photo')
 
-    if not comment or not photo or not photo.filename or not allowed_file(photo.filename):
+    unique = save_uploaded_attachment(photo, current_app.config['UPLOAD_FOLDER'], ALLOWED)
+    if not comment or not unique:
         return redirect(url_for('main.location_detail', location_id=location.id))
 
-    unique = build_unique_upload_name(photo.filename)
-    photo.save(os.path.join(current_app.config['UPLOAD_FOLDER'], unique))
     db.session.add(LocationTimelineEntry(
         location_id=location.id,
         comment=comment,
@@ -266,10 +257,12 @@ def new_location_timeline_entry(location_id):
 @login_required
 def set_location_timeline_title(location_id, entry_id):
     location = Location.query.get_or_404(location_id)
-    entry = LocationTimelineEntry.query.filter_by(id=entry_id, location_id=location.id).first_or_404()
-
-    LocationTimelineEntry.query.filter_by(location_id=location.id).update({'is_title_entry': False})
-    entry.is_title_entry = True
+    set_single_title_entry(
+        model=LocationTimelineEntry,
+        owner_filter=(LocationTimelineEntry.location_id == location.id,),
+        entry_id_field=LocationTimelineEntry.id,
+        entry_id_value=entry_id,
+    )
     db.session.commit()
     return redirect(url_for('main.location_detail', location_id=location.id))
 
@@ -279,6 +272,7 @@ def set_location_timeline_title(location_id, entry_id):
 def delete_location_timeline_entry(location_id, entry_id):
     location = Location.query.get_or_404(location_id)
     entry = LocationTimelineEntry.query.filter_by(id=entry_id, location_id=location.id).first_or_404()
+    delete_timeline_entry(entry, current_app.config['UPLOAD_FOLDER'], ('photo_filename',))
     db.session.delete(entry)
     db.session.commit()
     return redirect(url_for('main.location_detail', location_id=location.id))
@@ -553,13 +547,10 @@ def add_event(plant_id):
     description = request.form.get('description', '').strip()
 
     file = request.files.get('attachment')
-    attachment_filename = None
+    attachment_filename = save_uploaded_attachment(file, current_app.config['UPLOAD_FOLDER'], ALLOWED)
     attachment_kind = None
-    if file and file.filename and allowed_file(file.filename):
-        unique = build_unique_upload_name(file.filename)
-        file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], unique))
-        attachment_filename = unique
-        ext = unique.rsplit('.', 1)[1].lower()
+    if attachment_filename:
+        ext = attachment_filename.rsplit('.', 1)[1].lower()
         attachment_kind = 'image' if ext in IMAGE_TYPES else 'pdf'
 
     if title or description or attachment_filename:
@@ -572,9 +563,12 @@ def add_event(plant_id):
 @login_required
 def set_plant_event_title(plant_id, event_id):
     plant = Plant.query.get_or_404(plant_id)
-    event = PlantEvent.query.filter_by(id=event_id, plant_id=plant.id).first_or_404()
-    PlantEvent.query.filter_by(plant_id=plant.id).update({'is_title_entry': False})
-    event.is_title_entry = True
+    set_single_title_entry(
+        model=PlantEvent,
+        owner_filter=(PlantEvent.plant_id == plant.id,),
+        entry_id_field=PlantEvent.id,
+        entry_id_value=event_id,
+    )
     db.session.commit()
     return redirect(url_for('main.plant_detail', plant_id=plant.id))
 
@@ -583,10 +577,7 @@ def set_plant_event_title(plant_id, event_id):
 @login_required
 def delete_event(plant_id, event_id):
     event = PlantEvent.query.filter_by(id=event_id, plant_id=plant_id).first_or_404()
-    if event.attachment_filename:
-        attachment_path = os.path.join(current_app.config['UPLOAD_FOLDER'], event.attachment_filename)
-        if os.path.exists(attachment_path):
-            os.remove(attachment_path)
+    delete_timeline_entry(event, current_app.config['UPLOAD_FOLDER'], ('attachment_filename',))
     db.session.delete(event)
     db.session.commit()
     return redirect(url_for('main.plant_detail', plant_id=plant_id))
