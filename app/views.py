@@ -67,6 +67,13 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED
 
 
+def parse_bloom_months(form):
+    bloom_start_month = form.get('bloom_start_month', type=int)
+    bloom_end_month = form.get('bloom_end_month', type=int)
+    if (bloom_start_month is None) != (bloom_end_month is None):
+        return None, None, False
+    return bloom_start_month, bloom_end_month, True
+
 def get_or_create_garden_map():
     garden_map = GardenMap.query.order_by(GardenMap.id.asc()).first()
     if garden_map:
@@ -196,14 +203,18 @@ def new_plant(location_id):
     light_needs = request.form.getlist('light_need')
     if not light_needs:
         light_needs = ['Unbekannt']
+    bloom_start_month, bloom_end_month, bloom_months_valid = parse_bloom_months(request.form)
+    if not bloom_months_valid:
+        return redirect(url_for('main.location_detail', location_id=location_id))
+
     p = Plant(
         location_id=location_id,
         name=request.form['name'],
         common_name=request.form.get('common_name'),
         source=request.form.get('source'),
         light_need=', '.join(light_needs),
-        bloom_start_month=request.form.get('bloom_start_month', type=int),
-        bloom_end_month=request.form.get('bloom_end_month', type=int),
+        bloom_start_month=bloom_start_month,
+        bloom_end_month=bloom_end_month,
         flower_color=request.form.get('flower_color'),
         soil=request.form.get('soil'),
         height_without_bloom_cm=request.form.get('height_without_bloom_cm', type=int),
@@ -367,13 +378,17 @@ def update_masterdata(plant_id):
         'info': 'Info',
     }
 
+    bloom_start_month, bloom_end_month, bloom_months_valid = parse_bloom_months(request.form)
+    if not bloom_months_valid:
+        return redirect(url_for('main.plant_detail', plant_id=plant.id))
+
     updates = {
         'name': request.form.get('name', '').strip(),
         'common_name': request.form.get('common_name', '').strip() or None,
         'source': request.form.get('source', '').strip() or None,
         'light_need': request.form.get('light_need', '').strip() or 'Unbekannt',
-        'bloom_start_month': request.form.get('bloom_start_month', type=int),
-        'bloom_end_month': request.form.get('bloom_end_month', type=int),
+        'bloom_start_month': bloom_start_month,
+        'bloom_end_month': bloom_end_month,
         'flower_color': request.form.get('flower_color', '').strip() or None,
         'soil': request.form.get('soil', '').strip() or None,
         'height_without_bloom_cm': request.form.get('height_without_bloom_cm', type=int),
