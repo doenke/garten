@@ -92,7 +92,8 @@
       <div class="plant-map-wrapper">
         <img id="plant-map-image" src="/maps/{{ garden_map.filename }}" style="max-width:100%;border-radius:10px;display:block;">
         <button type="button" id="plant-position-edit-toggle" class="plant-position-edit-icon" aria-label="Position setzen" title="Position setzen">✏️</button>
-        <svg id="plant-map-overlay" style="position:absolute;left:0;top:0;width:100%;height:100%;"></svg>
+        <svg id="plant-map-overlay-base"></svg>
+        <svg id="plant-map-overlay-markers"></svg>
       </div>
       <form method="post" action="/plants/{{ plant.id }}/position" class="grid" style="margin-top:.75rem;">
         <input type="hidden" id="plant-map-x" name="map_x" value="{{ plant.map_x if plant.map_x is not none else '' }}">
@@ -209,8 +210,10 @@
 .plant-map-panel{margin-top:1rem}
 .plant-map-wrapper{position:relative;width:100%;max-width:920px;aspect-ratio:16/9;background:var(--surface-soft);border-radius:10px;overflow:hidden}
 #plant-map-image{position:absolute;left:0;top:0;display:block;transform-origin:0 0}
-#plant-map-overlay{position:absolute;left:0;top:0;transform-origin:0 0}
-#plant-map-overlay .plant-marker{cursor:pointer}
+#plant-map-overlay-base,#plant-map-overlay-markers{position:absolute;left:0;top:0;width:100%;height:100%;transform-origin:0 0}
+#plant-map-overlay-base{pointer-events:none}
+#plant-map-overlay-markers{pointer-events:none}
+#plant-map-overlay-markers .plant-marker{cursor:pointer;pointer-events:all}
 .plant-position-edit-icon{position:absolute;top:.5rem;right:.5rem;z-index:2;border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:.35rem .5rem;line-height:1;cursor:pointer}
 
 .timeline-panel{display:flex;flex-direction:column;gap:.85rem}
@@ -236,7 +239,8 @@
 <script>
 (() => {
   const mapImage = document.getElementById('plant-map-image');
-  const mapOverlay = document.getElementById('plant-map-overlay');
+  const baseOverlay = document.getElementById('plant-map-overlay-base');
+  const markerOverlay = document.getElementById('plant-map-overlay-markers');
   const mapX = document.getElementById('plant-map-x');
   const mapY = document.getElementById('plant-map-y');
   const locationPolygon = {{ (location.polygon_points or '[]') | safe if location else '[]' }};
@@ -290,14 +294,17 @@
   const MAP_PADDING_PX = 18;
 
   const renderPlantMap = () => {
-    if (!mapImage || !mapOverlay) return;
+    if (!mapImage || !baseOverlay || !markerOverlay) return;
     const imageWidth = mapImage.naturalWidth;
     const imageHeight = mapImage.naturalHeight;
-    mapOverlay.setAttribute('viewBox', `0 0 ${mapImage.naturalWidth} ${mapImage.naturalHeight}`);
+    baseOverlay.setAttribute('viewBox', `0 0 ${mapImage.naturalWidth} ${mapImage.naturalHeight}`);
+    markerOverlay.setAttribute('viewBox', `0 0 ${mapImage.naturalWidth} ${mapImage.naturalHeight}`);
     mapImage.style.width = `${imageWidth}px`;
     mapImage.style.height = `${imageHeight}px`;
-    mapOverlay.style.width = `${imageWidth}px`;
-    mapOverlay.style.height = `${imageHeight}px`;
+    baseOverlay.style.width = `${imageWidth}px`;
+    baseOverlay.style.height = `${imageHeight}px`;
+    markerOverlay.style.width = `${imageWidth}px`;
+    markerOverlay.style.height = `${imageHeight}px`;
     const polygonPixels = locationPolygon
       .map((point) => toPixel(Number(point.x), Number(point.y)))
       .filter(Boolean)
@@ -307,23 +314,9 @@
       ? `<polygon points="${polygonPoints}" fill="${locationColor}55" stroke="${locationColor}" stroke-width="2"></polygon>`
       : '';
 
-    const markers = plantsInLocation
-      .filter((entry) => entry.map_x !== null && entry.map_y !== null)
-      .map((entry) => {
-        const px = toPixel(Number(entry.map_x), Number(entry.map_y));
-        if (!px) return '';
-        const x = px.x * mapImage.naturalWidth;
-        const y = px.y * mapImage.naturalHeight;
-        const isCurrentPlant = Number(entry.id) === currentPlantId;
-        const radius = isCurrentPlant ? 4.5 : 3;
-        const color = isCurrentPlant ? '#d7263d' : '#2663eb';
-        const stroke = isCurrentPlant ? '#ffffff' : '#dce7ff';
-        if (isCurrentPlant) { return `<circle class="plant-marker plant-marker-current" data-name="${entry.name}" cx="${x}" cy="${y}" r="${radius}" fill="${color}" stroke="${stroke}" stroke-width="1"><title>${entry.name}</title></circle>`; }
-        return `<a href="/plants/${entry.id}" aria-label="${entry.name}"><circle class="plant-marker" data-name="${entry.name}" cx="${x}" cy="${y}" r="${radius}" fill="${color}" stroke="${stroke}" stroke-width="1"><title>${entry.name}</title></circle></a>`;
-      })
-      .filter(Boolean).join('');
-
-    mapOverlay.innerHTML = `${polygonMarkup}${markers}`;
+    let zoomScale = 1;
+    let zoomTranslateX = 0;
+    let zoomTranslateY = 0;
 
     const wrapper = mapImage.closest('.plant-map-wrapper');
     if (polygonPixels.length > 2 && wrapper) {
@@ -335,25 +328,49 @@
       const bboxHeight = Math.max(1, maxY - minY);
       const availableWidth = Math.max(1, wrapper.clientWidth - (MAP_PADDING_PX * 2));
       const availableHeight = Math.max(1, wrapper.clientHeight - (MAP_PADDING_PX * 2));
-      const scale = Math.min(availableWidth / bboxWidth, availableHeight / bboxHeight);
+      zoomScale = Math.min(availableWidth / bboxWidth, availableHeight / bboxHeight);
       const centerX = (minX + maxX) / 2;
       const centerY = (minY + maxY) / 2;
-      const translateX = (wrapper.clientWidth / 2) - (centerX * scale);
-      const translateY = (wrapper.clientHeight / 2) - (centerY * scale);
-      const transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+      zoomTranslateX = (wrapper.clientWidth / 2) - (centerX * zoomScale);
+      zoomTranslateY = (wrapper.clientHeight / 2) - (centerY * zoomScale);
+    }
+
+    const markers = plantsInLocation
+      .filter((entry) => entry.map_x !== null && entry.map_y !== null)
+      .map((entry) => {
+        const px = toPixel(Number(entry.map_x), Number(entry.map_y));
+        if (!px) return '';
+        const baseX = px.x * mapImage.naturalWidth;
+        const baseY = px.y * mapImage.naturalHeight;
+        const x = (baseX * zoomScale) + zoomTranslateX;
+        const y = (baseY * zoomScale) + zoomTranslateY;
+        const isCurrentPlant = Number(entry.id) === currentPlantId;
+        const radius = isCurrentPlant ? 6 : 6;
+        const color = isCurrentPlant ? '#d7263d' : '#2663eb';
+        const stroke = isCurrentPlant ? '#ffffff' : '#dce7ff';
+        if (isCurrentPlant) { return `<circle class="plant-marker plant-marker-current" data-name="${entry.name}" cx="${x}" cy="${y}" r="${radius}" fill="${color}" stroke="${stroke}" stroke-width="1"><title>${entry.name}</title></circle>`; }
+        return `<a href="/plants/${entry.id}" aria-label="${entry.name}"><circle class="plant-marker" data-name="${entry.name}" cx="${x}" cy="${y}" r="${radius}" fill="${color}" stroke="${stroke}" stroke-width="1"><title>${entry.name}</title></circle></a>`;
+      })
+      .filter(Boolean).join('');
+
+    baseOverlay.innerHTML = polygonMarkup;
+    markerOverlay.innerHTML = markers;
+
+    if (polygonPixels.length > 2 && wrapper) {
+      const transform = `translate(${zoomTranslateX}px, ${zoomTranslateY}px) scale(${zoomScale})`;
       mapImage.style.transform = transform;
-      mapOverlay.style.transform = transform;
+      baseOverlay.style.transform = transform;
     } else {
       mapImage.style.transform = '';
-      mapOverlay.style.transform = '';
+      baseOverlay.style.transform = '';
     }
   };
 
-  const clientToNormalized = (clientX, clientY) => {
-    if (!mapOverlay || !mapImage?.naturalWidth || !mapImage?.naturalHeight) return null;
-    const ctm = mapOverlay.getScreenCTM?.();
+  const screenToMapCoords = (clientX, clientY) => {
+    if (!baseOverlay || !mapImage?.naturalWidth || !mapImage?.naturalHeight) return null;
+    const ctm = baseOverlay.getScreenCTM?.();
     if (!ctm) return null;
-    const point = mapOverlay.createSVGPoint();
+    const point = baseOverlay.createSVGPoint();
     point.x = clientX;
     point.y = clientY;
     const svgPoint = point.matrixTransform(ctm.inverse());
@@ -362,11 +379,11 @@
     return { x: normalizedX, y: normalizedY };
   };
 
-  if (mapImage && mapOverlay && mapX && mapY) {
+  if (mapImage && baseOverlay && markerOverlay && mapX && mapY) {
     mapImage.addEventListener('load', renderPlantMap);
     if (mapImage.complete) renderPlantMap();
     window.addEventListener('resize', renderPlantMap);
-    mapOverlay.addEventListener('mousedown', (event) => {
+    markerOverlay.addEventListener('mousedown', (event) => {
       if (event.target.closest('.plant-marker-current')) {
         draggedCurrentMarker = true;
         event.preventDefault();
@@ -375,7 +392,7 @@
 
     window.addEventListener('mousemove', (event) => {
       if (!positionEditMode || !draggedCurrentMarker) return;
-      const normalized = clientToNormalized(event.clientX, event.clientY);
+      const normalized = screenToMapCoords(event.clientX, event.clientY);
       if (!normalized) return;
       const g = toGeo(normalized.x, normalized.y);
       if (!g) return;
@@ -391,9 +408,9 @@
       draggedCurrentMarker = false;
     });
 
-    mapOverlay.addEventListener('click', (event) => {
+    markerOverlay.addEventListener('click', (event) => {
       if (!positionEditMode || event.target.closest('.plant-marker-current')) return;
-      const normalized = clientToNormalized(event.clientX, event.clientY);
+      const normalized = screenToMapCoords(event.clientX, event.clientY);
       if (!normalized) return;
       const g = toGeo(normalized.x, normalized.y);
       if (!g) return;
