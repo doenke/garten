@@ -50,10 +50,6 @@ services:
       interval: 30s
       timeout: 3s
       retries: 3
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.gardenglow.rule=Host(`gardenglow.local`)"
-      - "traefik.http.services.gardenglow.loadbalancer.server.port=8000"
 volumes:
   gardenglow_data:
 ```
