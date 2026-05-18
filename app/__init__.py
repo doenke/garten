@@ -4,6 +4,7 @@ from .models import db
 from .auth import auth_bp, oauth
 from .views import main_bp
 import os
+from sqlalchemy import inspect
 
 
 _WEAK_SECRET_KEY_VALUES = {
@@ -89,9 +90,32 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        _run_schema_upgrades()
 
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
         os.makedirs(app.config['AVATAR_FOLDER'], exist_ok=True)
         os.makedirs(app.config['MAP_FOLDER'], exist_ok=True)
 
     return app
+
+
+def _run_schema_upgrades():
+    """Apply lightweight, idempotent schema upgrades for existing databases."""
+    inspector = inspect(db.engine)
+    table_name = 'location_timeline_entry'
+    column_name = 'is_title_entry'
+
+    if table_name not in inspector.get_table_names():
+        return
+
+    existing_columns = {column['name'] for column in inspector.get_columns(table_name)}
+    if column_name in existing_columns:
+        return
+
+    db.session.execute(
+        db.text(
+            'ALTER TABLE location_timeline_entry '
+            'ADD COLUMN is_title_entry BOOLEAN NOT NULL DEFAULT 0'
+        )
+    )
+    db.session.commit()
