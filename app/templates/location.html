@@ -10,7 +10,7 @@
 <h3>Polygon</h3>
 {% if garden_map and garden_map.filename %}
 <div style="position:relative;display:inline-block;max-width:100%;margin-bottom:.75rem;">
-  <img id="location-map-image" src="/maps/{{ garden_map.filename }}" style="display:block;max-width:100%;border-radius:10px;">
+  <img id="location-map-image" src="{{ map_image_url }}" style="display:block;max-width:100%;border-radius:10px;">
   <svg id="location-map-overlay" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;" preserveAspectRatio="none"></svg>
 </div>
 {% else %}

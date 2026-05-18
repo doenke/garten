@@ -3,7 +3,7 @@
 <section class="card">
 {% if garden_map and garden_map.filename %}
 <div style="position:relative; margin-bottom:1rem;">
-  <img src="/maps/{{ garden_map.filename }}" alt="Luftbild des Gartens" style="max-width:100%;border-radius:10px;">
+  <img src="{{ map_image_url }}" alt="Luftbild des Gartens" style="max-width:100%;border-radius:10px;">
 </div>
 {% endif %}
 <h2>Pflanzorte</h2>

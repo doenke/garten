@@ -68,6 +68,13 @@ def get_or_create_garden_map(owner_user_id):
     db.session.flush()
     return garden_map
 
+
+
+def resolve_map_image_url(garden_map):
+    if garden_map and garden_map.filename:
+        return f"/maps/{garden_map.filename}"
+    return '/static/default-luftbild.svg'
+
 def get_or_create_trash_location(user_id):
     trash = Location.query.filter_by(user_id=user_id, name=TRASH_LOCATION_NAME).first()
     if trash:
@@ -132,6 +139,7 @@ def index():
         location_plant_counts=location_plant_counts,
         garden_map=garden_map,
         plants=plants,
+        map_image_url=resolve_map_image_url(garden_map),
     )
 
 
@@ -146,6 +154,7 @@ def config():
         user=user,
         garden_map=garden_map,
         locations=locations,
+        map_image_url=resolve_map_image_url(garden_map),
     )
 
 @main_bp.route('/locations/new', methods=['POST'])
@@ -163,7 +172,7 @@ def location_detail(location_id):
     loc = Location.query.get_or_404(location_id)
     plants = Plant.query.filter_by(location_id=loc.id).all()
     garden_map = GardenMap.query.order_by(GardenMap.id.asc()).first()
-    return render_template('location.html', location=loc, plants=plants, user=current_user(), creators={u.id: u for u in User.query.all()}, garden_map=garden_map)
+    return render_template('location.html', location=loc, plants=plants, user=current_user(), creators={u.id: u for u in User.query.all()}, garden_map=garden_map, map_image_url=resolve_map_image_url(garden_map))
 
 @main_bp.route('/locations/<int:location_id>/plants/new', methods=['POST'])
 @login_required
@@ -241,6 +250,7 @@ def plant_detail(plant_id):
         month_names=month_names,
         is_planted=is_planted,
         garden_map=garden_map,
+        map_image_url=resolve_map_image_url(garden_map),
     )
 
 

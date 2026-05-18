@@ -71,7 +71,7 @@
   <h3 style="margin-top:0;">Standort auf Luftbild</h3>
   <p>Klick auf das Bild, um den Pflanzenstandort im Polygon zu markieren.</p>
   <div style="position:relative;display:inline-block;max-width:100%;">
-    <img id="plant-map-image" src="/maps/{{ garden_map.filename }}" style="max-width:100%;border-radius:10px;">
+    <img id="plant-map-image" src="{{ map_image_url }}" style="max-width:100%;border-radius:10px;">
     <svg id="plant-map-overlay" style="position:absolute;left:0;top:0;width:100%;height:100%;"></svg>
   </div>
   <form method="post" action="/plants/{{ plant.id }}/position" class="grid" style="margin-top:.75rem;">
