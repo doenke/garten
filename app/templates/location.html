@@ -38,6 +38,10 @@
 {% endif %}
 
 <h3>Pflanzen</h3>
+<div class="table-search">
+  <input type="search" id="location-plants-search" placeholder="Pflanzen durchsuchen">
+  <button type="button" class="btn secondary" data-clear-search-for="location-plants-search" aria-label="Suche löschen">✕</button>
+</div>
 <table>
   <thead>
     <tr>
@@ -318,6 +322,25 @@
     plantForm.style.display = isHidden ? 'block' : 'none';
     togglePlantFormButton.textContent = isHidden ? 'Pflanze anlegen ausblenden' : 'Pflanze anlegen';
   });
+
+  const locationPlantsSearch = document.getElementById('location-plants-search');
+  const locationPlantsSearchClear = document.querySelector('[data-clear-search-for="location-plants-search"]');
+  const locationPlantsTable = document.querySelector('table');
+  if (locationPlantsSearch && locationPlantsSearchClear && locationPlantsTable) {
+    const rows = Array.from(locationPlantsTable.querySelectorAll('tbody tr'));
+    const applyFilter = () => {
+      const query = locationPlantsSearch.value.trim().toLowerCase();
+      rows.forEach((row) => {
+        row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
+      });
+    };
+    locationPlantsSearch.addEventListener('input', applyFilter);
+    locationPlantsSearchClear.addEventListener('click', () => {
+      locationPlantsSearch.value = '';
+      locationPlantsSearch.focus();
+      applyFilter();
+    });
+  }
 </script>
 <form method="post" action="/locations/{{ location.id }}/delete" onsubmit="return confirm('Location wirklich löschen? Alle enthaltenen Pflanzen werden in den Papierkorb verschoben.');" class="floating-trash">
   <button type="submit" aria-label="Location löschen" title="Location löschen">🗑️</button>
