@@ -71,7 +71,7 @@
     {% if garden_map and garden_map.filename and location %}
     <div class="plant-map-panel">
       <h3 style="margin-top:0;">Beet auf Luftbild</h3>
-      <p>Klick in das Beet, um den Standort zu setzen. Andere Pflanzen sind anklickbar.</p>
+      <p>Klick in das Beet, um den Standort sofort zu setzen. Deinen Marker kannst du per Drag & Drop verschieben.</p>
       <div class="plant-map-wrapper">
         <img id="plant-map-image" src="/maps/{{ garden_map.filename }}" style="max-width:100%;border-radius:10px;display:block;">
         <svg id="plant-map-overlay" style="position:absolute;left:0;top:0;width:100%;height:100%;"></svg>
@@ -79,7 +79,7 @@
       <form method="post" action="/plants/{{ plant.id }}/position" class="grid" style="margin-top:.75rem;">
         <input type="hidden" id="plant-map-x" name="map_x" value="{{ plant.map_x if plant.map_x is not none else '' }}">
         <input type="hidden" id="plant-map-y" name="map_y" value="{{ plant.map_y if plant.map_y is not none else '' }}">
-        <button>Standort speichern</button>
+        <button type="button" id="plant-position-save-fallback">Standort speichern (Fallback)</button>
       </form>
     </div>
     {% endif %}
@@ -207,6 +207,23 @@
   const toPixel = (gx, gy) => { if (!Array.isArray(calibrationPoints)||calibrationPoints.length<2) return null; const [p1,p2]=calibrationPoints; return {x:Number(p1.x)+((gx-Number(p1.coord_x))/(Number(p2.coord_x)-Number(p1.coord_x)))*(Number(p2.x)-Number(p1.x)), y:Number(p1.y)+((gy-Number(p1.coord_y))/(Number(p2.coord_y)-Number(p1.coord_y)))*(Number(p2.y)-Number(p1.y))}; };
   const locationColor = "{{ location.color or '#2f6d40' if location else '#2f6d40' }}";
   const plantsInLocation = {{ location_plant_markers | tojson }};
+  const currentPlantId = Number({{ plant.id }});
+  let draggedCurrentMarker = false;
+
+  const persistPlantPosition = async (x, y) => {
+    mapX.value = x;
+    mapY.value = y;
+    try {
+      const response = await fetch('/plants/{{ plant.id }}/position', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({map_x: x, map_y: y}),
+      });
+      if (!response.ok) throw new Error('save failed');
+      const marker = plantsInLocation.find((entry) => Number(entry.id) === currentPlantId);
+      if (marker) { marker.map_x = x; marker.map_y = y; }
+    } catch (error) {}
+  };
 
   const renderPlantMap = () => {
     if (!mapImage || !mapOverlay) return;
@@ -223,24 +240,58 @@
         if (!px) return '';
         const x = px.x * mapImage.naturalWidth;
         const y = px.y * mapImage.naturalHeight;
-        const isCurrentPlant = Number(entry.id) === Number({{ plant.id }});
+        const isCurrentPlant = Number(entry.id) === currentPlantId;
         const radius = isCurrentPlant ? 9 : 6;
         const color = isCurrentPlant ? '#d7263d' : '#2663eb';
         const stroke = isCurrentPlant ? '#ffffff' : '#dce7ff';
+        if (isCurrentPlant) { return `<circle class="plant-marker plant-marker-current" data-name="${entry.name}" cx="${x}" cy="${y}" r="${radius}" fill="${color}" stroke="${stroke}" stroke-width="2"><title>${entry.name}</title></circle>`; }
         return `<a href="/plants/${entry.id}" aria-label="${entry.name}"><circle class="plant-marker" data-name="${entry.name}" cx="${x}" cy="${y}" r="${radius}" fill="${color}" stroke="${stroke}" stroke-width="2"><title>${entry.name}</title></circle></a>`;
       })
       .filter(Boolean).join('');
 
     mapOverlay.innerHTML = `${polygonMarkup}${markers}`;
   };
+  const fallbackSaveButton = document.getElementById('plant-position-save-fallback');
+  if (fallbackSaveButton && mapX && mapY) {
+    fallbackSaveButton.addEventListener('click', async () => {
+      if (!mapX.value || !mapY.value) return;
+      await persistPlantPosition(Number(mapX.value), Number(mapY.value));
+    });
+  }
+
   if (mapImage && mapOverlay && mapX && mapY) {
     mapImage.addEventListener('load', renderPlantMap);
-    mapOverlay.addEventListener('click', (event) => {
+    mapOverlay.addEventListener('mousedown', (event) => {
+      if (event.target.closest('.plant-marker-current')) {
+        draggedCurrentMarker = true;
+        event.preventDefault();
+      }
+    });
+
+    window.addEventListener('mousemove', (event) => {
+      if (!draggedCurrentMarker) return;
       const rect = mapOverlay.getBoundingClientRect();
       const g = toGeo((event.clientX - rect.left) / rect.width, (event.clientY - rect.top) / rect.height);
       if (!g) return;
+      const marker = plantsInLocation.find((entry) => Number(entry.id) === currentPlantId);
+      if (marker) { marker.map_x = g.x; marker.map_y = g.y; }
       mapX.value = g.x;
       mapY.value = g.y;
+      renderPlantMap();
+    });
+
+    window.addEventListener('mouseup', async () => {
+      if (!draggedCurrentMarker) return;
+      draggedCurrentMarker = false;
+      if (mapX.value && mapY.value) await persistPlantPosition(Number(mapX.value), Number(mapY.value));
+    });
+
+    mapOverlay.addEventListener('click', async (event) => {
+      if (event.target.closest('.plant-marker-current')) return;
+      const rect = mapOverlay.getBoundingClientRect();
+      const g = toGeo((event.clientX - rect.left) / rect.width, (event.clientY - rect.top) / rect.height);
+      if (!g) return;
+      await persistPlantPosition(g.x, g.y);
       renderPlantMap();
     });
   }

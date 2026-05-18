@@ -340,9 +340,13 @@ def save_location_color(location_id):
 @login_required
 def save_plant_position(plant_id):
     plant = Plant.query.get_or_404(plant_id)
-    plant.map_x = request.form.get('map_x', type=float)
-    plant.map_y = request.form.get('map_y', type=float)
+    is_json_request = request.is_json
+    payload = request.get_json(silent=True) if is_json_request else None
+    plant.map_x = (payload or {}).get('map_x') if is_json_request else request.form.get('map_x', type=float)
+    plant.map_y = (payload or {}).get('map_y') if is_json_request else request.form.get('map_y', type=float)
     db.session.commit()
+    if is_json_request:
+        return jsonify({'ok': True, 'map_x': plant.map_x, 'map_y': plant.map_y})
     return redirect(url_for('main.plant_detail', plant_id=plant_id))
 
 
