@@ -192,7 +192,9 @@
 .plant-detail-layout{display:block}
 .plant-masterdata{min-width:280px}
 .plant-map-panel{margin-top:1rem}
-.plant-map-wrapper{position:relative;width:100%;max-width:920px;aspect-ratio:16/9;background:var(--surface-soft);border-radius:10px;overflow:hidden}
+.plant-map-wrapper{position:relative;width:100%;max-width:920px;aspect-ratio:8/9;background:var(--surface-soft);border-radius:10px;overflow:hidden}
+#plant-map-image{position:absolute;left:0;top:0;display:block;transform-origin:0 0}
+#plant-map-overlay{position:absolute;left:0;top:0;transform-origin:0 0}
 #plant-map-overlay .plant-marker{cursor:pointer}
 .plant-position-edit-icon{position:absolute;top:.5rem;right:.5rem;z-index:2;border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:.35rem .5rem;line-height:1;cursor:pointer}
 </style>
@@ -251,67 +253,25 @@
     } catch (error) {}
   };
 
-  const MAP_BORDER_FADE_PX = 50;
-  const CLIPPED_MAP_TARGET_WIDTH = 920;
-
-  const expandPolygon = (points, amount, width, height) => {
-    if (!Array.isArray(points) || points.length < 3) return points;
-    const center = points.reduce((acc, point) => {
-      acc.x += point.x;
-      acc.y += point.y;
-      return acc;
-    }, { x: 0, y: 0 });
-    center.x /= points.length;
-    center.y /= points.length;
-    return points.map((point) => {
-      const dx = point.x - center.x;
-      const dy = point.y - center.y;
-      const len = Math.hypot(dx, dy) || 1;
-      return {
-        x: Math.max(0, Math.min(width, point.x + (dx / len) * amount)),
-        y: Math.max(0, Math.min(height, point.y + (dy / len) * amount)),
-      };
-    });
-  };
+  const MAP_PADDING_PX = 18;
 
   const renderPlantMap = () => {
     if (!mapImage || !mapOverlay) return;
     const imageWidth = mapImage.naturalWidth;
     const imageHeight = mapImage.naturalHeight;
     mapOverlay.setAttribute('viewBox', `0 0 ${mapImage.naturalWidth} ${mapImage.naturalHeight}`);
+    mapImage.style.width = `${imageWidth}px`;
+    mapImage.style.height = `${imageHeight}px`;
+    mapOverlay.style.width = `${imageWidth}px`;
+    mapOverlay.style.height = `${imageHeight}px`;
     const polygonPixels = locationPolygon
       .map((point) => toPixel(Number(point.x), Number(point.y)))
       .filter(Boolean)
       .map((p) => ({ x: p.x * imageWidth, y: p.y * imageHeight }));
-    const expandedPolygon = expandPolygon(polygonPixels, MAP_BORDER_FADE_PX, imageWidth, imageHeight);
     const polygonPoints = polygonPixels.map((p) => `${p.x},${p.y}`).join(' ');
-    const expandedPolygonPoints = expandedPolygon.map((p) => `${p.x},${p.y}`).join(' ');
     const polygonMarkup = locationPolygon.length > 2
       ? `<polygon points="${polygonPoints}" fill="${locationColor}55" stroke="${locationColor}" stroke-width="2"></polygon>`
       : '';
-    const clipMarkup = expandedPolygon.length > 2
-      ? `<defs><clipPath id="plant-location-clip" clipPathUnits="userSpaceOnUse"><polygon points="${expandedPolygonPoints}"></polygon></clipPath></defs>`
-      : '';
-
-    if (expandedPolygon.length > 2) {
-      const minX = Math.min(...expandedPolygon.map((p) => p.x));
-      const maxX = Math.max(...expandedPolygon.map((p) => p.x));
-      const minY = Math.min(...expandedPolygon.map((p) => p.y));
-      const maxY = Math.max(...expandedPolygon.map((p) => p.y));
-      const cropWidth = Math.max(1, maxX - minX);
-      const cropHeight = Math.max(1, maxY - minY);
-      mapOverlay.setAttribute('viewBox', `${minX} ${minY} ${cropWidth} ${cropHeight}`);
-      const wrapperWidth = Math.min(CLIPPED_MAP_TARGET_WIDTH, imageWidth, cropWidth + (MAP_BORDER_FADE_PX * 2));
-      const wrapper = mapImage.closest('.plant-map-wrapper');
-      if (wrapper) {
-        wrapper.style.maxWidth = `${wrapperWidth}px`;
-      }
-      mapImage.style.clipPath = 'url(#plant-location-clip)';
-      mapImage.style.webkitClipPath = 'url(#plant-location-clip)';
-    } else {
-      mapImage.style.clipPath = '';
-      mapImage.style.webkitClipPath = '';
-    }
 
     const markers = plantsInLocation
       .filter((entry) => entry.map_x !== null && entry.map_y !== null)
@@ -329,7 +289,30 @@
       })
       .filter(Boolean).join('');
 
-    mapOverlay.innerHTML = `${clipMarkup}${polygonMarkup}${markers}`;
+    mapOverlay.innerHTML = `${polygonMarkup}${markers}`;
+
+    const wrapper = mapImage.closest('.plant-map-wrapper');
+    if (polygonPixels.length > 2 && wrapper) {
+      const minX = Math.min(...polygonPixels.map((p) => p.x));
+      const maxX = Math.max(...polygonPixels.map((p) => p.x));
+      const minY = Math.min(...polygonPixels.map((p) => p.y));
+      const maxY = Math.max(...polygonPixels.map((p) => p.y));
+      const bboxWidth = Math.max(1, maxX - minX);
+      const bboxHeight = Math.max(1, maxY - minY);
+      const availableWidth = Math.max(1, wrapper.clientWidth - (MAP_PADDING_PX * 2));
+      const availableHeight = Math.max(1, wrapper.clientHeight - (MAP_PADDING_PX * 2));
+      const scale = Math.min(availableWidth / bboxWidth, availableHeight / bboxHeight);
+      const centerX = (minX + maxX) / 2;
+      const centerY = (minY + maxY) / 2;
+      const translateX = (wrapper.clientWidth / 2) - (centerX * scale);
+      const translateY = (wrapper.clientHeight / 2) - (centerY * scale);
+      const transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+      mapImage.style.transform = transform;
+      mapOverlay.style.transform = transform;
+    } else {
+      mapImage.style.transform = '';
+      mapOverlay.style.transform = '';
+    }
   };
 
   const clientToNormalized = (clientX, clientY) => {
@@ -348,6 +331,7 @@
   if (mapImage && mapOverlay && mapX && mapY) {
     mapImage.addEventListener('load', renderPlantMap);
     if (mapImage.complete) renderPlantMap();
+    window.addEventListener('resize', renderPlantMap);
     mapOverlay.addEventListener('mousedown', (event) => {
       if (event.target.closest('.plant-marker-current')) {
         draggedCurrentMarker = true;
