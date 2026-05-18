@@ -2,45 +2,6 @@
 {% block content %}
 <section class="card">
 <h2>Pflanzorte</h2>
-<h3>Luftbild</h3>
-{% if garden_map and garden_map.filename %}
-<div class="actions-inline" style="margin-bottom:0.5rem;">
-  <button type="button" id="toggle-map-upload" title="Luftbild ersetzen" style="padding:0.35rem 0.55rem;min-width:auto;">✏️</button>
-</div>
-{% endif %}
-<form method="post" action="/map/upload" enctype="multipart/form-data" class="grid" id="map-upload-form" style="margin-bottom:1rem;{% if garden_map and garden_map.filename %}display:none;{% endif %}">
-  <input type="file" name="map_image" accept="image/*" required>
-  <button>Luftbild hochladen</button>
-</form>
-{% if garden_map and garden_map.filename %}
-<div style="position:relative;display:inline-block;max-width:100%;margin-bottom:1rem;">
-  <img id="overview-map-image" src="/maps/{{ garden_map.filename }}" style="max-width:100%;border-radius:10px;">
-  <svg id="overview-map-overlay" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;"></svg>
-</div>
-
-<div class="actions-inline" style="margin-bottom:0.5rem;">
-  <button type="button" id="toggle-calibration-edit">Kalibrierung bearbeiten</button>
-</div>
-<form method="post" action="/map/calibration" id="calibration-form" class="grid" style="display:none;margin-bottom:1rem;">
-  <input type="hidden" name="calibration_points" id="calibration-points-input">
-  <div><strong>Bildpunkte setzen:</strong> Im Bearbeiten-Modus nacheinander Punkt 1 und Punkt 2 im Bild anklicken.</div>
-  <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:0.5rem;">
-    <label>Punkt 1 – Koordinate X
-      <input type="text" id="p1-coord-x" placeholder="z. B. 52.520008">
-    </label>
-    <label>Punkt 1 – Koordinate Y
-      <input type="text" id="p1-coord-y" placeholder="z. B. 13.404954">
-    </label>
-    <label>Punkt 2 – Koordinate X
-      <input type="text" id="p2-coord-x" placeholder="z. B. 52.520500">
-    </label>
-    <label>Punkt 2 – Koordinate Y
-      <input type="text" id="p2-coord-y" placeholder="z. B. 13.405600">
-    </label>
-  </div>
-  <button type="submit">Kalibrierung speichern</button>
-</form>
-{% endif %}
 <table>
   <thead>
     <tr>
@@ -93,126 +54,6 @@
 </form>
 
 <script>
-  const allLocations = [
-    {% for l in locations %}
-      {id: {{ l.id }}, color: "{{ l.color or '#2f6d40' }}", polygon: {{ (l.polygon_points or '[]') | safe }} },
-    {% endfor %}
-  ];
-  const calibrationPoints = {{ ((garden_map.calibration_points or '[]') if garden_map else '[]') | safe }};
-
-  const img = document.getElementById('overview-map-image');
-  const svg = document.getElementById('overview-map-overlay');
-  const calibrationForm = document.getElementById('calibration-form');
-  const calibrationInput = document.getElementById('calibration-points-input');
-  const toggleCalibrationButton = document.getElementById('toggle-calibration-edit');
-  const p1x = document.getElementById('p1-coord-x');
-  const p1y = document.getElementById('p1-coord-y');
-  const p2x = document.getElementById('p2-coord-x');
-  const p2y = document.getElementById('p2-coord-y');
-
-  let editingCalibration = false;
-  let activeCalibration = Array.isArray(calibrationPoints) ? calibrationPoints.slice(0, 2) : [];
-  let nextPointIndex = activeCalibration.length >= 2 ? 0 : activeCalibration.length;
-
-  const toNumberOrNull = (value) => {
-    if (value === '') return null;
-    const number = Number(value);
-    return Number.isFinite(number) ? number : null;
-  };
-
-  const syncCalibrationInputs = () => {
-    const p1 = activeCalibration[0] || {};
-    const p2 = activeCalibration[1] || {};
-    if (p1x) p1x.value = p1.coord_x ?? '';
-    if (p1y) p1y.value = p1.coord_y ?? '';
-    if (p2x) p2x.value = p2.coord_x ?? '';
-    if (p2y) p2y.value = p2.coord_y ?? '';
-    if (calibrationInput) calibrationInput.value = JSON.stringify(activeCalibration);
-  };
-
-  const renderOverlay = () => {
-    if (!img || !svg) return;
-    svg.innerHTML = '';
-    allLocations.forEach((location) => {
-      if (!location.polygon || location.polygon.length < 3) return;
-      const points = location.polygon.map((point) => `${point.x * img.naturalWidth},${point.y * img.naturalHeight}`).join(' ');
-      const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-      polygon.setAttribute('points', points);
-      polygon.setAttribute('fill', location.color + '66');
-      polygon.setAttribute('stroke', location.color);
-      polygon.setAttribute('stroke-width', '2');
-      svg.appendChild(polygon);
-    });
-
-    activeCalibration.forEach((point, index) => {
-      if (typeof point.x !== 'number' || typeof point.y !== 'number') return;
-      const px = point.x * img.naturalWidth;
-      const py = point.y * img.naturalHeight;
-      const marker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      marker.setAttribute('cx', px);
-      marker.setAttribute('cy', py);
-      marker.setAttribute('r', '8');
-      marker.setAttribute('fill', index === 0 ? '#2563eb' : '#dc2626');
-      marker.setAttribute('stroke', '#ffffff');
-      marker.setAttribute('stroke-width', '2');
-      svg.appendChild(marker);
-
-      const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      label.setAttribute('x', px + 12);
-      label.setAttribute('y', py - 10);
-      label.setAttribute('fill', '#111827');
-      label.setAttribute('font-size', '16');
-      label.setAttribute('font-weight', '700');
-      label.textContent = `Punkt ${index + 1}`;
-      svg.appendChild(label);
-    });
-  };
-
-  if (img && svg) {
-    img.addEventListener('load', () => {
-      svg.setAttribute('viewBox', `0 0 ${img.naturalWidth} ${img.naturalHeight}`);
-      renderOverlay();
-    });
-
-    img.addEventListener('click', (event) => {
-      if (!editingCalibration) return;
-      const rect = img.getBoundingClientRect();
-      const x = (event.clientX - rect.left) / rect.width;
-      const y = (event.clientY - rect.top) / rect.height;
-      activeCalibration[nextPointIndex] = {
-        ...(activeCalibration[nextPointIndex] || {}),
-        x,
-        y,
-      };
-      nextPointIndex = nextPointIndex === 0 ? 1 : 0;
-      syncCalibrationInputs();
-      renderOverlay();
-    });
-  }
-
-  if (toggleCalibrationButton && calibrationForm) {
-    toggleCalibrationButton.addEventListener('click', () => {
-      editingCalibration = !editingCalibration;
-      calibrationForm.style.display = editingCalibration ? 'block' : 'none';
-      toggleCalibrationButton.textContent = editingCalibration ? 'Kalibrierung schließen' : 'Kalibrierung bearbeiten';
-    });
-  }
-
-  [p1x, p1y, p2x, p2y].forEach((input, idx) => {
-    if (!input) return;
-    input.addEventListener('input', (event) => {
-      const pointIdx = idx < 2 ? 0 : 1;
-      const key = idx % 2 === 0 ? 'coord_x' : 'coord_y';
-      activeCalibration[pointIdx] = {
-        ...(activeCalibration[pointIdx] || {}),
-        [key]: toNumberOrNull(event.target.value),
-      };
-      syncCalibrationInputs();
-    });
-  });
-
-  syncCalibrationInputs();
-
   const toggleButton = document.getElementById('toggle-new-location');
   const newLocationForm = document.getElementById('new-location-form');
 
@@ -222,14 +63,6 @@
     toggleButton.textContent = isHidden ? 'Formular schließen' : 'Neue Location anlegen';
   });
 
-  const toggleMapUploadButton = document.getElementById('toggle-map-upload');
-  const mapUploadForm = document.getElementById('map-upload-form');
-  if (toggleMapUploadButton && mapUploadForm) {
-    toggleMapUploadButton.addEventListener('click', () => {
-      const isHidden = mapUploadForm.style.display === 'none';
-      mapUploadForm.style.display = isHidden ? 'block' : 'none';
-    });
-  }
 </script>
 </section>
 {% endblock %}

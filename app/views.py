@@ -134,6 +134,20 @@ def index():
         plants=plants,
     )
 
+
+@main_bp.route('/config')
+@login_required
+def config():
+    user = current_user()
+    garden_map = GardenMap.query.order_by(GardenMap.id.asc()).first()
+    locations = Location.query.order_by(Location.name.asc()).all()
+    return render_template(
+        'config.html',
+        user=user,
+        garden_map=garden_map,
+        locations=locations,
+    )
+
 @main_bp.route('/locations/new', methods=['POST'])
 @login_required
 def new_location():
