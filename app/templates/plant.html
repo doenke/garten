@@ -8,7 +8,7 @@
     <span class="separator" aria-hidden="true">/</span>
     <span aria-current="page">{{ plant.name }}</span>
   </nav>
-  <h2 style="margin-top:0;">{{ plant.name }}{% if plant.common_name %} ({{ plant.common_name }}){% endif %}</h2>
+  <h1 style="margin-top:0;font-size:2.25rem;line-height:1.2;">{{ plant.name }}{% if plant.common_name %} ({{ plant.common_name }}){% endif %}</h1>
 
   <div class="plant-detail-layout">
     <div class="plant-masterdata">
@@ -34,7 +34,6 @@
     </div>
   </div>
   {% endif %}
-  {% if plant.map_x is not none and plant.map_y is not none %}<p><strong>Position (Lat/Lon):</strong> {{ '%.6f'|format(plant.map_x) }}, {{ '%.6f'|format(plant.map_y) }}</p>{% endif %}
   {% if plant.info %}<p><strong>Info:</strong> {{ plant.info }}</p>{% endif %}
 
   <details>
@@ -63,6 +62,10 @@
       <div class="actions-inline">
         <input type="number" min="0" name="height_without_bloom_cm" value="{{ plant.height_without_bloom_cm or '' }}" placeholder="Höhe ohne Blüte (cm)">
         <input type="number" min="0" name="height_with_bloom_cm" value="{{ plant.height_with_bloom_cm or '' }}" placeholder="Höhe mit Blüte (cm)">
+      </div>
+      <div class="actions-inline">
+        <input type="number" step="any" name="map_x" value="{{ plant.map_x if plant.map_x is not none else '' }}" placeholder="Position X (Lat)">
+        <input type="number" step="any" name="map_y" value="{{ plant.map_y if plant.map_y is not none else '' }}" placeholder="Position Y (Lon)">
       </div>
       <textarea name="info" placeholder="Info">{{ plant.info or '' }}</textarea>
       <button type="submit">Stammdaten speichern</button>
