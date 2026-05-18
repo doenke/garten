@@ -5,6 +5,7 @@
 <table>
   <thead>
     <tr>
+      <th></th>
       <th>Location</th>
       <th>Beschreibung</th>
       <th>Pflanzen</th>
@@ -13,6 +14,7 @@
   <tbody>
   {% for l in locations %}
     <tr>
+      <td data-label="Farbe"><span class="color-dot" style="background-color: {{ l.color or "#2f6d40" }};" aria-hidden="true"></span></td>
       <td data-label="Location"><a href="/locations/{{l.id}}">{{l.name}}</a></td>
       <td data-label="Beschreibung">{{ l.description }}</td>
       <td data-label="Pflanzen">{{ location_plant_counts.get(l.id, 0) }}</td>
@@ -21,7 +23,18 @@
   </tbody>
 </table>
 
-<h3>Alle Pflanzen (ohne Papierkorb)</h3>
+<div class="actions-inline" style="margin-top:1rem;">
+  <button type="button" id="toggle-new-location">Neue Location anlegen</button>
+</div>
+
+<form method="post" action="/locations/new" id="new-location-form" class="grid" style="display:none; margin-top:1rem;">
+  <input name="name" placeholder="Name" required>
+  <input name="description" placeholder="Beschreibung">
+  <label class="color-field">Farbe <input class="color-input-dot color-dot-lg" type="color" name="color" value="#2f6d40"></label>
+  <button>anlegen</button>
+</form>
+
+<h3>Alle Pflanzen</h3>
 <table>
   <thead>
     <tr>
@@ -44,14 +57,6 @@
 </table>
 
 
-<div class="actions-inline"><button type="button" id="toggle-new-location">Neue Location anlegen</button></div>
-
-<form method="post" action="/locations/new" id="new-location-form" class="grid" style="display:none; margin-top:1rem;">
-  <input name="name" placeholder="Name" required>
-  <input name="description" placeholder="Beschreibung">
-  <label>Farbe <input type="color" name="color" value="#2f6d40"></label>
-  <button>anlegen</button>
-</form>
 
 <script>
   const toggleButton = document.getElementById('toggle-new-location');

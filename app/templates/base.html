@@ -41,6 +41,14 @@
     p,li,label,small,summary{color:var(--text)}
     form.grid{display:grid;gap:.65rem}
     .actions-inline{display:flex;flex-wrap:wrap;gap:.55rem}
+
+    .color-dot{display:inline-block;width:.9rem;height:.9rem;border-radius:50%;border:1px solid color-mix(in srgb,var(--border) 70%, #000 30%);vertical-align:middle}
+    .color-dot-lg{width:1.2rem;height:1.2rem}
+    .color-input-dot{appearance:none;-webkit-appearance:none;width:1.4rem;height:1.4rem;padding:0;border:none;border-radius:50%;background:none;cursor:pointer}
+    .color-input-dot::-webkit-color-swatch-wrapper{padding:0}
+    .color-input-dot::-webkit-color-swatch{border:1px solid color-mix(in srgb,var(--border) 70%, #000 30%);border-radius:50%}
+    .color-input-dot::-moz-color-swatch{border:1px solid color-mix(in srgb,var(--border) 70%, #000 30%);border-radius:50%}
+    .color-field{display:flex;align-items:center;gap:.5rem}
     table{width:100%;border-collapse:separate;border-spacing:0 .55rem}
     th{text-align:left;font-size:.85rem;color:var(--muted);padding:.35rem .75rem}
     td{background:var(--surface-soft);padding:.75rem;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
