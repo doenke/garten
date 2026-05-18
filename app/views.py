@@ -244,6 +244,11 @@ def plant_detail(plant_id):
     is_planted = bool(last_plant_event and PLANTING_STATE_TYPES[last_plant_event.title] in {'planting', 'transplant'})
     location = Location.query.get(plant.location_id)
     garden_map = GardenMap.query.order_by(GardenMap.id.asc()).first()
+    location_plants = Plant.query.filter_by(location_id=plant.location_id).order_by(Plant.name.asc()).all()
+    location_plant_markers = [
+        {'id': item.id, 'name': item.name, 'map_x': item.map_x, 'map_y': item.map_y}
+        for item in location_plants
+    ]
     return render_template(
         'plant.html',
         plant=plant,
@@ -258,6 +263,7 @@ def plant_detail(plant_id):
         month_names=month_names,
         is_planted=is_planted,
         garden_map=garden_map,
+        location_plant_markers=location_plant_markers,
     )
 
 

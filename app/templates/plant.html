@@ -10,6 +10,8 @@
   </nav>
   <h2 style="margin-top:0;">{{ plant.name }}{% if plant.common_name %} ({{ plant.common_name }}){% endif %}</h2>
 
+  <div class="plant-detail-layout">
+    <div class="plant-masterdata">
   <p><strong>Name:</strong> {{ plant.name }}</p>
   {% if plant.common_name %}<p><strong>Bürgerlicher Name:</strong> {{ plant.common_name }}</p>{% endif %}
   {% if plant.source %}<p><strong>Quelle:</strong> {{ plant.source }}</p>{% endif %}
@@ -65,22 +67,25 @@
       <button type="submit">Stammdaten speichern</button>
     </form>
   </details>
-</section>
-{% if garden_map and garden_map.filename and location %}
-<section class="card">
-  <h3 style="margin-top:0;">Standort auf Luftbild</h3>
-  <p>Klick auf das Bild, um den Pflanzenstandort im Polygon zu markieren.</p>
-  <div style="position:relative;display:inline-block;max-width:100%;">
-    <img id="plant-map-image" src="/maps/{{ garden_map.filename }}" style="max-width:100%;border-radius:10px;">
-    <svg id="plant-map-overlay" style="position:absolute;left:0;top:0;width:100%;height:100%;"></svg>
+    </div>
+    {% if garden_map and garden_map.filename and location %}
+    <div class="plant-map-panel">
+      <h3 style="margin-top:0;">Beet auf Luftbild</h3>
+      <p>Klick in das Beet, um den Standort zu setzen. Andere Pflanzen sind anklickbar.</p>
+      <div class="plant-map-wrapper">
+        <img id="plant-map-image" src="/maps/{{ garden_map.filename }}" style="max-width:100%;border-radius:10px;display:block;">
+        <svg id="plant-map-overlay" style="position:absolute;left:0;top:0;width:100%;height:100%;"></svg>
+      </div>
+      <form method="post" action="/plants/{{ plant.id }}/position" class="grid" style="margin-top:.75rem;">
+        <input type="hidden" id="plant-map-x" name="map_x" value="{{ plant.map_x if plant.map_x is not none else '' }}">
+        <input type="hidden" id="plant-map-y" name="map_y" value="{{ plant.map_y if plant.map_y is not none else '' }}">
+        <button>Standort speichern</button>
+      </form>
+    </div>
+    {% endif %}
   </div>
-  <form method="post" action="/plants/{{ plant.id }}/position" class="grid" style="margin-top:.75rem;">
-    <input type="hidden" id="plant-map-x" name="map_x" value="{{ plant.map_x if plant.map_x is not none else '' }}">
-    <input type="hidden" id="plant-map-y" name="map_y" value="{{ plant.map_y if plant.map_y is not none else '' }}">
-    <button>Standort speichern</button>
-  </form>
 </section>
-{% endif %}
+
 
 <div class="card">
   <h3 style="margin-top:0;">Aktionen</h3>
@@ -180,6 +185,16 @@
   </div>
 </div>
 
+
+<style>
+.plant-detail-layout{display:flex;gap:1rem;align-items:flex-start;flex-wrap:wrap}
+.plant-masterdata{flex:1 1 360px;min-width:280px}
+.plant-map-panel{flex:1 1 480px;min-width:320px}
+.plant-map-wrapper{position:relative;width:100%;aspect-ratio:4/3;background:var(--surface-soft);border-radius:10px;overflow:hidden}
+#plant-map-overlay .plant-marker{cursor:pointer}
+@media (max-width:1100px){.plant-map-panel{flex-basis:100%;min-width:0}}
+</style>
+
 <script>
 (() => {
   const mapImage = document.getElementById('plant-map-image');
@@ -188,15 +203,30 @@
   const mapY = document.getElementById('plant-map-y');
   const locationPolygon = {{ (location.polygon_points or '[]') | safe if location else '[]' }};
   const locationColor = "{{ location.color or '#2f6d40' if location else '#2f6d40' }}";
+  const plantsInLocation = {{ location_plant_markers | tojson }};
 
   const renderPlantMap = () => {
     if (!mapImage || !mapOverlay) return;
     mapOverlay.setAttribute('viewBox', `0 0 ${mapImage.naturalWidth} ${mapImage.naturalHeight}`);
-    const poly = locationPolygon.map((point) => `${point.x * mapImage.naturalWidth},${point.y * mapImage.naturalHeight}`).join(' ');
-    const marker = (mapX?.value && mapY?.value)
-      ? `<circle cx="${Number(mapX.value) * mapImage.naturalWidth}" cy="${Number(mapY.value) * mapImage.naturalHeight}" r="7" fill="#d7263d"></circle>`
+    const polygonPoints = locationPolygon.map((point) => `${point.x * mapImage.naturalWidth},${point.y * mapImage.naturalHeight}`).join(' ');
+    const polygonMarkup = locationPolygon.length > 2
+      ? `<polygon points="${polygonPoints}" fill="${locationColor}55" stroke="${locationColor}" stroke-width="2"></polygon>`
       : '';
-    mapOverlay.innerHTML = locationPolygon.length > 2 ? `<polygon points="${poly}" fill="${locationColor}55" stroke="${locationColor}" stroke-width="2"></polygon>${marker}` : marker;
+
+    const markers = plantsInLocation
+      .filter((entry) => entry.map_x !== null && entry.map_y !== null)
+      .map((entry) => {
+        const x = Number(entry.map_x) * mapImage.naturalWidth;
+        const y = Number(entry.map_y) * mapImage.naturalHeight;
+        const isCurrentPlant = Number(entry.id) === Number({{ plant.id }});
+        const radius = isCurrentPlant ? 9 : 6;
+        const color = isCurrentPlant ? '#d7263d' : '#2663eb';
+        const stroke = isCurrentPlant ? '#ffffff' : '#dce7ff';
+        return `<a href="/plants/${entry.id}" aria-label="${entry.name}"><circle class="plant-marker" data-name="${entry.name}" cx="${x}" cy="${y}" r="${radius}" fill="${color}" stroke="${stroke}" stroke-width="2"><title>${entry.name}</title></circle></a>`;
+      })
+      .join('');
+
+    mapOverlay.innerHTML = `${polygonMarkup}${markers}`;
   };
   if (mapImage && mapOverlay && mapX && mapY) {
     mapImage.addEventListener('load', renderPlantMap);
