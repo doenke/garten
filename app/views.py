@@ -272,14 +272,15 @@ def delete_location(location_id):
     if location.name == TRASH_LOCATION_NAME:
         return redirect(url_for('main.index'))
     trash = get_or_create_trash_location(location.user_id)
+    if location.id == trash.id:
+        return redirect(url_for('main.index'))
     plants = Plant.query.filter_by(location_id=location.id).all()
     for plant in plants:
-        PlantPhoto.query.filter_by(plant_id=plant.id).delete()
-        PlantNote.query.filter_by(plant_id=plant.id).delete()
-        PlantEvent.query.filter_by(plant_id=plant.id).delete()
-        db.session.delete(plant)
         plant.location_id = trash.id
-    db.session.delete(location)
+    # Location nur entfernen, wenn keine abhängigen Timeline-Einträge existieren.
+    has_timeline_entries = LocationTimelineEntry.query.filter_by(location_id=location.id).first() is not None
+    if not has_timeline_entries:
+        db.session.delete(location)
     db.session.commit()
     return redirect(url_for('main.index'))
 
