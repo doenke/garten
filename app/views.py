@@ -193,8 +193,6 @@ def location_detail(location_id):
 @main_bp.route('/locations/<int:location_id>/plants/new', methods=['POST'])
 @login_required
 def new_plant(location_id):
-    months = ','.join(request.form.getlist('bloom_months'))
-    planting_date = request.form.get('planting_date') or None
     light_needs = request.form.getlist('light_need')
     if not light_needs:
         light_needs = ['Unbekannt']
@@ -215,8 +213,7 @@ def new_plant(location_id):
     )
     db.session.add(p)
     db.session.flush()
-    event_date = request.form.get('planting_date')
-    event_at = datetime.strptime(event_date, '%Y-%m-%d') if event_date else datetime.utcnow()
+    event_at = datetime.utcnow()
     tpl = SYSTEM_EVENT_TEMPLATES['planting']
     db.session.add(PlantEvent(plant_id=p.id, event_type='plant_event', event_at=event_at, title=tpl['title'], description=tpl['description'], creator_id=current_user().id))
     db.session.commit()
