@@ -122,17 +122,26 @@
     });
   };
 
+  const syncIndexOverlayGeometry = () => {
+    if (!indexMapImage || !indexMapOverlay) return;
+    const width = indexMapImage.clientWidth || indexMapImage.naturalWidth;
+    const height = indexMapImage.clientHeight || indexMapImage.naturalHeight;
+    indexMapOverlay.style.width = `${width}px`;
+    indexMapOverlay.style.height = `${height}px`;
+    indexMapOverlay.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    indexMapOverlay.setAttribute('preserveAspectRatio', 'none');
+  };
+
   const renderBoundaryMask = () => {
     if (!indexMapImage || !indexMapOverlay || !Array.isArray(gardenBoundary) || gardenBoundary.length < 3) return;
     const width = indexMapImage.clientWidth || indexMapImage.naturalWidth;
     const height = indexMapImage.clientHeight || indexMapImage.naturalHeight;
     const expandedBoundary = expandPolygon(gardenBoundary, MAP_BORDER_FADE_PX, width, height);
     const polygon = expandedBoundary.map((p) => `${p.x * width},${p.y * height}`).join(' ');
-    indexMapOverlay.setAttribute('viewBox', `0 0 ${width} ${height}`);
     indexMapOverlay.innerHTML = `
       <defs>
-        <clipPath id="garden-clip"><polygon points="${polygon}"></polygon></clipPath>
-        <mask id="garden-fade-mask">
+        <clipPath id="garden-clip" clipPathUnits="userSpaceOnUse"><polygon points="${polygon}"></polygon></clipPath>
+        <mask id="garden-fade-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="${width}" height="${height}">
           <rect width="${width}" height="${height}" fill="black"></rect>
           <polygon points="${polygon}" fill="white" stroke="white" stroke-width="${MAP_BORDER_FADE_PX * 2}" stroke-linejoin="round"></polygon>
         </mask>
@@ -166,8 +175,15 @@
   closeColorDialog.addEventListener('click', () => locationColorDialog.close());
 
   if (indexMapImage && indexMapOverlay) {
-    indexMapImage.addEventListener('load', renderBoundaryMask);
-    window.addEventListener('resize', renderBoundaryMask);
+    indexMapImage.addEventListener('load', () => {
+      syncIndexOverlayGeometry();
+      renderBoundaryMask();
+    });
+    window.addEventListener('resize', () => {
+      syncIndexOverlayGeometry();
+      renderBoundaryMask();
+    });
+    syncIndexOverlayGeometry();
     renderBoundaryMask();
   }
 </script>
