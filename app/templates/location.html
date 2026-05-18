@@ -17,8 +17,8 @@
 </form>
 {% if garden_map and garden_map.filename %}
 <div style="position:relative;display:inline-block;max-width:100%;margin-bottom:.75rem;">
-  <img id="location-map-image" src="/maps/{{ garden_map.filename }}" style="max-width:100%;border-radius:10px;">
-  <svg id="location-map-overlay" style="position:absolute;left:0;top:0;width:100%;height:100%;"></svg>
+  <img id="location-map-image" src="/maps/{{ garden_map.filename }}" style="display:block;max-width:100%;border-radius:10px;">
+  <svg id="location-map-overlay" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;" preserveAspectRatio="none"></svg>
 </div>
 <form method="post" action="/map/calibration" id="map-calibration-form" class="grid" style="margin-bottom:.75rem;">
   <input type="hidden" name="calibration_points" id="calibration-points-field" value='{{ garden_map.calibration_points or "[]" }}'>
@@ -68,24 +68,29 @@
     locationOverlay.innerHTML = polygonPoints.length > 2 ? `<polygon points="${polygon}" fill="{{ location.color or '#2f6d40' }}66" stroke="{{ location.color or '#2f6d40' }}" stroke-width="2"></polygon>${calibration}` : calibration;
   };
 
+  const handleMapClick = (event) => {
+    if (!locationImage || !locationOverlay || !polygonField) return;
+    const rect = locationImage.getBoundingClientRect();
+    const x = (event.clientX - rect.left) / rect.width;
+    const y = (event.clientY - rect.top) / rect.height;
+    if (event.shiftKey && calibrationField) {
+      if (calibrationPoints.length >= 2) calibrationPoints = [];
+      const gpsValue = calibrationPoints.length === 0 ? (gps1?.value || '') : (gps2?.value || '');
+      const [lat, lon] = gpsValue.split(',').map((v) => Number(v.trim()));
+      calibrationPoints.push({ x, y, lat, lon });
+      calibrationField.value = JSON.stringify(calibrationPoints);
+    } else {
+      polygonPoints.push({ x, y });
+      polygonField.value = JSON.stringify(polygonPoints);
+    }
+    renderOverlay();
+  };
+
   if (locationImage && locationOverlay && polygonField) {
     locationImage.addEventListener('load', renderOverlay);
-    locationOverlay.addEventListener('click', (event) => {
-      const rect = locationOverlay.getBoundingClientRect();
-      const x = (event.clientX - rect.left) / rect.width;
-      const y = (event.clientY - rect.top) / rect.height;
-      if (event.shiftKey && calibrationField) {
-        if (calibrationPoints.length >= 2) calibrationPoints = [];
-        const gpsValue = calibrationPoints.length === 0 ? (gps1?.value || '') : (gps2?.value || '');
-        const [lat, lon] = gpsValue.split(',').map((v) => Number(v.trim()));
-        calibrationPoints.push({ x, y, lat, lon });
-        calibrationField.value = JSON.stringify(calibrationPoints);
-      } else {
-        polygonPoints.push({ x, y });
-        polygonField.value = JSON.stringify(polygonPoints);
-      }
-      renderOverlay();
-    });
+    locationImage.addEventListener('click', handleMapClick);
+    window.addEventListener('resize', renderOverlay);
+    renderOverlay();
   }
 
   const togglePlantFormButton = document.getElementById('toggle-plant-form');
