@@ -112,7 +112,7 @@ def avatars(filename):
 @login_required
 def index():
     user = current_user()
-    locations = Location.query.all()
+    locations = Location.query.order_by(Location.name.asc(), Location.id.asc()).all()
     garden_map = GardenMap.query.order_by(GardenMap.id.asc()).first()
     location_plant_counts = {
         location_id: count
@@ -140,7 +140,7 @@ def index():
 def config():
     user = current_user()
     garden_map = GardenMap.query.order_by(GardenMap.id.asc()).first()
-    locations = Location.query.order_by(Location.name.asc()).all()
+    locations = Location.query.order_by(Location.name.asc(), Location.id.asc()).all()
     return render_template(
         'config.html',
         user=user,
@@ -163,7 +163,7 @@ def location_detail(location_id):
     loc = Location.query.get_or_404(location_id)
     plants = Plant.query.filter_by(location_id=loc.id).all()
     garden_map = GardenMap.query.order_by(GardenMap.id.asc()).first()
-    other_locations = Location.query.filter(Location.id != loc.id).all()
+    other_locations = Location.query.filter(Location.id != loc.id).order_by(Location.name.asc()).all()
     return render_template(
         'location.html',
         location=loc,
@@ -252,7 +252,7 @@ def plant_detail(plant_id):
         photos=photos,
         notes=notes,
         user=current_user(),
-        locations=Location.query.order_by(Location.name.asc()).all(),
+        locations=Location.query.order_by(Location.name.asc(), Location.id.asc()).all(),
         creators={u.id: u for u in User.query.all()},
         today_date=datetime.utcnow().date().isoformat(),
         month_names=month_names,
