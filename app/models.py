@@ -79,3 +79,12 @@ class PlantEvent(db.Model):
     attachment_filename = db.Column(db.String(255))
     attachment_kind = db.Column(db.String(16))
     creator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+
+class LocationTimelineEntry(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    location_id = db.Column(db.Integer, db.ForeignKey('location.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    comment = db.Column(db.Text, nullable=False)
+    photo_filename = db.Column(db.String(255), nullable=False)
+    creator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)

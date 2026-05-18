@@ -201,6 +201,18 @@ def create_app():
                 boundary_points TEXT
             )
         """))
+        db.session.execute(text("""
+            CREATE TABLE IF NOT EXISTS location_timeline_entry (
+                id INTEGER PRIMARY KEY,
+                location_id INTEGER NOT NULL,
+                created_at DATETIME NOT NULL,
+                comment TEXT NOT NULL,
+                photo_filename VARCHAR(255) NOT NULL,
+                creator_id INTEGER NOT NULL,
+                FOREIGN KEY(location_id) REFERENCES location(id),
+                FOREIGN KEY(creator_id) REFERENCES user(id)
+            )
+        """))
         _ensure_column('garden_map', 'boundary_points', 'boundary_points TEXT')
         _ensure_column('garden_map', 'coordinates_version', 'coordinates_version INTEGER DEFAULT 1')
         _drop_column_if_exists('garden_map', 'user_id')
