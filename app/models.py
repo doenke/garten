@@ -45,7 +45,6 @@ class Plant(db.Model):
 
 class GardenMap(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
     filename = db.Column(db.String(255))
     calibration_points = db.Column(db.Text)
     boundary_points = db.Column(db.Text)

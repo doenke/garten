@@ -59,11 +59,11 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED
 
 
-def get_or_create_garden_map(owner_user_id):
+def get_or_create_garden_map():
     garden_map = GardenMap.query.order_by(GardenMap.id.asc()).first()
     if garden_map:
         return garden_map
-    garden_map = GardenMap(user_id=owner_user_id, calibration_points='[]', boundary_points='[]')
+    garden_map = GardenMap(calibration_points='[]', boundary_points='[]')
     db.session.add(garden_map)
     db.session.flush()
     return garden_map
@@ -258,7 +258,7 @@ def upload_map():
         fn = secure_filename(file.filename)
         unique = f"{datetime.utcnow().timestamp()}_{fn}"
         file.save(os.path.join(current_app.config['MAP_FOLDER'], unique))
-        garden_map = get_or_create_garden_map(current_user().id)
+        garden_map = get_or_create_garden_map()
         garden_map.filename = unique
         db.session.commit()
     return redirect(request.referrer or url_for('main.index'))
@@ -268,7 +268,7 @@ def upload_map():
 @login_required
 def save_calibration():
     payload = request.form.get('calibration_points', '[]')
-    garden_map = get_or_create_garden_map(current_user().id)
+    garden_map = get_or_create_garden_map()
     garden_map.calibration_points = payload
     db.session.commit()
     return redirect(request.referrer or url_for('main.index'))
@@ -278,7 +278,7 @@ def save_calibration():
 @login_required
 def save_boundary():
     payload = request.form.get('boundary_points', '[]')
-    garden_map = get_or_create_garden_map(current_user().id)
+    garden_map = get_or_create_garden_map()
     garden_map.boundary_points = payload
     db.session.commit()
     return redirect(request.referrer or url_for('main.config'))
