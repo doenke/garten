@@ -49,6 +49,7 @@
   const polygonField = document.getElementById('polygon-points-field');
   let polygonPoints = polygonField ? JSON.parse(polygonField.value || '[]') : [];
   const otherLocationPolygons = {{ other_location_polygons|tojson }};
+  const plantsById = {{ location_plant_markers | tojson }};
   const calibrationPoints = {{ ((garden_map.calibration_points or '[]') if garden_map else '[]') | safe }};
   const gardenBoundary = {{ ((garden_map.boundary_points or '[]') if garden_map else '[]') | safe }};
   const MAP_BORDER_FADE_PX = 50;
@@ -117,7 +118,18 @@
     const pointMarkup = polygonEditEnabled
       ? polygonPoints.map((point, index) => { const p = toPixel(Number(point.x), Number(point.y)); if (!p) return ''; return `<circle cx="${p.x * overlayWidth}" cy="${p.y * overlayHeight}" r="6" fill="#ffffff" stroke="{{ location.color or '#2f6d40' }}" stroke-width="2" data-point-index="${index}" style="cursor:move;pointer-events:all;"></circle>`; }).join('')
       : '';
-    locationOverlay.innerHTML = `${otherPolygonsMarkup}${polygonMarkup}${pointMarkup}`;
+    const markerMarkup = !polygonEditEnabled
+      ? plantsById
+        .filter((plant) => plant.map_x !== null && plant.map_y !== null)
+        .map((plant) => {
+          const pixel = toPixel(Number(plant.map_x), Number(plant.map_y));
+          if (!pixel) return '';
+          return `<a href="/plants/${plant.id}" aria-label="${plant.name}"><circle class="plant-marker" cx="${pixel.x * overlayWidth}" cy="${pixel.y * overlayHeight}" r="6" fill="#2663eb" stroke="#dce7ff" stroke-width="2" style="pointer-events:all;cursor:pointer;"><title>${plant.name}</title></circle></a>`;
+        })
+        .filter(Boolean)
+        .join('')
+      : '';
+    locationOverlay.innerHTML = `${otherPolygonsMarkup}${polygonMarkup}${pointMarkup}${markerMarkup}`;
     renderBoundaryMask(overlayWidth, overlayHeight);
   };
 

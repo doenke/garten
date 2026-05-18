@@ -177,12 +177,17 @@ def new_location():
 def location_detail(location_id):
     loc = Location.query.get_or_404(location_id)
     plants = Plant.query.filter_by(location_id=loc.id).all()
+    location_plant_markers = [
+        {'id': plant.id, 'name': plant.name, 'map_x': plant.map_x, 'map_y': plant.map_y}
+        for plant in plants
+    ]
     garden_map = GardenMap.query.order_by(GardenMap.id.asc()).first()
     other_locations = Location.query.filter(Location.id != loc.id).order_by(*location_sort_criteria()).all()
     return render_template(
         'location.html',
         location=loc,
         plants=plants,
+        location_plant_markers=location_plant_markers,
         user=current_user(),
         creators={u.id: u for u in User.query.all()},
         garden_map=garden_map,
