@@ -227,6 +227,8 @@
       const marker = plantsInLocation.find((entry) => Number(entry.id) === currentPlantId);
       if (marker) { marker.map_x = x; marker.map_y = y; }
     } catch (error) {}
+  };
+
   const MAP_BORDER_FADE_PX = 50;
   const CLIPPED_MAP_TARGET_WIDTH = 920;
   const CLIPPED_MAP_MIN_HEIGHT = 360;
