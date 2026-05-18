@@ -78,6 +78,7 @@ class PlantEvent(db.Model):
     description = db.Column(db.Text)
     attachment_filename = db.Column(db.String(255))
     attachment_kind = db.Column(db.String(16))
+    is_title_entry = db.Column(db.Boolean, nullable=False, default=False)
     creator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
 
