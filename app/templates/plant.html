@@ -140,18 +140,22 @@
     Pflanze ist nicht eingepflanzt
   </div>
   {% endif %}
+</div>
 
+<div class="card">
   <section class="timeline-panel">
     <h3 class="timeline-panel-title">Timeline</h3>
     <div class="timeline-toolbar">
       <h4 class="timeline-toolbar-title">Neues Event</h4>
       <form method="post" action="/plants/{{ plant.id }}/events" enctype="multipart/form-data" class="grid timeline-form">
-        <input type="date" name="event_at" value="{{ today_date }}">
-        <input name="title" placeholder="Titel">
-        <textarea name="description" placeholder="Beschreibung"></textarea>
-        <input id="event-attachment" type="file" name="attachment" accept="image/*,application/pdf" capture="environment">
-        <small style="color:var(--muted);">Du kannst ein Bild/ PDF auswählen oder mit der Kamera aufnehmen.</small>
-        <button>Speichern</button>
+        <div class="timeline-form-row">
+          <input name="title" placeholder="Titel">
+          <input id="event-attachment" type="file" name="attachment" accept="image/*,application/pdf" capture="environment">
+        </div>
+        <div class="timeline-form-row">
+          <textarea name="description" placeholder="Beschreibung"></textarea>
+          <button>Speichern</button>
+        </div>
       </form>
     </div>
 
@@ -222,6 +226,11 @@
 .timeline-toolbar{display:flex;flex-direction:column;gap:.6rem}
 .timeline-toolbar-title{margin:0;font-size:1rem}
 .timeline-form{margin:0}
+.timeline-form-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.6rem;align-items:start}
+.timeline-form-row textarea{min-height:5.2rem}
+@media (max-width: 640px){
+  .timeline-form-row{grid-template-columns:1fr}
+}
 @media (max-width: 900px){
   .plant-top-row{grid-template-columns:1fr}
   .plant-title-entry-image-panel{grid-column:1;grid-row:auto}
