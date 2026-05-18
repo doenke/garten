@@ -496,7 +496,7 @@ def update_masterdata(plant_id):
             plant_id=plant.id,
             event_type='data_event',
             event_at=datetime.utcnow(),
-            title='Stammdaten geändert',
+            title='Pflanzendaten geändert',
             description='\n'.join(changes),
             creator_id=current_user().id
         ))
