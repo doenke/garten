@@ -185,6 +185,24 @@ def new_location():
 def location_detail(location_id):
     loc = Location.query.get_or_404(location_id)
     plants = Plant.query.filter_by(location_id=loc.id).all()
+    plant_ids = [plant.id for plant in plants]
+    plant_title_images_by_id = {}
+    if plant_ids:
+        title_events = (
+            PlantEvent.query
+            .filter(
+                PlantEvent.plant_id.in_(plant_ids),
+                PlantEvent.is_title_entry.is_(True),
+                PlantEvent.attachment_kind == 'image',
+                PlantEvent.attachment_filename.isnot(None),
+            )
+            .all()
+        )
+        plant_title_images_by_id = {
+            event.plant_id: event.attachment_filename
+            for event in title_events
+            if event.attachment_filename
+        }
     timeline_entries = (
         LocationTimelineEntry.query
         .filter_by(location_id=loc.id)
@@ -202,6 +220,7 @@ def location_detail(location_id):
         'location.html',
         location=loc,
         plants=plants,
+        plant_title_images_by_id=plant_title_images_by_id,
         timeline_entries=timeline_entries,
         title_entry=title_entry,
         location_plant_markers=location_plant_markers,
