@@ -66,7 +66,7 @@ def _validate_oidc_config():
 
 
 def create_app():
-    app = Flask(__name__, static_folder='static', template_folder='templates')
+    app = Flask('GardenGlow', static_folder='static', template_folder='templates')
 
     secret_key = os.getenv('SECRET_KEY')
     _validate_secret_key(secret_key)
