@@ -4,7 +4,7 @@ from functools import wraps
 from datetime import datetime
 from flask import Blueprint, current_app, render_template, request, redirect, url_for, session, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
-from .models import db, User, Location, Plant, PlantPhoto, PlantNote, PlantEvent, GardenMap
+from .models import db, User, Location, Plant, PlantPhoto, PlantNote, PlantEvent, GardenMap, LocationTimelineEntry
 
 main_bp = Blueprint('main', __name__)
 ALLOWED = {'png', 'jpg', 'jpeg', 'webp', 'gif', 'pdf'}
@@ -177,6 +177,12 @@ def new_location():
 def location_detail(location_id):
     loc = Location.query.get_or_404(location_id)
     plants = Plant.query.filter_by(location_id=loc.id).all()
+    timeline_entries = (
+        LocationTimelineEntry.query
+        .filter_by(location_id=loc.id)
+        .order_by(LocationTimelineEntry.created_at.desc())
+        .all()
+    )
     location_plant_markers = [
         {'id': plant.id, 'name': plant.name, 'map_x': plant.map_x, 'map_y': plant.map_y}
         for plant in plants
@@ -187,6 +193,7 @@ def location_detail(location_id):
         'location.html',
         location=loc,
         plants=plants,
+        timeline_entries=timeline_entries,
         location_plant_markers=location_plant_markers,
         user=current_user(),
         creators={u.id: u for u in User.query.all()},
@@ -201,6 +208,29 @@ def location_detail(location_id):
             for other_loc in other_locations
         ],
     )
+
+
+@main_bp.route('/locations/<int:location_id>/timeline/new', methods=['POST'])
+@login_required
+def new_location_timeline_entry(location_id):
+    location = Location.query.get_or_404(location_id)
+    comment = (request.form.get('comment') or '').strip()
+    photo = request.files.get('photo')
+
+    if not comment or not photo or not photo.filename or not allowed_file(photo.filename):
+        return redirect(url_for('main.location_detail', location_id=location.id))
+
+    filename = secure_filename(photo.filename)
+    unique = f"{datetime.utcnow().timestamp()}_{filename}"
+    photo.save(os.path.join(current_app.config['UPLOAD_FOLDER'], unique))
+    db.session.add(LocationTimelineEntry(
+        location_id=location.id,
+        comment=comment,
+        photo_filename=unique,
+        creator_id=current_user().id,
+    ))
+    db.session.commit()
+    return redirect(url_for('main.location_detail', location_id=location.id))
 
 @main_bp.route('/locations/<int:location_id>/plants/new', methods=['POST'])
 @login_required

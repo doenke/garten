@@ -59,6 +59,22 @@
 <textarea name="info" placeholder="Weitere Info"></textarea>
 <button>Pflanze anlegen</button>
 </form>
+
+<h3>Timeline</h3>
+<form method="post" action="/locations/{{ location.id }}/timeline/new" enctype="multipart/form-data" class="grid" style="margin-bottom:1rem;">
+  <textarea name="comment" placeholder="Kommentar" required></textarea>
+  <input type="file" name="photo" accept="image/*" required>
+  <button>Kommentar mit Foto hinzufügen</button>
+</form>
+{% for entry in timeline_entries %}
+<article class="timeline-entry">
+  <small>{{ entry.created_at.strftime('%d.%m.%Y %H:%M') }}</small>
+  <p style="margin:.4rem 0 .6rem;">{{ entry.comment }}</p>
+  <img src="/uploads/{{ entry.photo_filename }}" alt="Timeline-Foto" style="max-width:100%;border-radius:10px;">
+</article>
+{% else %}
+<p>Noch keine Timeline-Einträge vorhanden.</p>
+{% endfor %}
 <script>
   const locationImage = document.getElementById('location-map-image');
   const locationOverlay = document.getElementById('location-map-overlay');
