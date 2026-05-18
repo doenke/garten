@@ -102,20 +102,20 @@ def create_app():
 def _run_schema_upgrades():
     """Apply lightweight, idempotent schema upgrades for existing databases."""
     inspector = inspect(db.engine)
-    table_name = 'location_timeline_entry'
-    column_name = 'is_title_entry'
-
-    if table_name not in inspector.get_table_names():
-        return
-
-    existing_columns = {column['name'] for column in inspector.get_columns(table_name)}
-    if column_name in existing_columns:
-        return
-
-    db.session.execute(
-        db.text(
-            'ALTER TABLE location_timeline_entry '
-            'ADD COLUMN is_title_entry BOOLEAN NOT NULL DEFAULT 0'
+    upgrades = [
+        ('location_timeline_entry', 'is_title_entry'),
+        ('plant_event', 'is_title_entry'),
+    ]
+    for table_name, column_name in upgrades:
+        if table_name not in inspector.get_table_names():
+            continue
+        existing_columns = {column['name'] for column in inspector.get_columns(table_name)}
+        if column_name in existing_columns:
+            continue
+        db.session.execute(
+            db.text(
+                f'ALTER TABLE {table_name} '
+                'ADD COLUMN is_title_entry BOOLEAN NOT NULL DEFAULT 0'
+            )
         )
-    )
     db.session.commit()

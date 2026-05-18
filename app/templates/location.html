@@ -80,9 +80,14 @@
   <small>{{ entry.created_at.strftime('%d.%m.%Y %H:%M') }}{% if entry.is_title_entry %} · Titelbeitrag{% endif %}</small>
   <p style="margin:.4rem 0 .6rem;">{{ entry.comment }}</p>
   <img src="/uploads/{{ entry.photo_filename }}" alt="Timeline-Foto" style="max-width:100%;border-radius:10px;">
-  <form method="post" action="/locations/{{ location.id }}/timeline/{{ entry.id }}/set-title" style="margin-top:.5rem;">
-    <button type="submit">{% if entry.is_title_entry %}Als Titelbeitrag gesetzt{% else %}Als Titelbeitrag markieren{% endif %}</button>
-  </form>
+  <div style="position:absolute;left:.6rem;bottom:.5rem;display:flex;gap:.35rem;">
+    <form method="post" action="/locations/{{ location.id }}/timeline/{{ entry.id }}/delete" onsubmit="return confirm('Timeline-Eintrag wirklich löschen?');" style="margin:0;">
+      <button type="submit" aria-label="Timeline-Eintrag löschen" title="Timeline-Eintrag löschen" style="border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text); cursor:pointer; padding:.2rem .45rem; font-size:1rem; line-height:1;">🗑️</button>
+    </form>
+    <form method="post" action="/locations/{{ location.id }}/timeline/{{ entry.id }}/set-title" style="margin:0;">
+      <button type="submit" aria-label="Als Titelbeitrag markieren" title="Als Titelbeitrag markieren" style="border:1px solid var(--border); border-radius:6px; background:var(--surface); color:{% if entry.is_title_entry %}#d49b00{% else %}var(--text){% endif %}; cursor:pointer; padding:.2rem .45rem; font-size:1rem; line-height:1;">★</button>
+    </form>
+  </div>
 </article>
 {% else %}
 <p>Noch keine Timeline-Einträge vorhanden.</p>

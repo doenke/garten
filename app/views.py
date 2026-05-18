@@ -247,6 +247,16 @@ def set_location_timeline_title(location_id, entry_id):
     db.session.commit()
     return redirect(url_for('main.location_detail', location_id=location.id))
 
+
+@main_bp.route('/locations/<int:location_id>/timeline/<int:entry_id>/delete', methods=['POST'])
+@login_required
+def delete_location_timeline_entry(location_id, entry_id):
+    location = Location.query.get_or_404(location_id)
+    entry = LocationTimelineEntry.query.filter_by(id=entry_id, location_id=location.id).first_or_404()
+    db.session.delete(entry)
+    db.session.commit()
+    return redirect(url_for('main.location_detail', location_id=location.id))
+
 @main_bp.route('/locations/<int:location_id>/plants/new', methods=['POST'])
 @login_required
 def new_plant(location_id):
@@ -530,6 +540,17 @@ def add_event(plant_id):
         db.session.add(PlantEvent(plant_id=plant_id, event_type=event_type, event_at=event_at, title=title or 'Kommentar', description=description or None, attachment_filename=attachment_filename, attachment_kind=attachment_kind, creator_id=current_user().id))
         db.session.commit()
     return redirect(url_for('main.plant_detail', plant_id=plant_id))
+
+
+@main_bp.route('/plants/<int:plant_id>/events/<int:event_id>/set-title', methods=['POST'])
+@login_required
+def set_plant_event_title(plant_id, event_id):
+    plant = Plant.query.get_or_404(plant_id)
+    event = PlantEvent.query.filter_by(id=event_id, plant_id=plant.id).first_or_404()
+    PlantEvent.query.filter_by(plant_id=plant.id).update({'is_title_entry': False})
+    event.is_title_entry = True
+    db.session.commit()
+    return redirect(url_for('main.plant_detail', plant_id=plant.id))
 
 
 @main_bp.route('/plants/<int:plant_id>/events/<int:event_id>/delete', methods=['POST'])
