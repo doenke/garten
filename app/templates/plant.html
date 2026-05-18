@@ -160,9 +160,11 @@
     {% if c and c.avatar_filename %}<img class="avatar-sm" src="/avatars/{{ c.avatar_filename }}" title="{{ c.name or c.email or 'Unbekannt' }}" alt="{{ c.name or c.email or 'Unbekannt' }}">{% elif c and c.avatar_url %}<img class="avatar-sm" src="{{ c.avatar_url }}" title="{{ c.name or c.email or 'Unbekannt' }}" alt="{{ c.name or c.email or 'Unbekannt' }}">{% else %}<span title="{{ c.name if c else 'Unbekannt' }}">👤</span>{% endif %}
     <small>{{ ev.event_at.strftime('%d.%m.%Y') }}</small>
   </div>
+  {% if ev.title %}
   <div>
     <strong>{{ ev.title }}</strong>
   </div>
+  {% endif %}
   {% if ev.description %}<p style="white-space:pre-line;">{{ ev.description }}</p>{% endif %}
   {% if ev.attachment_filename and ev.attachment_kind == 'image' %}
     <button type="button" class="timeline-image-btn" data-image-src="/uploads/{{ ev.attachment_filename }}" aria-label="Bild groß anzeigen" style="border:none;background:none;padding:0;cursor:pointer;">
