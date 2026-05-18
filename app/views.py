@@ -183,6 +183,7 @@ def location_detail(location_id):
         .order_by(LocationTimelineEntry.created_at.desc())
         .all()
     )
+    title_entry = next((entry for entry in timeline_entries if entry.is_title_entry), None)
     location_plant_markers = [
         {'id': plant.id, 'name': plant.name, 'map_x': plant.map_x, 'map_y': plant.map_y}
         for plant in plants
@@ -194,6 +195,7 @@ def location_detail(location_id):
         location=loc,
         plants=plants,
         timeline_entries=timeline_entries,
+        title_entry=title_entry,
         location_plant_markers=location_plant_markers,
         user=current_user(),
         creators={u.id: u for u in User.query.all()},
@@ -229,6 +231,19 @@ def new_location_timeline_entry(location_id):
         photo_filename=unique,
         creator_id=current_user().id,
     ))
+    db.session.commit()
+    return redirect(url_for('main.location_detail', location_id=location.id))
+
+
+
+@main_bp.route('/locations/<int:location_id>/timeline/<int:entry_id>/set-title', methods=['POST'])
+@login_required
+def set_location_timeline_title(location_id, entry_id):
+    location = Location.query.get_or_404(location_id)
+    entry = LocationTimelineEntry.query.filter_by(id=entry_id, location_id=location.id).first_or_404()
+
+    LocationTimelineEntry.query.filter_by(location_id=location.id).update({'is_title_entry': False})
+    entry.is_title_entry = True
     db.session.commit()
     return redirect(url_for('main.location_detail', location_id=location.id))
 

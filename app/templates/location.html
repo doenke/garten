@@ -26,6 +26,15 @@
     <button type="button" id="clear-polygon-points">Polygonpunkte löschen</button>
   </div>
 </form>
+
+{% if title_entry %}
+<article class="timeline-entry" style="margin-bottom:1rem;border:2px solid var(--primary, #2f6d40);">
+  <small>Titelbeitrag</small>
+  <p style="margin:.4rem 0 .6rem;">{{ title_entry.comment }}</p>
+  <img src="/uploads/{{ title_entry.photo_filename }}" alt="Titelbeitrag" style="max-width:100%;border-radius:10px;">
+</article>
+{% endif %}
+
 <h3>Pflanzen</h3>
 <table>
   <thead>
@@ -68,9 +77,12 @@
 </form>
 {% for entry in timeline_entries %}
 <article class="timeline-entry">
-  <small>{{ entry.created_at.strftime('%d.%m.%Y %H:%M') }}</small>
+  <small>{{ entry.created_at.strftime('%d.%m.%Y %H:%M') }}{% if entry.is_title_entry %} · Titelbeitrag{% endif %}</small>
   <p style="margin:.4rem 0 .6rem;">{{ entry.comment }}</p>
   <img src="/uploads/{{ entry.photo_filename }}" alt="Timeline-Foto" style="max-width:100%;border-radius:10px;">
+  <form method="post" action="/locations/{{ location.id }}/timeline/{{ entry.id }}/set-title" style="margin-top:.5rem;">
+    <button type="submit">{% if entry.is_title_entry %}Als Titelbeitrag gesetzt{% else %}Als Titelbeitrag markieren{% endif %}</button>
+  </form>
 </article>
 {% else %}
 <p>Noch keine Timeline-Einträge vorhanden.</p>
