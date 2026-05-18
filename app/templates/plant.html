@@ -195,7 +195,7 @@
 .plant-detail-layout{display:block}
 .plant-masterdata{min-width:280px}
 .plant-map-panel{margin-top:1rem}
-.plant-map-wrapper{position:relative;width:100%;max-width:920px;aspect-ratio:8/9;background:var(--surface-soft);border-radius:10px;overflow:hidden}
+.plant-map-wrapper{position:relative;width:100%;max-width:920px;aspect-ratio:16/9;background:var(--surface-soft);border-radius:10px;overflow:hidden}
 #plant-map-image{position:absolute;left:0;top:0;display:block;transform-origin:0 0}
 #plant-map-overlay{position:absolute;left:0;top:0;transform-origin:0 0}
 #plant-map-overlay .plant-marker{cursor:pointer}
@@ -284,11 +284,11 @@
         const x = px.x * mapImage.naturalWidth;
         const y = px.y * mapImage.naturalHeight;
         const isCurrentPlant = Number(entry.id) === currentPlantId;
-        const radius = isCurrentPlant ? 9 : 6;
+        const radius = isCurrentPlant ? 4.5 : 3;
         const color = isCurrentPlant ? '#d7263d' : '#2663eb';
         const stroke = isCurrentPlant ? '#ffffff' : '#dce7ff';
-        if (isCurrentPlant) { return `<circle class="plant-marker plant-marker-current" data-name="${entry.name}" cx="${x}" cy="${y}" r="${radius}" fill="${color}" stroke="${stroke}" stroke-width="2"><title>${entry.name}</title></circle>`; }
-        return `<a href="/plants/${entry.id}" aria-label="${entry.name}"><circle class="plant-marker" data-name="${entry.name}" cx="${x}" cy="${y}" r="${radius}" fill="${color}" stroke="${stroke}" stroke-width="2"><title>${entry.name}</title></circle></a>`;
+        if (isCurrentPlant) { return `<circle class="plant-marker plant-marker-current" data-name="${entry.name}" cx="${x}" cy="${y}" r="${radius}" fill="${color}" stroke="${stroke}" stroke-width="1"><title>${entry.name}</title></circle>`; }
+        return `<a href="/plants/${entry.id}" aria-label="${entry.name}"><circle class="plant-marker" data-name="${entry.name}" cx="${x}" cy="${y}" r="${radius}" fill="${color}" stroke="${stroke}" stroke-width="1"><title>${entry.name}</title></circle></a>`;
       })
       .filter(Boolean).join('');
 
