@@ -88,7 +88,7 @@
 
 <script>
   const gardenBoundary = {{ ((garden_map.boundary_points or '[]') if garden_map else '[]') | safe }};
-  const MAP_BORDER_FADE_PX = 18;
+  const MAP_BORDER_FADE_PX = 50;
   const MAP_BORDER_FADE_STEPS = 14;
   const toggleButton = document.getElementById('toggle-new-location');
   const newLocationForm = document.getElementById('new-location-form');
