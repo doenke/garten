@@ -26,7 +26,23 @@
     <button type="button" id="clear-polygon-points">Polygonpunkte löschen</button>
   </div>
 </form>
-<h3>Pflanzen</h3><ul>{% for p in plants %}<li><a href="/plants/{{p.id}}">{{p.name}}</a></li>{% endfor %}</ul>
+<h3>Pflanzen</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Bürgerlicher Name</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in plants %}
+    <tr>
+      <td><a href="/plants/{{ p.id }}">{{ p.name }}</a></td>
+      <td>{{ p.common_name or '-' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
 
 <button type="button" id="toggle-plant-form" style="margin-bottom:1rem;">Pflanze anlegen</button>
 
