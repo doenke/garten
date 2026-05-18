@@ -109,14 +109,15 @@
 
 <div class="card">
   <h3 style="margin-top:0;">Aktionen</h3>
-  <form method="post" action="/plants/{{ plant.id }}/move" class="grid" style="margin-bottom:.75rem;">
-    <label for="location_id">In andere Location verschieben:</label>
-    <select id="location_id" name="location_id" required>
-      {% for location in locations %}
-      <option value="{{ location.id }}" {% if location.id == plant.location_id %}selected{% endif %}>{{ location.name }}</option>
-      {% endfor %}
-    </select>
-    <button type="submit">Verschieben</button>
+  <form method="post" action="/plants/{{ plant.id }}/move" style="margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+    <div style="display:inline-flex;align-items:center;gap:.5rem;flex-wrap:nowrap;">
+      <select id="location_id" name="location_id" required aria-label="Location auswählen">
+        {% for location in locations %}
+        <option value="{{ location.id }}" {% if location.id == plant.location_id %}selected{% endif %}>{{ location.name }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit">Verschieben</button>
+    </div>
   </form>
 
 
