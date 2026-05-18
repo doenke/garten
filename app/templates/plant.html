@@ -253,7 +253,6 @@
 
   const MAP_BORDER_FADE_PX = 50;
   const CLIPPED_MAP_TARGET_WIDTH = 920;
-  const CLIPPED_MAP_MIN_HEIGHT = 360;
 
   const expandPolygon = (points, amount, width, height) => {
     if (!Array.isArray(points) || points.length < 3) return points;
@@ -303,12 +302,9 @@
       const cropHeight = Math.max(1, maxY - minY);
       mapOverlay.setAttribute('viewBox', `${minX} ${minY} ${cropWidth} ${cropHeight}`);
       const wrapperWidth = Math.min(CLIPPED_MAP_TARGET_WIDTH, imageWidth, cropWidth + (MAP_BORDER_FADE_PX * 2));
-      const zoomFactor = wrapperWidth / cropWidth;
-      const wrapperHeight = Math.max(CLIPPED_MAP_MIN_HEIGHT, Math.round(cropHeight * zoomFactor));
       const wrapper = mapImage.closest('.plant-map-wrapper');
       if (wrapper) {
         wrapper.style.maxWidth = `${wrapperWidth}px`;
-        wrapper.style.aspectRatio = `${wrapperWidth} / ${wrapperHeight}`;
       }
       mapImage.style.clipPath = 'url(#plant-location-clip)';
       mapImage.style.webkitClipPath = 'url(#plant-location-clip)';
