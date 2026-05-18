@@ -16,21 +16,29 @@
   </div>
 
   <h3>Kalibrierung</h3>
+  <p style="margin-top:0;">
+    Dezimaltrennzeichen: Du kannst Koordinaten mit <strong>Komma</strong> oder <strong>Punkt</strong> eingeben (z. B. <code>51,234567</code>).
+  </p>
+  <ol style="margin-top:0.25rem; margin-bottom:1rem;">
+    <li>Lade auf <a href="https://www.geoportal.nrw/" target="_blank" rel="noopener noreferrer">geoportal.nrw</a> (oder einer anderen Quelle) ein Luftbild herunter und lade es oben hoch.</li>
+    <li>Markiere im Luftbild zwei gut erkennbare Punkte, die möglichst weit auseinanderliegen (in X und Y).</li>
+    <li>Miss die exakten Koordinaten der beiden Punkte im Geoportal aus und trage sie hier ein, z. B. <code>Lat 51,234567</code> und <code>Lon 7,123456</code>.</li>
+  </ol>
   <form method="post" action="/map/calibration" id="calibration-form" class="grid" style="margin-bottom:1rem;">
     <input type="hidden" name="calibration_points" id="calibration-points-input">
     <div><strong>Bildpunkte setzen:</strong> Nacheinander Punkt 1 und Punkt 2 im Bild anklicken.</div>
     <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:0.5rem;">
       <label>Punkt 1 – Koordinate X
-        <input type="text" id="p1-coord-x" placeholder="z. B. 52.520008">
+        <input type="text" id="p1-coord-x" placeholder="z. B. 52,520008">
       </label>
       <label>Punkt 1 – Koordinate Y
-        <input type="text" id="p1-coord-y" placeholder="z. B. 13.404954">
+        <input type="text" id="p1-coord-y" placeholder="z. B. 13,404954">
       </label>
       <label>Punkt 2 – Koordinate X
-        <input type="text" id="p2-coord-x" placeholder="z. B. 52.520500">
+        <input type="text" id="p2-coord-x" placeholder="z. B. 52,520500">
       </label>
       <label>Punkt 2 – Koordinate Y
-        <input type="text" id="p2-coord-y" placeholder="z. B. 13.405600">
+        <input type="text" id="p2-coord-y" placeholder="z. B. 13,405600">
       </label>
     </div>
     <button type="submit">Kalibrierung speichern</button>
@@ -58,8 +66,11 @@
   let nextPointIndex = activeCalibration.length >= 2 ? 0 : activeCalibration.length;
 
   const toNumberOrNull = (value) => {
-    if (value === '') return null;
-    const number = Number(value);
+    const trimmed = (value || '').trim();
+    if (trimmed === '') return null;
+    const normalized = trimmed.replace(',', '.');
+    if (!/^[-+]?(\d+([.]\d*)?|[.]\d+)$/.test(normalized)) return null;
+    const number = Number(normalized);
     return Number.isFinite(number) ? number : null;
   };
 
@@ -163,7 +174,7 @@
         ...(activeCalibration[pointIdx] || {}),
         [key]: toNumberOrNull(event.target.value),
       };
-      syncCalibrationInputs();
+      if (calibrationInput) calibrationInput.value = JSON.stringify(activeCalibration);
     });
   });
 
