@@ -7,7 +7,6 @@
   <span aria-current="page">{{ location.name }}</span>
 </nav>
 <h2>{{ location.name }}</h2>
-<h3>Polygon</h3>
 {% if garden_map and garden_map.filename %}
 <div style="position:relative;display:inline-block;max-width:100%;margin-bottom:.75rem;">
   <img id="location-map-image" src="/maps/{{ garden_map.filename }}" style="display:block;max-width:100%;border-radius:10px;">
@@ -16,10 +15,14 @@
 {% else %}
 <p>Kein Luftbild vorhanden. Bitte zuerst in der Konfiguration hochladen.</p>
 {% endif %}
-<form method="post" action="/locations/{{ location.id }}/map" class="grid" style="margin-bottom:1rem;">
+<button type="button" id="toggle-polygon-edit" style="margin-bottom:.5rem;">Polygon bearbeiten</button>
+<form method="post" action="/locations/{{ location.id }}/map" id="polygon-form" class="grid" style="display:none;margin-bottom:1rem;">
   <input type="hidden" name="polygon_points" id="polygon-points-field" value='{{ location.polygon_points or "[]" }}'>
   <label>Farbe <input type="color" name="color" value="{{ location.color or '#2f6d40' }}"></label>
-  <button>Polygon speichern</button>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+    <button type="submit">Polygon speichern</button>
+    <button type="button" id="clear-polygon-points">Polygonpunkte löschen</button>
+  </div>
 </form>
 <button type="button" id="toggle-plant-form" style="margin-bottom:1rem;">Pflanze anlegen</button>
 <form method="post" action="/locations/{{location.id}}/plants/new" id="plant-form" class="grid" style="display:none;">
@@ -60,8 +63,10 @@
     locationOverlay.innerHTML = polygonPoints.length > 2 ? `<polygon points="${polygon}" fill="{{ location.color or '#2f6d40' }}66" stroke="{{ location.color or '#2f6d40' }}" stroke-width="2"></polygon>` : '';
   };
 
+  let polygonEditEnabled = false;
+
   const handleMapClick = (event) => {
-    if (!locationImage || !locationOverlay || !polygonField) return;
+    if (!polygonEditEnabled || !locationImage || !locationOverlay || !polygonField) return;
     const rect = locationImage.getBoundingClientRect();
     const x = (event.clientX - rect.left) / rect.width;
     const y = (event.clientY - rect.top) / rect.height;
@@ -82,6 +87,27 @@
     });
     syncOverlayGeometry();
     renderOverlay();
+  }
+
+
+  const togglePolygonEditButton = document.getElementById('toggle-polygon-edit');
+  const polygonForm = document.getElementById('polygon-form');
+  const clearPolygonPointsButton = document.getElementById('clear-polygon-points');
+
+  if (togglePolygonEditButton && polygonForm) {
+    togglePolygonEditButton.addEventListener('click', () => {
+      polygonEditEnabled = !polygonEditEnabled;
+      polygonForm.style.display = polygonEditEnabled ? 'grid' : 'none';
+      togglePolygonEditButton.textContent = polygonEditEnabled ? 'Polygon bearbeiten beenden' : 'Polygon bearbeiten';
+    });
+  }
+
+  if (clearPolygonPointsButton && polygonField) {
+    clearPolygonPointsButton.addEventListener('click', () => {
+      polygonPoints = [];
+      polygonField.value = JSON.stringify(polygonPoints);
+      renderOverlay();
+    });
   }
 
   const togglePlantFormButton = document.getElementById('toggle-plant-form');
