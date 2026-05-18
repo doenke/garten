@@ -302,7 +302,7 @@ def update_masterdata(plant_id):
 
     field_labels = {
         'name': 'Name',
-        'common_name': 'Botanischer Name',
+        'common_name': 'Bürgerlicher Name',
         'source': 'Quelle',
         'light_need': 'Lichtbedarf',
         'bloom_start_month': 'Blütezeit von',
