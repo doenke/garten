@@ -6,7 +6,10 @@
   <span class="separator" aria-hidden="true">/</span>
   <span aria-current="page">{{ location.name }}</span>
 </nav>
-<h2>{{ location.name }}</h2>
+<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem;">
+  <h2 style="margin:0;">{{ location.name }}</h2>
+  <button type="button" id="toggle-polygon-edit" aria-label="Polygon bearbeiten" title="Polygon bearbeiten" style="margin:0;padding:.45rem .6rem;line-height:1;">✏️</button>
+</div>
 {% if garden_map and garden_map.filename %}
 <div style="position:relative;display:inline-block;max-width:100%;margin-bottom:.75rem;">
   <img id="location-map-image" src="/maps/{{ garden_map.filename }}" style="display:block;max-width:100%;border-radius:10px;">
@@ -15,7 +18,6 @@
 {% else %}
 <p>Kein Luftbild vorhanden. Bitte zuerst in der Konfiguration hochladen.</p>
 {% endif %}
-<button type="button" id="toggle-polygon-edit" style="margin-bottom:.5rem;">Polygon bearbeiten</button>
 <form method="post" action="/locations/{{ location.id }}/map" id="polygon-form" class="grid" style="display:none;margin-bottom:1rem;">
   <input type="hidden" name="polygon_points" id="polygon-points-field" value='{{ location.polygon_points or "[]" }}'>
   <label>Farbe <input type="color" name="color" value="{{ location.color or '#2f6d40' }}"></label>
@@ -24,8 +26,10 @@
     <button type="button" id="clear-polygon-points">Polygonpunkte löschen</button>
   </div>
 </form>
+<h3>Pflanzen</h3><ul>{% for p in plants %}<li><a href="/plants/{{p.id}}">{{p.name}}</a></li>{% endfor %}</ul>
+
 <button type="button" id="toggle-plant-form" style="margin-bottom:1rem;">Pflanze anlegen</button>
-<form method="post" action="/locations/{{location.id}}/plants/new" id="plant-form" class="grid" style="display:none;">
+<form method="post" action="/locations/{{location.id}}/plants/new" id="plant-form" class="grid" style="display:none; margin-bottom:1rem;">
 <input name="name" placeholder="Namen" required>
 <input name="common_name" placeholder="Umgangssprachlicher Name">
 <input name="source" placeholder="gekauft bei / bekommen von">
@@ -45,6 +49,9 @@
   let polygonPoints = polygonField ? JSON.parse(polygonField.value || '[]') : [];
   const otherLocationPolygons = {{ other_location_polygons|tojson }};
   const calibrationPoints = {{ ((garden_map.calibration_points or '[]') if garden_map else '[]') | safe }};
+  const gardenBoundary = {{ ((garden_map.boundary_points or '[]') if garden_map else '[]') | safe }};
+  const MAP_BORDER_FADE_PX = 50;
+  const MAP_BORDER_FADE_STEPS = 14;
   const toGeo = (px, py) => {
     if (!Array.isArray(calibrationPoints) || calibrationPoints.length < 2) return null;
     const [p1,p2]=calibrationPoints;
@@ -58,6 +65,21 @@
     const nums=[p1.x,p1.y,p2.x,p2.y,p1.coord_x,p1.coord_y,p2.coord_x,p2.coord_y].map(Number);
     if (nums.some((n)=>!Number.isFinite(n)) || Number(p2.coord_x)===Number(p1.coord_x) || Number(p2.coord_y)===Number(p1.coord_y)) return null;
     return {x:Number(p1.x)+((gx-Number(p1.coord_x))/(Number(p2.coord_x)-Number(p1.coord_x)))*(Number(p2.x)-Number(p1.x)), y:Number(p1.y)+((gy-Number(p1.coord_y))/(Number(p2.coord_y)-Number(p1.coord_y)))*(Number(p2.y)-Number(p1.y))};
+  };
+
+  const expandPolygon = (points, amount, width, height) => {
+    if (!Array.isArray(points) || points.length < 3) return points;
+    const center = points.reduce((acc, point) => ({ x: acc.x + point.x * width, y: acc.y + point.y * height }), { x: 0, y: 0 });
+    center.x /= points.length;
+    center.y /= points.length;
+    return points.map((point) => {
+      const px = point.x * width;
+      const py = point.y * height;
+      const dx = px - center.x;
+      const dy = py - center.y;
+      const len = Math.hypot(dx, dy) || 1;
+      return { x: Math.max(0, Math.min(1, (px + (dx / len) * amount) / width)), y: Math.max(0, Math.min(1, (py + (dy / len) * amount) / height)) };
+    });
   };
 
   const syncOverlayGeometry = () => {
@@ -95,6 +117,46 @@
       ? polygonPoints.map((point, index) => { const p = toPixel(Number(point.x), Number(point.y)); if (!p) return ''; return `<circle cx="${p.x * overlayWidth}" cy="${p.y * overlayHeight}" r="6" fill="#ffffff" stroke="{{ location.color or '#2f6d40' }}" stroke-width="2" data-point-index="${index}" style="cursor:move;pointer-events:all;"></circle>`; }).join('')
       : '';
     locationOverlay.innerHTML = `${otherPolygonsMarkup}${polygonMarkup}${pointMarkup}`;
+    renderBoundaryMask(overlayWidth, overlayHeight);
+  };
+
+  const renderBoundaryMask = (overlayWidth, overlayHeight) => {
+    if (!locationImage || !Array.isArray(gardenBoundary) || gardenBoundary.length < 3) {
+      locationImage.style.clipPath = "";
+      locationImage.style.webkitClipPath = "";
+      locationImage.style.mask = "";
+      locationImage.style.webkitMask = "";
+      return;
+    }
+    const innerBoundary = gardenBoundary.map((point) => toPixel(Number(point.x), Number(point.y))).filter(Boolean);
+    const outerBoundary = expandPolygon(innerBoundary, MAP_BORDER_FADE_PX, overlayWidth, overlayHeight);
+    const innerPolygon = innerBoundary.map((p) => `${p.x * overlayWidth},${p.y * overlayHeight}`).join(" ");
+    const outerPolygon = outerBoundary.map((p) => `${p.x * overlayWidth},${p.y * overlayHeight}`).join(" ");
+    const fadePolygons = Array.from({ length: MAP_BORDER_FADE_STEPS }, (_, idx) => {
+      const ratio = (idx + 1) / MAP_BORDER_FADE_STEPS;
+      const interpolated = innerBoundary.map((point, pointIdx) => ({
+        x: point.x + (outerBoundary[pointIdx].x - point.x) * ratio,
+        y: point.y + (outerBoundary[pointIdx].y - point.y) * ratio,
+      }));
+      const points = interpolated.map((p) => `${p.x * overlayWidth},${p.y * overlayHeight}`).join(" ");
+      return `<polygon points="${points}" fill="white" fill-opacity="${(1 - ratio).toFixed(3)}"></polygon>`;
+    }).join("");
+    const defsId = "location-mask-defs-{{ location.id }}";
+    let defs = document.getElementById(defsId);
+    if (!defs) {
+      defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+      defs.id = defsId;
+      locationOverlay.prepend(defs);
+    }
+    defs.innerHTML = `<clipPath id="location-garden-clip" clipPathUnits="userSpaceOnUse"><polygon points="${outerPolygon}"></polygon></clipPath><mask id="location-garden-image-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="${overlayWidth}" height="${overlayHeight}"><rect width="${overlayWidth}" height="${overlayHeight}" fill="black"></rect>${fadePolygons}<polygon points="${innerPolygon}" fill="white"></polygon></mask>`;
+    locationImage.style.clipPath = "url(#location-garden-clip)";
+    locationImage.style.webkitClipPath = "url(#location-garden-clip)";
+    locationImage.style.mask = "url(#location-garden-image-mask)";
+    locationImage.style.webkitMask = "url(#location-garden-image-mask)";
+    locationImage.style.maskRepeat = "no-repeat";
+    locationImage.style.webkitMaskRepeat = "no-repeat";
+    locationImage.style.maskSize = "100% 100%";
+    locationImage.style.webkitMaskSize = "100% 100%";
   };
 
   let polygonEditEnabled = false;
@@ -163,7 +225,9 @@
       polygonEditEnabled = !polygonEditEnabled;
       draggedPointIndex = null;
       polygonForm.style.display = polygonEditEnabled ? 'grid' : 'none';
-      togglePolygonEditButton.textContent = polygonEditEnabled ? 'Polygon bearbeiten beenden' : 'Polygon bearbeiten';
+      togglePolygonEditButton.textContent = '✏️';
+      togglePolygonEditButton.title = polygonEditEnabled ? 'Polygon-Bearbeitung beenden' : 'Polygon bearbeiten';
+      togglePolygonEditButton.setAttribute('aria-label', polygonEditEnabled ? 'Polygon-Bearbeitung beenden' : 'Polygon bearbeiten');
       renderOverlay();
     });
   }
@@ -184,7 +248,6 @@
     togglePlantFormButton.textContent = isHidden ? 'Pflanze anlegen ausblenden' : 'Pflanze anlegen';
   });
 </script>
-<h3>Pflanzen</h3><ul>{% for p in plants %}<li><a href="/plants/{{p.id}}">{{p.name}}</a></li>{% endfor %}</ul>
 <form method="post" action="/locations/{{ location.id }}/delete" onsubmit="return confirm('Location wirklich löschen? Alle enthaltenen Pflanzen werden in den Papierkorb verschoben.');" class="floating-trash">
   <button type="submit" aria-label="Location löschen" title="Location löschen">🗑️</button>
 </form>
