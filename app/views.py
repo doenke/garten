@@ -288,6 +288,8 @@ def save_location_map(location_id):
 @login_required
 def save_location_color(location_id):
     loc = Location.query.get_or_404(location_id)
+    if loc.name == TRASH_LOCATION_NAME:
+        return redirect(request.referrer or url_for('main.index'))
     loc.color = request.form.get('color') or '#2f6d40'
     db.session.commit()
     return redirect(request.referrer or url_for('main.index'))

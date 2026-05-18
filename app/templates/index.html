@@ -21,6 +21,7 @@
   {% for l in locations %}
     <tr>
       <td data-label="Farbe">
+        {% if l.name != 'Papierkorb' %}
         <button
           type="button"
           class="location-color-trigger color-dot"
@@ -29,6 +30,7 @@
           data-location-name="{{ l.name }}"
           data-location-color="{{ l.color or '#2f6d40' }}"
           aria-label="Farbe für {{ l.name }} ändern"></button>
+        {% endif %}
       </td>
       <td data-label="Location"><a href="/locations/{{l.id}}">{{l.name}}</a></td>
       <td data-label="Beschreibung">{{ l.description }}</td>
