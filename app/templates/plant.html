@@ -292,6 +292,7 @@
   };
 
   const MAP_PADDING_PX = 18;
+  const MARKER_VIEWPORT_PADDING_PX = 14;
 
   const renderPlantMap = () => {
     if (!mapImage || !baseOverlay || !markerOverlay) return;
@@ -320,10 +321,10 @@
 
     const wrapper = mapImage.closest('.plant-map-wrapper');
     if (polygonPixels.length > 2 && wrapper) {
-      const minX = Math.min(...polygonPixels.map((p) => p.x));
-      const maxX = Math.max(...polygonPixels.map((p) => p.x));
-      const minY = Math.min(...polygonPixels.map((p) => p.y));
-      const maxY = Math.max(...polygonPixels.map((p) => p.y));
+      const minX = Math.min(...polygonPixels.map((p) => p.x)) - MARKER_VIEWPORT_PADDING_PX;
+      const maxX = Math.max(...polygonPixels.map((p) => p.x)) + MARKER_VIEWPORT_PADDING_PX;
+      const minY = Math.min(...polygonPixels.map((p) => p.y)) - MARKER_VIEWPORT_PADDING_PX;
+      const maxY = Math.max(...polygonPixels.map((p) => p.y)) + MARKER_VIEWPORT_PADDING_PX;
       const bboxWidth = Math.max(1, maxX - minX);
       const bboxHeight = Math.max(1, maxY - minY);
       const availableWidth = Math.max(1, wrapper.clientWidth - (MAP_PADDING_PX * 2));
@@ -342,8 +343,8 @@
         if (!px) return '';
         const baseX = px.x * mapImage.naturalWidth;
         const baseY = px.y * mapImage.naturalHeight;
-        const x = (baseX * zoomScale) + zoomTranslateX;
-        const y = (baseY * zoomScale) + zoomTranslateY;
+        const x = baseX;
+        const y = baseY;
         const isCurrentPlant = Number(entry.id) === currentPlantId;
         const radius = isCurrentPlant ? 6 : 6;
         const color = isCurrentPlant ? '#d7263d' : '#2663eb';
@@ -360,9 +361,11 @@
       const transform = `translate(${zoomTranslateX}px, ${zoomTranslateY}px) scale(${zoomScale})`;
       mapImage.style.transform = transform;
       baseOverlay.style.transform = transform;
+      markerOverlay.style.transform = transform;
     } else {
       mapImage.style.transform = '';
       baseOverlay.style.transform = '';
+      markerOverlay.style.transform = '';
     }
   };
 
