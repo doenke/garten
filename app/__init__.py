@@ -4,6 +4,7 @@ from .models import db
 from .auth import auth_bp, oauth
 from .views import main_bp
 from sqlalchemy import inspect, text
+from sqlalchemy.exc import OperationalError
 import os
 
 
@@ -27,6 +28,18 @@ def _has_column(table_name, column_name):
     if not inspector.has_table(table_name):
         return False
     return any(column['name'] == column_name for column in inspector.get_columns(table_name))
+
+
+def _drop_column_if_exists(table_name, column_name):
+    if not _has_column(table_name, column_name):
+        return
+
+    try:
+        db.session.execute(text(f'ALTER TABLE {table_name} DROP COLUMN {column_name}'))
+    except OperationalError as exc:
+        message = str(exc.orig) if getattr(exc, 'orig', None) else str(exc)
+        if 'no such column' not in message:
+            raise
 
 
 def create_app():
@@ -109,8 +122,7 @@ def create_app():
             )
         """))
         _ensure_column('garden_map', 'boundary_points', 'boundary_points TEXT')
-        if _has_column('garden_map', 'user_id'):
-            db.session.execute(text('ALTER TABLE garden_map DROP COLUMN user_id'))
+        _drop_column_if_exists('garden_map', 'user_id')
         if _has_column('plant', 'planting_date'):
             db.session.execute(text("""
                 INSERT INTO plant_event (plant_id, event_type, event_at, title, description, creator_id)
