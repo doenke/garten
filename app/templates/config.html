@@ -35,6 +35,17 @@
     </div>
     <button type="submit">Kalibrierung speichern</button>
   </form>
+
+  <h3>Grundstücksgrenze</h3>
+  <form method="post" action="/map/boundary" id="boundary-form" class="grid" style="margin-bottom:1rem;">
+    <input type="hidden" name="boundary_points" id="boundary-points-input">
+    <div><strong>Polygon setzen:</strong> Punkte mit <kbd>Shift</kbd> + Klick nacheinander im Bild anklicken.</div>
+    <div class="actions-inline">
+      <button type="button" id="remove-boundary-point" class="btn secondary">Letzten Punkt entfernen</button>
+      <button type="button" id="clear-boundary-points" class="btn secondary">Alles löschen</button>
+      <button type="submit">Grundstücksgrenze speichern</button>
+    </div>
+  </form>
   {% endif %}
 </section>
 
@@ -45,6 +56,7 @@
     {% endfor %}
   ];
   const calibrationPoints = {{ ((garden_map.calibration_points or '[]') if garden_map else '[]') | safe }};
+  const boundaryPoints = {{ ((garden_map.boundary_points or '[]') if garden_map else '[]') | safe }};
 
   const img = document.getElementById('overview-map-image');
   const svg = document.getElementById('overview-map-overlay');
@@ -53,8 +65,12 @@
   const p1y = document.getElementById('p1-coord-y');
   const p2x = document.getElementById('p2-coord-x');
   const p2y = document.getElementById('p2-coord-y');
+  const boundaryInput = document.getElementById('boundary-points-input');
+  const clearBoundaryButton = document.getElementById('clear-boundary-points');
+  const removeBoundaryButton = document.getElementById('remove-boundary-point');
 
   let activeCalibration = Array.isArray(calibrationPoints) ? calibrationPoints.slice(0, 2) : [];
+  let activeBoundary = Array.isArray(boundaryPoints) ? boundaryPoints : [];
   let nextPointIndex = activeCalibration.length >= 2 ? 0 : activeCalibration.length;
 
   const toNumberOrNull = (value) => {
@@ -89,6 +105,19 @@
       svg.appendChild(polygon);
     });
 
+    if (activeBoundary.length > 2) {
+      const width = img.clientWidth || img.naturalWidth;
+      const height = img.clientHeight || img.naturalHeight;
+      const points = activeBoundary.map((point) => `${point.x * width},${point.y * height}`).join(' ');
+      const boundaryPolygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      boundaryPolygon.setAttribute('points', points);
+      boundaryPolygon.setAttribute('fill', '#0ea5e91a');
+      boundaryPolygon.setAttribute('stroke', '#0ea5e9');
+      boundaryPolygon.setAttribute('stroke-width', '2');
+      boundaryPolygon.setAttribute('stroke-dasharray', '6 4');
+      svg.appendChild(boundaryPolygon);
+    }
+
     activeCalibration.forEach((point, index) => {
       if (typeof point.x !== 'number' || typeof point.y !== 'number') return;
       const width = img.clientWidth || img.naturalWidth;
@@ -113,6 +142,10 @@
       label.textContent = `Punkt ${index + 1}`;
       svg.appendChild(label);
     });
+  };
+
+  const syncBoundaryInput = () => {
+    if (boundaryInput) boundaryInput.value = JSON.stringify(activeBoundary);
   };
 
   const syncOverlayGeometry = () => {
@@ -140,12 +173,17 @@
       const rect = img.getBoundingClientRect();
       const x = (event.clientX - rect.left) / rect.width;
       const y = (event.clientY - rect.top) / rect.height;
-      activeCalibration[nextPointIndex] = {
-        ...(activeCalibration[nextPointIndex] || {}),
-        x,
-        y,
-      };
-      nextPointIndex = nextPointIndex === 0 ? 1 : 0;
+      if (event.shiftKey) {
+        activeBoundary.push({ x, y });
+        syncBoundaryInput();
+      } else {
+        activeCalibration[nextPointIndex] = {
+          ...(activeCalibration[nextPointIndex] || {}),
+          x,
+          y,
+        };
+        nextPointIndex = nextPointIndex === 0 ? 1 : 0;
+      }
       syncCalibrationInputs();
       renderOverlay();
     });
@@ -168,5 +206,22 @@
   });
 
   syncCalibrationInputs();
+  syncBoundaryInput();
+
+  if (clearBoundaryButton) {
+    clearBoundaryButton.addEventListener('click', () => {
+      activeBoundary = [];
+      syncBoundaryInput();
+      renderOverlay();
+    });
+  }
+
+  if (removeBoundaryButton) {
+    removeBoundaryButton.addEventListener('click', () => {
+      activeBoundary = activeBoundary.slice(0, -1);
+      syncBoundaryInput();
+      renderOverlay();
+    });
+  }
 </script>
 {% endblock %}

@@ -106,9 +106,11 @@ def create_app():
                 user_id INTEGER NOT NULL UNIQUE,
                 filename VARCHAR(255),
                 calibration_points TEXT,
+                boundary_points TEXT,
                 FOREIGN KEY(user_id) REFERENCES user(id)
             )
         """))
+        _ensure_column('garden_map', 'boundary_points', 'boundary_points TEXT')
         if _has_column('plant', 'planting_date'):
             db.session.execute(text("""
                 INSERT INTO plant_event (plant_id, event_type, event_at, title, description, creator_id)

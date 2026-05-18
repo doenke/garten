@@ -3,7 +3,8 @@
 <section class="card">
 {% if garden_map and garden_map.filename %}
 <div style="position:relative; margin-bottom:1rem;">
-  <img src="/maps/{{ garden_map.filename }}" alt="Luftbild des Gartens" style="max-width:100%;border-radius:10px;">
+  <img id="index-map-image" src="/maps/{{ garden_map.filename }}" alt="Luftbild des Gartens" style="max-width:100%;border-radius:10px;">
+  <svg id="index-map-overlay" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;" preserveAspectRatio="none"></svg>
 </div>
 {% endif %}
 <h2>Pflanzorte</h2>
@@ -86,6 +87,8 @@
 
 
 <script>
+  const gardenBoundary = {{ ((garden_map.boundary_points or '[]') if garden_map else '[]') | safe }};
+  const MAP_BORDER_FADE_PX = 18;
   const toggleButton = document.getElementById('toggle-new-location');
   const newLocationForm = document.getElementById('new-location-form');
   const locationColorDialog = document.getElementById('location-color-dialog');
@@ -94,6 +97,51 @@
   const locationColorInput = document.getElementById('location-color-input');
   const closeColorDialog = document.getElementById('close-color-dialog');
   const colorTriggers = document.querySelectorAll('.location-color-trigger');
+  const indexMapImage = document.getElementById('index-map-image');
+  const indexMapOverlay = document.getElementById('index-map-overlay');
+
+  const expandPolygon = (points, amount, width, height) => {
+    if (!Array.isArray(points) || points.length < 3) return points;
+    const center = points.reduce((acc, point) => {
+      acc.x += point.x * width;
+      acc.y += point.y * height;
+      return acc;
+    }, { x: 0, y: 0 });
+    center.x /= points.length;
+    center.y /= points.length;
+    return points.map((point) => {
+      const px = point.x * width;
+      const py = point.y * height;
+      const dx = px - center.x;
+      const dy = py - center.y;
+      const len = Math.hypot(dx, dy) || 1;
+      return {
+        x: Math.max(0, Math.min(1, (px + (dx / len) * amount) / width)),
+        y: Math.max(0, Math.min(1, (py + (dy / len) * amount) / height)),
+      };
+    });
+  };
+
+  const renderBoundaryMask = () => {
+    if (!indexMapImage || !indexMapOverlay || !Array.isArray(gardenBoundary) || gardenBoundary.length < 3) return;
+    const width = indexMapImage.clientWidth || indexMapImage.naturalWidth;
+    const height = indexMapImage.clientHeight || indexMapImage.naturalHeight;
+    const expandedBoundary = expandPolygon(gardenBoundary, MAP_BORDER_FADE_PX, width, height);
+    const polygon = expandedBoundary.map((p) => `${p.x * width},${p.y * height}`).join(' ');
+    indexMapOverlay.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    indexMapOverlay.innerHTML = `
+      <defs>
+        <clipPath id="garden-clip"><polygon points="${polygon}"></polygon></clipPath>
+        <mask id="garden-fade-mask">
+          <rect width="${width}" height="${height}" fill="black"></rect>
+          <polygon points="${polygon}" fill="white" stroke="white" stroke-width="${MAP_BORDER_FADE_PX * 2}" stroke-linejoin="round"></polygon>
+        </mask>
+      </defs>
+      <rect width="${width}" height="${height}" fill="rgba(17,24,39,0.75)" mask="url(#garden-fade-mask)"></rect>
+    `;
+    indexMapImage.style.clipPath = `url(#garden-clip)`;
+    indexMapImage.style.webkitClipPath = `url(#garden-clip)`;
+  };
 
   toggleButton.addEventListener('click', () => {
     const isHidden = newLocationForm.style.display === 'none';
@@ -116,6 +164,12 @@
   });
 
   closeColorDialog.addEventListener('click', () => locationColorDialog.close());
+
+  if (indexMapImage && indexMapOverlay) {
+    indexMapImage.addEventListener('load', renderBoundaryMask);
+    window.addEventListener('resize', renderBoundaryMask);
+    renderBoundaryMask();
+  }
 </script>
 </section>
 {% endblock %}

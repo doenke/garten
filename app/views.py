@@ -63,7 +63,7 @@ def get_or_create_garden_map(owner_user_id):
     garden_map = GardenMap.query.order_by(GardenMap.id.asc()).first()
     if garden_map:
         return garden_map
-    garden_map = GardenMap(user_id=owner_user_id, calibration_points='[]')
+    garden_map = GardenMap(user_id=owner_user_id, calibration_points='[]', boundary_points='[]')
     db.session.add(garden_map)
     db.session.flush()
     return garden_map
@@ -272,6 +272,16 @@ def save_calibration():
     garden_map.calibration_points = payload
     db.session.commit()
     return redirect(request.referrer or url_for('main.index'))
+
+
+@main_bp.route('/map/boundary', methods=['POST'])
+@login_required
+def save_boundary():
+    payload = request.form.get('boundary_points', '[]')
+    garden_map = get_or_create_garden_map(current_user().id)
+    garden_map.boundary_points = payload
+    db.session.commit()
+    return redirect(request.referrer or url_for('main.config'))
 
 
 @main_bp.route('/locations/<int:location_id>/map', methods=['POST'])
