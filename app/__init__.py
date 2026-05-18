@@ -103,14 +103,14 @@ def create_app():
         db.session.execute(text("""
             CREATE TABLE IF NOT EXISTS garden_map (
                 id INTEGER PRIMARY KEY,
-                user_id INTEGER NOT NULL UNIQUE,
                 filename VARCHAR(255),
                 calibration_points TEXT,
-                boundary_points TEXT,
-                FOREIGN KEY(user_id) REFERENCES user(id)
+                boundary_points TEXT
             )
         """))
         _ensure_column('garden_map', 'boundary_points', 'boundary_points TEXT')
+        if _has_column('garden_map', 'user_id'):
+            db.session.execute(text('ALTER TABLE garden_map DROP COLUMN user_id'))
         if _has_column('plant', 'planting_date'):
             db.session.execute(text("""
                 INSERT INTO plant_event (plant_id, event_type, event_at, title, description, creator_id)
