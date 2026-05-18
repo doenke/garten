@@ -60,18 +60,42 @@
     const overlayWidth = locationImage.clientWidth || locationImage.naturalWidth;
     const overlayHeight = locationImage.clientHeight || locationImage.naturalHeight;
     const polygon = polygonPoints.map((point) => `${point.x * overlayWidth},${point.y * overlayHeight}`).join(' ');
-    locationOverlay.innerHTML = polygonPoints.length > 2 ? `<polygon points="${polygon}" fill="{{ location.color or '#2f6d40' }}66" stroke="{{ location.color or '#2f6d40' }}" stroke-width="2"></polygon>` : '';
+    const polygonMarkup = polygonPoints.length > 2
+      ? `<polygon points="${polygon}" fill="{{ location.color or '#2f6d40' }}66" stroke="{{ location.color or '#2f6d40' }}" stroke-width="2"></polygon>`
+      : '';
+    const pointMarkup = polygonEditEnabled
+      ? polygonPoints.map((point, index) => `<circle cx="${point.x * overlayWidth}" cy="${point.y * overlayHeight}" r="6" fill="#ffffff" stroke="{{ location.color or '#2f6d40' }}" stroke-width="2" data-point-index="${index}" style="cursor:move;pointer-events:all;"></circle>`).join('')
+      : '';
+    locationOverlay.innerHTML = `${polygonMarkup}${pointMarkup}`;
   };
 
   let polygonEditEnabled = false;
+  let draggedPointIndex = null;
+  const clamp01 = (value) => Math.max(0, Math.min(1, value));
+  const syncPolygonField = () => {
+    if (!polygonField) return;
+    polygonField.value = JSON.stringify(polygonPoints);
+  };
 
   const handleMapClick = (event) => {
     if (!polygonEditEnabled || !locationImage || !locationOverlay || !polygonField) return;
+    if (event.target?.dataset?.pointIndex !== undefined) return;
     const rect = locationImage.getBoundingClientRect();
-    const x = (event.clientX - rect.left) / rect.width;
-    const y = (event.clientY - rect.top) / rect.height;
+    const x = clamp01((event.clientX - rect.left) / rect.width);
+    const y = clamp01((event.clientY - rect.top) / rect.height);
     polygonPoints.push({ x, y });
-    polygonField.value = JSON.stringify(polygonPoints);
+    syncPolygonField();
+    renderOverlay();
+  };
+
+  const handleDragMove = (event) => {
+    if (draggedPointIndex === null || !locationImage) return;
+    const rect = locationImage.getBoundingClientRect();
+    polygonPoints[draggedPointIndex] = {
+      x: clamp01((event.clientX - rect.left) / rect.width),
+      y: clamp01((event.clientY - rect.top) / rect.height),
+    };
+    syncPolygonField();
     renderOverlay();
   };
 
@@ -81,6 +105,17 @@
       renderOverlay();
     });
     locationImage.addEventListener('click', handleMapClick);
+    locationOverlay.addEventListener('mousedown', (event) => {
+      if (!polygonEditEnabled) return;
+      const pointIndex = Number(event.target?.dataset?.pointIndex);
+      if (Number.isNaN(pointIndex)) return;
+      draggedPointIndex = pointIndex;
+      event.preventDefault();
+    });
+    window.addEventListener('mousemove', handleDragMove);
+    window.addEventListener('mouseup', () => {
+      draggedPointIndex = null;
+    });
     window.addEventListener('resize', () => {
       syncOverlayGeometry();
       renderOverlay();
@@ -97,15 +132,17 @@
   if (togglePolygonEditButton && polygonForm) {
     togglePolygonEditButton.addEventListener('click', () => {
       polygonEditEnabled = !polygonEditEnabled;
+      draggedPointIndex = null;
       polygonForm.style.display = polygonEditEnabled ? 'grid' : 'none';
       togglePolygonEditButton.textContent = polygonEditEnabled ? 'Polygon bearbeiten beenden' : 'Polygon bearbeiten';
+      renderOverlay();
     });
   }
 
   if (clearPolygonPointsButton && polygonField) {
     clearPolygonPointsButton.addEventListener('click', () => {
       polygonPoints = [];
-      polygonField.value = JSON.stringify(polygonPoints);
+      syncPolygonField();
       renderOverlay();
     });
   }
