@@ -82,8 +82,13 @@
         <button type="button" id="plant-position-save-fallback">Standort speichern (Fallback)</button>
       </form>
     </div>
-    {% endif %}
+    <form method="post" action="/plants/{{ plant.id }}/position" class="grid" style="margin-top:.75rem;">
+      <input type="hidden" id="plant-map-x" name="map_x" value="{{ plant.map_x if plant.map_x is not none else '' }}">
+      <input type="hidden" id="plant-map-y" name="map_y" value="{{ plant.map_y if plant.map_y is not none else '' }}">
+      <button>Standort speichern</button>
+    </form>
   </div>
+  {% endif %}
 </section>
 
 
@@ -187,12 +192,11 @@
 
 
 <style>
-.plant-detail-layout{display:flex;gap:1rem;align-items:flex-start;flex-wrap:wrap}
-.plant-masterdata{flex:1 1 360px;min-width:280px}
-.plant-map-panel{flex:1 1 480px;min-width:320px}
-.plant-map-wrapper{position:relative;width:100%;aspect-ratio:4/3;background:var(--surface-soft);border-radius:10px;overflow:hidden}
+.plant-detail-layout{display:block}
+.plant-masterdata{min-width:280px}
+.plant-map-panel{margin-top:1rem}
+.plant-map-wrapper{position:relative;width:100%;max-width:920px;aspect-ratio:16/9;background:var(--surface-soft);border-radius:10px;overflow:hidden}
 #plant-map-overlay .plant-marker{cursor:pointer}
-@media (max-width:1100px){.plant-map-panel{flex-basis:100%;min-width:0}}
 </style>
 
 <script>
@@ -223,15 +227,71 @@
       const marker = plantsInLocation.find((entry) => Number(entry.id) === currentPlantId);
       if (marker) { marker.map_x = x; marker.map_y = y; }
     } catch (error) {}
+  const MAP_BORDER_FADE_PX = 50;
+  const CLIPPED_MAP_TARGET_WIDTH = 920;
+  const CLIPPED_MAP_MIN_HEIGHT = 360;
+
+  const expandPolygon = (points, amount, width, height) => {
+    if (!Array.isArray(points) || points.length < 3) return points;
+    const center = points.reduce((acc, point) => {
+      acc.x += point.x;
+      acc.y += point.y;
+      return acc;
+    }, { x: 0, y: 0 });
+    center.x /= points.length;
+    center.y /= points.length;
+    return points.map((point) => {
+      const dx = point.x - center.x;
+      const dy = point.y - center.y;
+      const len = Math.hypot(dx, dy) || 1;
+      return {
+        x: Math.max(0, Math.min(width, point.x + (dx / len) * amount)),
+        y: Math.max(0, Math.min(height, point.y + (dy / len) * amount)),
+      };
+    });
   };
 
   const renderPlantMap = () => {
     if (!mapImage || !mapOverlay) return;
+    const imageWidth = mapImage.naturalWidth;
+    const imageHeight = mapImage.naturalHeight;
     mapOverlay.setAttribute('viewBox', `0 0 ${mapImage.naturalWidth} ${mapImage.naturalHeight}`);
-    const polygonPoints = locationPolygon.map((point) => { const p = toPixel(Number(point.x), Number(point.y)); return p ? `${p.x * mapImage.naturalWidth},${p.y * mapImage.naturalHeight}` : ''; }).filter(Boolean).join(' ');
+    const polygonPixels = locationPolygon
+      .map((point) => toPixel(Number(point.x), Number(point.y)))
+      .filter(Boolean)
+      .map((p) => ({ x: p.x * imageWidth, y: p.y * imageHeight }));
+    const expandedPolygon = expandPolygon(polygonPixels, MAP_BORDER_FADE_PX, imageWidth, imageHeight);
+    const polygonPoints = polygonPixels.map((p) => `${p.x},${p.y}`).join(' ');
+    const expandedPolygonPoints = expandedPolygon.map((p) => `${p.x},${p.y}`).join(' ');
     const polygonMarkup = locationPolygon.length > 2
       ? `<polygon points="${polygonPoints}" fill="${locationColor}55" stroke="${locationColor}" stroke-width="2"></polygon>`
       : '';
+    const clipMarkup = expandedPolygon.length > 2
+      ? `<defs><clipPath id="plant-location-clip" clipPathUnits="userSpaceOnUse"><polygon points="${expandedPolygonPoints}"></polygon></clipPath></defs>`
+      : '';
+
+    if (expandedPolygon.length > 2) {
+      const minX = Math.min(...expandedPolygon.map((p) => p.x));
+      const maxX = Math.max(...expandedPolygon.map((p) => p.x));
+      const minY = Math.min(...expandedPolygon.map((p) => p.y));
+      const maxY = Math.max(...expandedPolygon.map((p) => p.y));
+      const cropWidth = Math.max(1, maxX - minX);
+      const cropHeight = Math.max(1, maxY - minY);
+      mapOverlay.setAttribute('viewBox', `${minX} ${minY} ${cropWidth} ${cropHeight}`);
+      const wrapperWidth = Math.min(CLIPPED_MAP_TARGET_WIDTH, imageWidth, cropWidth + (MAP_BORDER_FADE_PX * 2));
+      const zoomFactor = wrapperWidth / cropWidth;
+      const wrapperHeight = Math.max(CLIPPED_MAP_MIN_HEIGHT, Math.round(cropHeight * zoomFactor));
+      const wrapper = mapImage.closest('.plant-map-wrapper');
+      if (wrapper) {
+        wrapper.style.maxWidth = `${wrapperWidth}px`;
+        wrapper.style.aspectRatio = `${wrapperWidth} / ${wrapperHeight}`;
+      }
+      mapImage.style.clipPath = 'url(#plant-location-clip)';
+      mapImage.style.webkitClipPath = 'url(#plant-location-clip)';
+    } else {
+      mapImage.style.clipPath = '';
+      mapImage.style.webkitClipPath = '';
+    }
 
     const markers = plantsInLocation
       .filter((entry) => entry.map_x !== null && entry.map_y !== null)
@@ -249,7 +309,7 @@
       })
       .filter(Boolean).join('');
 
-    mapOverlay.innerHTML = `${polygonMarkup}${markers}`;
+    mapOverlay.innerHTML = `${clipMarkup}${polygonMarkup}${markers}`;
   };
   const fallbackSaveButton = document.getElementById('plant-position-save-fallback');
   if (fallbackSaveButton && mapX && mapY) {
