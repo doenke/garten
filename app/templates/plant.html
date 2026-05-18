@@ -152,19 +152,6 @@
     <textarea name="description" placeholder="Beschreibung"></textarea>
     <input id="event-attachment" type="file" name="attachment" accept="image/*,application/pdf" capture="environment">
     <small style="color:var(--muted);">Du kannst ein Bild/ PDF auswählen oder mit der Kamera aufnehmen.</small>
-    <details>
-      <summary>Kamera direkt verwenden</summary>
-      <div style="display:grid;gap:.5rem;margin-top:.75rem;">
-        <video id="camera-preview" autoplay playsinline muted style="display:none;width:min(100%,460px);border-radius:8px;background:#000;"></video>
-        <canvas id="camera-canvas" style="display:none;"></canvas>
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-          <button type="button" id="camera-start">Kamera starten</button>
-          <button type="button" id="camera-capture" disabled>Foto aufnehmen</button>
-          <button type="button" id="camera-stop" disabled>Kamera stoppen</button>
-        </div>
-        <small id="camera-status" style="color:var(--muted);">Noch kein Foto aufgenommen.</small>
-      </div>
-    </details>
     <button>Speichern</button>
   </form>
 </div>
@@ -497,89 +484,7 @@
   });
 
 
-  const cameraStartButton = document.getElementById('camera-start');
-  const cameraCaptureButton = document.getElementById('camera-capture');
-  const cameraStopButton = document.getElementById('camera-stop');
-  const cameraPreview = document.getElementById('camera-preview');
-  const cameraCanvas = document.getElementById('camera-canvas');
-  const cameraStatus = document.getElementById('camera-status');
-  const attachmentInput = document.getElementById('event-attachment');
-  const isMobileCameraPreferred = window.matchMedia('(pointer: coarse)').matches;
-  let cameraStream;
 
-  const stopCamera = () => {
-    if (!cameraStream) return;
-    cameraStream.getTracks().forEach((track) => track.stop());
-    cameraStream = undefined;
-    cameraPreview.srcObject = null;
-    cameraPreview.style.display = 'none';
-    cameraCaptureButton.disabled = true;
-    cameraStopButton.disabled = true;
-  };
-
-  if (cameraStartButton && cameraCaptureButton && cameraStopButton && cameraPreview && cameraCanvas && cameraStatus && attachmentInput) {
-    if (isMobileCameraPreferred) {
-      cameraStartButton.textContent = 'Handy-Kamera öffnen';
-      cameraCaptureButton.style.display = 'none';
-      cameraStopButton.style.display = 'none';
-      cameraStatus.textContent = 'Am Handy wird direkt die Kamera-App verwendet.';
-    }
-
-    cameraStartButton.addEventListener('click', async () => {
-      if (isMobileCameraPreferred) {
-        attachmentInput.click();
-        cameraStatus.textContent = 'Bitte in der Kamera-App ein Foto aufnehmen.';
-        return;
-      }
-      if (!navigator.mediaDevices?.getUserMedia) {
-        cameraStatus.textContent = 'Kamera wird von diesem Browser nicht unterstützt.';
-        return;
-      }
-      try {
-        stopCamera();
-        cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        cameraPreview.srcObject = cameraStream;
-        cameraPreview.style.display = 'block';
-        cameraCaptureButton.disabled = false;
-        cameraStopButton.disabled = false;
-        cameraStatus.textContent = 'Kamera aktiv. Jetzt Foto aufnehmen.';
-      } catch (error) {
-        cameraStatus.textContent = 'Kein Zugriff auf die Kamera möglich.';
-      }
-    });
-
-    cameraCaptureButton.addEventListener('click', () => {
-      if (!cameraStream) return;
-      const width = cameraPreview.videoWidth || 1280;
-      const height = cameraPreview.videoHeight || 720;
-      cameraCanvas.width = width;
-      cameraCanvas.height = height;
-      const ctx = cameraCanvas.getContext('2d');
-      if (!ctx) {
-        cameraStatus.textContent = 'Foto konnte nicht verarbeitet werden.';
-        return;
-      }
-      ctx.drawImage(cameraPreview, 0, 0, width, height);
-      cameraCanvas.toBlob((blob) => {
-        if (!blob) {
-          cameraStatus.textContent = 'Foto konnte nicht erstellt werden.';
-          return;
-        }
-        const file = new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' });
-        const dataTransfer = new DataTransfer();
-        dataTransfer.items.add(file);
-        attachmentInput.files = dataTransfer.files;
-        cameraStatus.textContent = 'Foto aufgenommen und als Anhang ausgewählt.';
-      }, 'image/jpeg', 0.9);
-    });
-
-    cameraStopButton.addEventListener('click', () => {
-      stopCamera();
-      cameraStatus.textContent = 'Kamera gestoppt.';
-    });
-
-    window.addEventListener('beforeunload', stopCamera);
-  }
   document.addEventListener('keydown', (event) => {
     if (modal.style.display !== 'flex') return;
     if (event.key === 'Escape') closeModal();
