@@ -6,9 +6,72 @@ from .views import main_bp
 import os
 
 
+_WEAK_SECRET_KEY_VALUES = {
+    'changeme',
+    'change-me',
+    'change_me',
+    'default',
+    'dev',
+    'development',
+    'insecure',
+    'placeholder',
+    'replace-me',
+    'replace_me',
+    'secret',
+    'test',
+    'dev-secret-change-me',
+}
+
+
+def _validate_secret_key(secret_key):
+    if not secret_key or not secret_key.strip():
+        raise RuntimeError(
+            'Konfigurationsfehler: SECRET_KEY ist nicht gesetzt. '
+            'Setze eine zufällige, ausreichend lange SECRET_KEY-Umgebungsvariable.'
+        )
+
+    normalized = secret_key.strip().lower()
+    if normalized in _WEAK_SECRET_KEY_VALUES:
+        raise RuntimeError(
+            'Konfigurationsfehler: SECRET_KEY ist zu schwach oder ein Platzhalter. '
+            'Nutze einen zufälligen, nicht erratbaren Wert (mindestens 32 Zeichen).'
+        )
+
+    if len(secret_key) < 32:
+        raise RuntimeError(
+            'Konfigurationsfehler: SECRET_KEY ist zu kurz. '
+            'Nutze mindestens 32 Zeichen mit hoher Entropie.'
+        )
+
+
+def _validate_oidc_config():
+    oidc_vars = [
+        'OIDC_SERVER_METADATA_URL',
+        'OIDC_CLIENT_ID',
+        'OIDC_CLIENT_SECRET',
+    ]
+    values = {name: os.getenv(name, '').strip() for name in oidc_vars}
+
+    oidc_enabled = any(values.values())
+    if not oidc_enabled:
+        return
+
+    missing = [name for name, value in values.items() if not value]
+    if missing:
+        raise RuntimeError(
+            'Konfigurationsfehler: OIDC ist teilweise konfiguriert, aber folgende Variablen fehlen: '
+            f"{', '.join(missing)}"
+        )
+
+
 def create_app():
     app = Flask(__name__, static_folder='static', template_folder='templates')
-    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-change-me')
+
+    secret_key = os.getenv('SECRET_KEY')
+    _validate_secret_key(secret_key)
+    _validate_oidc_config()
+
+    app.config['SECRET_KEY'] = secret_key
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///garden.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', '/data/uploads')
