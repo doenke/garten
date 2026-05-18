@@ -83,15 +83,20 @@ def get_or_create_garden_map():
     db.session.flush()
     return garden_map
 
-def get_or_create_trash_location(user_id):
-    trash = Location.query.filter_by(user_id=user_id, name=TRASH_LOCATION_NAME).first()
-    if trash:
+def get_or_create_trash_location():
+    trash_locations = Location.query.filter_by(name=TRASH_LOCATION_NAME).order_by(Location.id.asc()).all()
+    if trash_locations:
+        trash = trash_locations[0]
+        for duplicate in trash_locations[1:]:
+            Plant.query.filter_by(location_id=duplicate.id).update({'location_id': trash.id})
+            db.session.delete(duplicate)
+        db.session.flush()
         return trash
     trash = Location(
         name=TRASH_LOCATION_NAME,
         description="Automatisch erstellt. Gelöschte Pflanzen landen hier.",
-        user_id=user_id,
-        creator_id=user_id
+        user_id=current_user().id,
+        creator_id=current_user().id
     )
     db.session.add(trash)
     db.session.flush()
@@ -316,7 +321,7 @@ def delete_location(location_id):
     location = Location.query.get_or_404(location_id)
     if location.name == TRASH_LOCATION_NAME:
         return redirect(url_for('main.index'))
-    trash = get_or_create_trash_location(location.user_id)
+    trash = get_or_create_trash_location()
     if location.id == trash.id:
         return redirect(url_for('main.index'))
     plants = Plant.query.filter_by(location_id=location.id).all()
@@ -507,7 +512,7 @@ def update_masterdata(plant_id):
 @login_required
 def delete_plant(plant_id):
     plant = Plant.query.get_or_404(plant_id)
-    trash = get_or_create_trash_location(current_user().id)
+    trash = get_or_create_trash_location()
     if plant.location_id != trash.id:
         create_system_event(plant.id, 'outplant', current_user().id)
     plant.location_id = trash.id
@@ -522,7 +527,7 @@ def move_plant(plant_id):
     target_location = Location.query.get_or_404(target_location_id)
     source_location = Location.query.get_or_404(plant.location_id)
     user_id = current_user().id
-    trash = get_or_create_trash_location(user_id)
+    trash = get_or_create_trash_location()
 
     if source_location.id != target_location.id:
         if source_location.id == trash.id and target_location.id != trash.id:
