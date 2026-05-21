@@ -153,9 +153,31 @@ def healthz():
 def api_stats():
     plant_count = db.session.query(db.func.count(Plant.id)).scalar() or 0
     bed_count = db.session.query(db.func.count(Location.id)).filter(Location.name != TRASH_LOCATION_NAME).scalar() or 0
+    upload_count = 0
+    upload_total_size = 0
+    upload_folder = current_app.config.get('UPLOAD_FOLDER')
+    if upload_folder and os.path.isdir(upload_folder):
+        for root, _, files in os.walk(upload_folder):
+            for filename in files:
+                full_path = os.path.join(root, filename)
+                if not os.path.isfile(full_path):
+                    continue
+                upload_count += 1
+                upload_total_size += os.path.getsize(full_path)
+
+    database_size = 0
+    db_uri = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')
+    if isinstance(db_uri, str) and db_uri.startswith('sqlite:///'):
+        sqlite_path = db_uri.replace('sqlite:///', '', 1)
+        if sqlite_path and os.path.isfile(sqlite_path):
+            database_size = os.path.getsize(sqlite_path)
+
     return jsonify({
         'plants': plant_count,
         'beds': bed_count,
+        'uploads': upload_count,
+        'upload_size_bytes': upload_total_size,
+        'database_size_bytes': database_size,
     }), 200
 
 @main_bp.route('/manifest.webmanifest')

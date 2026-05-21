@@ -87,6 +87,9 @@ Es gibt einen zusätzlichen JSON-Endpunkt unter `GET /api/stats`, der folgende W
 
 - `plants`: Anzahl aller Pflanzen
 - `beds`: Anzahl aller Beete/Pflanzorte (ohne den internen Papierkorb)
+- `uploads`: Anzahl aller hochgeladenen Dateien im Upload-Verzeichnis
+- `upload_size_bytes`: Gesamtgröße aller Uploads in Byte
+- `database_size_bytes`: Größe der SQLite-Datenbankdatei in Byte
 
 Authentifizierung:
 - Per Header `X-API-Key: <WIDGET_API_KEY>`
