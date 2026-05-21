@@ -224,17 +224,17 @@
 .timeline-form{margin:0}
 .timeline-form-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.6rem;align-items:start}
 .timeline-form-row textarea{min-height:5.2rem}
-.image-modal{position:fixed;inset:0;background:rgba(0,0,0,.86);z-index:9999;align-items:center;justify-content:center;padding:1rem;touch-action:pan-y}
+.image-modal{position:fixed;inset:0;background:rgba(0,0,0,.86);z-index:9999;align-items:center;justify-content:center;padding:1rem;touch-action:none}
 .image-modal-inner{position:relative;max-width:92vw;max-height:92vh;display:flex;align-items:center;gap:.5rem}
-.image-modal-img{max-width:min(84vw,1200px);max-height:88vh;border-radius:10px;background:#fff;box-shadow:0 18px 40px rgba(0,0,0,.45);object-fit:contain;user-select:none;-webkit-user-drag:none;touch-action:pan-y}
+.image-modal-img{max-width:min(84vw,1200px);max-height:88vh;border-radius:10px;background:#fff;box-shadow:0 18px 40px rgba(0,0,0,.45);object-fit:contain;user-select:none;-webkit-user-drag:none;touch-action:none}
 .image-modal-nav{font-size:2rem;line-height:1;padding:.55rem 1rem;min-width:48px;min-height:48px;border-radius:999px;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.32);text-shadow:none}
 .image-modal-nav:disabled{opacity:.45;cursor:not-allowed}
 .image-modal-close{position:absolute;top:-.5rem;right:-.5rem;font-size:1.4rem;line-height:1;padding:.45rem .6rem;min-width:44px;min-height:44px;border-radius:999px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.32);text-shadow:none}
 @media (max-width: 640px){
   .timeline-form-row{grid-template-columns:1fr}
-  .image-modal{padding:0;background:#000}
+  .image-modal{padding:0;background:#000;overscroll-behavior:none}
   .image-modal-inner{width:100vw;height:100dvh;max-width:none;max-height:none;display:grid;grid-template-columns:1fr;grid-template-rows:1fr}
-  .image-modal-img{width:100%;height:100%;max-width:none;max-height:none;border-radius:0;background:#000}
+  .image-modal-img{width:100%;height:100%;max-width:none;max-height:none;border-radius:0;background:#000;object-fit:cover}
   .image-modal-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:2}
   .image-modal-nav-prev{left:.45rem}
   .image-modal-nav-next{right:.45rem}
