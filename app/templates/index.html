@@ -22,7 +22,7 @@
   </thead>
   <tbody>
   {% for l in locations %}
-    <tr>
+    <tr data-row-link="/locations/{{ l.id }}">
       <td data-label="Farbe">
         {% if l.name != 'Papierkorb' %}
         <button
@@ -35,7 +35,7 @@
           aria-label="Farbe für {{ l.name }} ändern"></button>
         {% endif %}
       </td>
-      <td data-label="Beet"><a href="/locations/{{l.id}}">{{l.name}}</a></td>
+      <td data-label="Beet">{{l.name}}</td>
       <td data-label="Beschreibung">{{ l.description }}</td>
       <td data-label="Pflanzen">{{ location_plant_counts.get(l.id, 0) }}</td>
     </tr>
@@ -79,8 +79,8 @@
   </thead>
   <tbody>
   {% for plant, location in plants %}
-    <tr>
-      <td data-label="Pflanze"><a href="/plants/{{ plant.id }}">{{ plant.name }}</a></td>
+    <tr data-row-link="/plants/{{ plant.id }}">
+      <td data-label="Pflanze">{{ plant.name }}</td>
       <td data-label="Bürgerlicher Name">{{ plant.common_name or '-' }}</td>
       <td data-label="Beet"><a href="/locations/{{ location.id }}">{{ location.name }}</a></td>
     </tr>

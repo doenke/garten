@@ -43,8 +43,8 @@
   </thead>
   <tbody>
     {% for p in plants %}
-    <tr>
-      <td><a href="/plants/{{ p.id }}">{{ p.name }}</a></td>
+    <tr data-row-link="/plants/{{ p.id }}">
+      <td>{{ p.name }}</td>
       <td>{{ p.common_name or '-' }}</td>
       <td>
         {% if plant_title_images_by_id.get(p.id) %}
