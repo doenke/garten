@@ -41,6 +41,7 @@ services:
       OIDC_CLIENT_ID: change-me
       OIDC_CLIENT_SECRET: change-me
       OIDC_LOGOUT_URL: https://example.com/logout
+      WIDGET_API_KEY: change-this-api-key
     volumes:
       - gardenglow_data:/data
     ports:
@@ -69,6 +70,7 @@ docker compose up --build
 - `UPLOAD_FOLDER` – Verzeichnis für hochgeladene Pflanzenfotos
 - `AVATAR_FOLDER` – Verzeichnis für lokal gespeicherte Benutzer-Avatare
 - `MAP_FOLDER` – Verzeichnis für Karten-/Lageplan-Dateien
+- `WIDGET_API_KEY` – API-Key für den Statistik-Webservice `/api/stats`
 
 ### OIDC (Pflicht für Login)
 
@@ -78,6 +80,45 @@ docker compose up --build
 - `OIDC_LOGOUT_URL` *(optional)* – Externe Logout-URL des Identity-Providers
 
 > Hinweis: Ohne korrekt gesetzte OIDC-Variablen ist keine Anmeldung möglich, da GardenGlow keinen lokalen Passwort-Login anbietet.
+
+## Webservice für Pflanzen-/Beet-Zahlen
+
+Es gibt einen zusätzlichen JSON-Endpunkt unter `GET /api/stats`, der folgende Werte ausgibt:
+
+- `plants`: Anzahl aller Pflanzen
+- `beds`: Anzahl aller Beete/Pflanzorte (ohne den internen Papierkorb)
+
+Authentifizierung:
+- Per Header `X-API-Key: <WIDGET_API_KEY>`
+- alternativ `Authorization: Bearer <WIDGET_API_KEY>`
+
+Wenn `WIDGET_API_KEY` nicht gesetzt ist, antwortet der Endpunkt mit `503`.
+
+### Beispiel für gethomepage Custom API Widget
+
+Beispielkonfiguration für `services.yaml` in gethomepage:
+
+```yaml
+- Garten:
+    - Pflanzen & Beete:
+        icon: mdi-flower
+        href: https://garten.example.com
+        widget:
+          type: customapi
+          url: https://garten.example.com/api/stats
+          method: GET
+          headers:
+            X-API-Key: "{{HOMEPAGE_VAR_GARTEN_API_KEY}}"
+          mappings:
+            - field: plants
+              label: Pflanzen
+              format: number
+            - field: beds
+              label: Beete
+              format: number
+```
+
+Tipp: Lege den Key in gethomepage als Umgebungsvariable ab (z. B. `HOMEPAGE_VAR_GARTEN_API_KEY`) und hinterlege ihn nicht im Klartext in der YAML.
 ## Setup / Deployment
 
 ### Pflichtvariable `SECRET_KEY`
@@ -96,4 +137,3 @@ export SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(48))
 ```
 
 Wenn `SECRET_KEY` fehlt oder zu schwach ist, bricht die App mit einer klaren Konfigurations-Exception beim Start ab.
-

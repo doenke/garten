@@ -67,6 +67,25 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED
 
 
+def widget_api_key_required(f):
+    @wraps(f)
+    def wrapped(*args, **kwargs):
+        configured_key = (current_app.config.get('WIDGET_API_KEY') or '').strip()
+        if not configured_key:
+            return jsonify({'error': 'Widget API key is not configured'}), 503
+
+        api_key = (request.headers.get('X-API-Key') or '').strip()
+        if not api_key:
+            auth_header = (request.headers.get('Authorization') or '').strip()
+            if auth_header.lower().startswith('bearer '):
+                api_key = auth_header[7:].strip()
+
+        if api_key != configured_key:
+            return jsonify({'error': 'Unauthorized'}), 401
+        return f(*args, **kwargs)
+    return wrapped
+
+
 def parse_bloom_months(form):
     bloom_start_month = form.get('bloom_start_month', type=int)
     bloom_end_month = form.get('bloom_end_month', type=int)
@@ -109,6 +128,17 @@ def healthz():
         return jsonify({'status': 'ok'}), 200
     except Exception:
         return jsonify({'status': 'error'}), 500
+
+
+@main_bp.route('/api/stats', methods=['GET'])
+@widget_api_key_required
+def api_stats():
+    plant_count = db.session.query(db.func.count(Plant.id)).scalar() or 0
+    bed_count = db.session.query(db.func.count(Location.id)).filter(Location.name != TRASH_LOCATION_NAME).scalar() or 0
+    return jsonify({
+        'plants': plant_count,
+        'beds': bed_count,
+    }), 200
 
 @main_bp.route('/manifest.webmanifest')
 def manifest():
