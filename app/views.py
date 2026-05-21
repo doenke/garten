@@ -2,7 +2,7 @@ import os
 import json
 from functools import wraps
 from datetime import datetime
-from flask import Blueprint, current_app, render_template, request, redirect, url_for, session, jsonify, send_from_directory
+from flask import Blueprint, current_app, g, render_template, request, redirect, url_for, session, jsonify, send_from_directory
 from .models import db, User, Location, Plant, PlantPhoto, PlantNote, GardenMap, TimelineEntry
 from .services.timeline_service import save_uploaded_attachment, set_single_title_entry, delete_timeline_entry, build_unique_upload_name
 
@@ -70,8 +70,15 @@ def create_system_event(plant_id, key, creator_id, event_at=None, description=No
     )
 
 def current_user():
+    cached_user_loaded = getattr(g, '_current_user_loaded', False)
+    if cached_user_loaded:
+        return g._current_user
+
     uid = session.get('user_id')
-    return User.query.get(uid) if uid else None
+    user = User.query.get(uid) if uid else None
+    g._current_user = user
+    g._current_user_loaded = True
+    return user
 
 def login_required(f):
     @wraps(f)
