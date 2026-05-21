@@ -3,7 +3,7 @@ import json
 from functools import wraps
 from datetime import datetime
 from flask import Blueprint, current_app, render_template, request, redirect, url_for, session, jsonify, send_from_directory
-from .models import db, User, Location, Plant, PlantPhoto, PlantNote, PlantEvent, GardenMap, LocationTimelineEntry, TimelineEntry
+from .models import db, User, Location, Plant, PlantPhoto, PlantNote, GardenMap, TimelineEntry
 from .services.timeline_service import save_uploaded_attachment, set_single_title_entry, delete_timeline_entry, build_unique_upload_name
 
 main_bp = Blueprint('main', __name__)
@@ -32,15 +32,7 @@ PLANTING_STATE_TYPES = {
 }
 
 
-def timeline_dual_write_enabled():
-    return bool(current_app.config.get('TIMELINE_DUAL_WRITE'))
-
-
-def timeline_read_fallback_enabled():
-    return bool(current_app.config.get('TIMELINE_READ_FALLBACK'))
-
-
-def create_timeline_entry(*, scope_type, scope_id, creator_id, created_at=None, event_at=None, event_type=None, title=None, description=None, comment=None, attachment_filename=None, attachment_kind=None):
+def create_timeline_entry(*, scope_type, scope_id, creator_id, created_at=None, event_at=None, event_type=None, title=None, description=None, attachment_filename=None, attachment_kind=None):
     entry = TimelineEntry(
         scope_type=scope_type,
         scope_id=scope_id,
@@ -49,7 +41,6 @@ def create_timeline_entry(*, scope_type, scope_id, creator_id, created_at=None, 
         event_type=event_type,
         title=title,
         description=description,
-        comment=comment,
         attachment_filename=attachment_filename,
         attachment_kind=attachment_kind,
         creator_id=creator_id,
@@ -77,15 +68,6 @@ def create_system_event(plant_id, key, creator_id, event_at=None, description=No
         description=description if description is not None else tpl['description'],
         creator_id=creator_id,
     )
-    if timeline_dual_write_enabled():
-        db.session.add(PlantEvent(
-        plant_id=plant_id,
-        event_type='plant_event',
-        event_at=event_at or datetime.utcnow(),
-        title=tpl['title'],
-        description=description if description is not None else tpl['description'],
-        creator_id=creator_id
-        ))
 
 def current_user():
     uid = session.get('user_id')
@@ -278,14 +260,6 @@ def location_detail(location_id):
         .order_by(TimelineEntry.created_at.desc())
         .all()
     )
-    if not timeline_entries and timeline_read_fallback_enabled():
-        timeline_entries = (
-            LocationTimelineEntry.query
-            .filter_by(location_id=loc.id)
-            .order_by(LocationTimelineEntry.created_at.desc())
-            .all()
-        )
-    title_entry = next((entry for entry in timeline_entries if entry.is_title_entry), None)
     location_plant_markers = [
         {'id': plant.id, 'name': plant.name, 'map_x': plant.map_x, 'map_y': plant.map_y}
         for plant in plants
@@ -298,7 +272,6 @@ def location_detail(location_id):
         plants=plants,
         plant_title_images_by_id=plant_title_images_by_id,
         timeline_entries=timeline_entries,
-        title_entry=title_entry,
         location_plant_markers=location_plant_markers,
         user=current_user(),
         creators={u.id: u for u in User.query.all()},
@@ -319,28 +292,21 @@ def location_detail(location_id):
 @login_required
 def new_location_timeline_entry(location_id):
     location = Location.query.get_or_404(location_id)
-    comment = (request.form.get('comment') or '').strip()
-    photo = request.files.get('photo')
+    description = (request.form.get('description') or '').strip()
+    attachment = request.files.get('attachment')
 
-    unique = save_uploaded_attachment(photo, current_app.config['UPLOAD_FOLDER'], ALLOWED)
-    if not comment or not unique:
+    unique = save_uploaded_attachment(attachment, current_app.config['UPLOAD_FOLDER'], ALLOWED)
+    if not description or not unique:
         return redirect(url_for('main.location_detail', location_id=location.id))
 
     create_timeline_entry(
         scope_type='location',
         scope_id=location.id,
-        comment=comment,
+        description=description,
         attachment_filename=unique,
         attachment_kind='image',
         creator_id=current_user().id,
     )
-    if timeline_dual_write_enabled():
-        db.session.add(LocationTimelineEntry(
-            location_id=location.id,
-            comment=comment,
-            photo_filename=unique,
-            creator_id=current_user().id,
-        ))
     db.session.commit()
     return redirect(url_for('main.location_detail', location_id=location.id))
 
@@ -356,13 +322,6 @@ def set_location_timeline_title(location_id, entry_id):
         entry_id_field=TimelineEntry.id,
         entry_id_value=entry_id,
     )
-    if timeline_dual_write_enabled():
-        set_single_title_entry(
-            model=LocationTimelineEntry,
-            owner_filter=(LocationTimelineEntry.location_id == location.id,),
-            entry_id_field=LocationTimelineEntry.id,
-            entry_id_value=entry_id,
-        )
     db.session.commit()
     return redirect(url_for('main.location_detail', location_id=location.id))
 
@@ -374,11 +333,6 @@ def delete_location_timeline_entry(location_id, entry_id):
     entry = TimelineEntry.query.filter_by(id=entry_id, scope_type='location', scope_id=location.id).first_or_404()
     delete_timeline_entry(entry, current_app.config['UPLOAD_FOLDER'], ('attachment_filename',))
     db.session.delete(entry)
-    if timeline_dual_write_enabled():
-        legacy_entry = LocationTimelineEntry.query.filter_by(id=entry_id, location_id=location.id).first()
-        if legacy_entry:
-            delete_timeline_entry(legacy_entry, current_app.config['UPLOAD_FOLDER'], ('photo_filename',))
-            db.session.delete(legacy_entry)
     db.session.commit()
     return redirect(url_for('main.location_detail', location_id=location.id))
 
@@ -420,8 +374,6 @@ def new_plant(location_id):
         description=tpl['description'],
         creator_id=current_user().id
     )
-    if timeline_dual_write_enabled():
-        db.session.add(PlantEvent(plant_id=p.id, event_type='plant_event', event_at=event_at, title=tpl['title'], description=tpl['description'], creator_id=current_user().id))
     db.session.commit()
     return redirect(url_for('main.plant_detail', plant_id=p.id))
 
@@ -438,7 +390,7 @@ def delete_location(location_id):
     for plant in plants:
         plant.location_id = trash.id
     # Location nur entfernen, wenn keine abhängigen Timeline-Einträge existieren.
-    has_timeline_entries = LocationTimelineEntry.query.filter_by(location_id=location.id).first() is not None
+    has_timeline_entries = TimelineEntry.query.filter_by(scope_type='location', scope_id=location.id).first() is not None
     if not has_timeline_entries:
         db.session.delete(location)
     db.session.commit()
@@ -449,8 +401,6 @@ def delete_location(location_id):
 def plant_detail(plant_id):
     plant = Plant.query.get_or_404(plant_id)
     events = TimelineEntry.query.filter_by(scope_type='plant', scope_id=plant.id).order_by(TimelineEntry.event_at.desc(), TimelineEntry.created_at.desc()).all()
-    if not events and timeline_read_fallback_enabled():
-        events = PlantEvent.query.filter_by(plant_id=plant.id).order_by(PlantEvent.event_at.desc()).all()
     photos = PlantPhoto.query.filter_by(plant_id=plant.id).order_by(PlantPhoto.uploaded_at.desc()).all()
     notes = PlantNote.query.filter_by(plant_id=plant.id).order_by(PlantNote.created_at.desc()).all()
     month_names = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
@@ -618,15 +568,6 @@ def update_masterdata(plant_id):
             description='\n'.join(changes),
             creator_id=current_user().id
         )
-        if timeline_dual_write_enabled():
-            db.session.add(PlantEvent(
-            plant_id=plant.id,
-            event_type='data_event',
-            event_at=datetime.utcnow(),
-            title='Pflanzendaten geändert',
-            description='\n'.join(changes),
-            creator_id=current_user().id
-            ))
 
     db.session.commit()
     return redirect(url_for('main.plant_detail', plant_id=plant.id))
@@ -682,8 +623,6 @@ def add_event(plant_id):
 
     if title or description or attachment_filename:
         create_timeline_entry(scope_type='plant', scope_id=plant_id, event_type=event_type, event_at=event_at, title=title, description=description or None, attachment_filename=attachment_filename, attachment_kind=attachment_kind, creator_id=current_user().id)
-        if timeline_dual_write_enabled():
-            db.session.add(PlantEvent(plant_id=plant_id, event_type=event_type, event_at=event_at, title=title, description=description or None, attachment_filename=attachment_filename, attachment_kind=attachment_kind, creator_id=current_user().id))
         db.session.commit()
     return redirect(url_for('main.plant_detail', plant_id=plant_id))
 
@@ -698,13 +637,6 @@ def set_plant_event_title(plant_id, event_id):
         entry_id_field=TimelineEntry.id,
         entry_id_value=event_id,
     )
-    if timeline_dual_write_enabled():
-        set_single_title_entry(
-            model=PlantEvent,
-            owner_filter=(PlantEvent.plant_id == plant.id,),
-            entry_id_field=PlantEvent.id,
-            entry_id_value=event_id,
-        )
     db.session.commit()
     return redirect(url_for('main.plant_detail', plant_id=plant.id))
 
@@ -715,11 +647,6 @@ def delete_event(plant_id, event_id):
     event = TimelineEntry.query.filter_by(id=event_id, scope_type='plant', scope_id=plant_id).first_or_404()
     delete_timeline_entry(event, current_app.config['UPLOAD_FOLDER'], ('attachment_filename',))
     db.session.delete(event)
-    if timeline_dual_write_enabled():
-        legacy_event = PlantEvent.query.filter_by(id=event_id, plant_id=plant_id).first()
-        if legacy_event:
-            delete_timeline_entry(legacy_event, current_app.config['UPLOAD_FOLDER'], ('attachment_filename',))
-            db.session.delete(legacy_event)
     db.session.commit()
     return redirect(url_for('main.plant_detail', plant_id=plant_id))
 
@@ -732,15 +659,6 @@ def add_system_event(plant_id, event_key):
     if event_key in {'care_event', 'measurement'}:
         titles = {'care_event': 'Pflege', 'measurement': 'Messen'}
         create_timeline_entry(scope_type='plant', scope_id=plant_id, event_type=EVENT_TYPE_MAP[event_key], event_at=datetime.utcnow(), title=titles[event_key], description=None, creator_id=current_user().id)
-        if timeline_dual_write_enabled():
-            db.session.add(PlantEvent(
-                plant_id=plant_id,
-                event_type=EVENT_TYPE_MAP[event_key],
-                event_at=datetime.utcnow(),
-                title=titles[event_key],
-                description=None,
-                creator_id=current_user().id
-            ))
     else:
         create_system_event(plant_id, event_key, current_user().id)
     db.session.commit()
