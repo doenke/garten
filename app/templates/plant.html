@@ -83,7 +83,9 @@
       {% endif %}
       {% if title_event and title_event.attachment_kind == 'image' and title_event.attachment_filename %}
       <aside class="plant-title-entry-image-panel">
-        <img src="/uploads/{{ title_event.attachment_filename }}" alt="Titelbeitrag von {{ plant.name }}" class="plant-title-entry-image">
+        <button type="button" class="timeline-image-btn plant-title-entry-image-btn" data-image-src="/uploads/{{ title_event.attachment_filename }}" aria-label="Titelbild groß anzeigen">
+          <img src="/uploads/{{ title_event.attachment_filename }}" alt="Titelbeitrag von {{ plant.name }}" class="plant-title-entry-image">
+        </button>
       </aside>
       {% endif %}
     </div>
@@ -206,6 +208,7 @@
 .plant-masterdata{min-width:0}
 .plant-title-entry-panel{margin-left:auto;max-width:min(420px,100%);display:flex;flex-direction:column;gap:.5rem;align-items:flex-end;text-align:right}
 .plant-title-entry-image-panel{grid-column:2;grid-row:1 / span 2;align-self:stretch;display:flex}
+.plant-title-entry-image-btn{display:block;padding:0;border:0;background:none;width:100%;height:100%;cursor:zoom-in}
 .plant-title-entry-image{width:100%;height:100%;max-height:none;object-fit:cover;border-radius:10px;display:block}
 .plant-title-entry-text{margin:0;white-space:pre-line;color:var(--muted)}
 .plant-map-panel{margin-top:1rem}
