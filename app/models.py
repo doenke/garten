@@ -90,3 +90,24 @@ class LocationTimelineEntry(db.Model):
     photo_filename = db.Column(db.String(255), nullable=False)
     is_title_entry = db.Column(db.Boolean, nullable=False, default=False)
     creator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+
+class TimelineEntry(db.Model):
+    __table_args__ = (
+        db.Index('ix_timeline_entry_scope_created_at', 'scope_type', 'scope_id', db.desc('created_at')),
+        db.Index('ix_timeline_entry_scope_title_entry', 'scope_type', 'scope_id', 'is_title_entry'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    scope_type = db.Column(db.String(32), nullable=False, index=True)
+    scope_id = db.Column(db.Integer, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    event_at = db.Column(db.DateTime)
+    event_type = db.Column(db.String(32))
+    title = db.Column(db.String(255))
+    description = db.Column(db.Text)
+    comment = db.Column(db.Text)
+    attachment_filename = db.Column(db.String(255))
+    attachment_kind = db.Column(db.String(16))
+    is_title_entry = db.Column(db.Boolean, nullable=False, default=False, index=True)
+    creator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
