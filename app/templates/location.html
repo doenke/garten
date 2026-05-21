@@ -327,8 +327,8 @@
     locationPlantsSearch.addEventListener('input', applyFilter);
   }
 </script>
-<form method="post" action="/locations/{{ location.id }}/delete" onsubmit="return confirm('Location wirklich löschen? Alle enthaltenen Pflanzen werden in den Papierkorb verschoben.');" class="floating-trash">
-  <button type="submit" aria-label="Location löschen" title="Location löschen">🗑️</button>
+<form method="post" action="/locations/{{ location.id }}/delete" onsubmit="return confirm('Beet wirklich löschen? Alle enthaltenen Pflanzen werden in den Papierkorb verschoben.');" class="floating-trash">
+  <button type="submit" aria-label="Beet löschen" title="Beet löschen">🗑️</button>
 </form>
 </section>
 {% endblock %}

@@ -2,20 +2,20 @@
 {% block content %}
 <section class="card">
 {% if garden_map and garden_map.filename %}
-<div style="position:relative; margin:0 auto 1rem; width:fit-content; max-width:100%;">
+<div style="position:relative; margin:0 auto .35rem; width:fit-content; max-width:100%;">
   <img id="index-map-image" src="/maps/{{ garden_map.filename }}" alt="Luftbild des Gartens" style="max-width:100%;border-radius:10px;display:block;margin:0 auto;">
   <svg id="index-map-overlay" style="position:absolute;left:0;top:0;width:100%;height:100%;" preserveAspectRatio="none"></svg>
 </div>
 {% endif %}
-<h2>Pflanzorte</h2>
+<h2>Beete</h2>
 <div class="table-search">
-  <input type="search" id="locations-search" placeholder="Locations durchsuchen">
+  <input type="search" id="locations-search" placeholder="Beete durchsuchen">
 </div>
 <table>
   <thead>
     <tr>
       <th></th>
-      <th>Location</th>
+      <th>Beet</th>
       <th>Beschreibung</th>
       <th>Pflanzen</th>
     </tr>
@@ -35,7 +35,7 @@
           aria-label="Farbe für {{ l.name }} ändern"></button>
         {% endif %}
       </td>
-      <td data-label="Location"><a href="/locations/{{l.id}}">{{l.name}}</a></td>
+      <td data-label="Beet"><a href="/locations/{{l.id}}">{{l.name}}</a></td>
       <td data-label="Beschreibung">{{ l.description }}</td>
       <td data-label="Pflanzen">{{ location_plant_counts.get(l.id, 0) }}</td>
     </tr>
@@ -55,7 +55,7 @@
 </dialog>
 
 <div class="actions-inline" style="margin-top:1rem;">
-  <button type="button" id="toggle-new-location">Neue Location anlegen</button>
+  <button type="button" id="toggle-new-location">Neues Beet anlegen</button>
 </div>
 
 <form method="post" action="/locations/new" id="new-location-form" class="grid" style="display:none; margin-top:1rem;">
@@ -74,7 +74,7 @@
     <tr>
       <th>Pflanze</th>
       <th>Bürgerlicher Name</th>
-      <th>Location</th>
+      <th>Beet</th>
     </tr>
   </thead>
   <tbody>
@@ -82,7 +82,7 @@
     <tr>
       <td data-label="Pflanze"><a href="/plants/{{ plant.id }}">{{ plant.name }}</a></td>
       <td data-label="Bürgerlicher Name">{{ plant.common_name or '-' }}</td>
-      <td data-label="Location"><a href="/locations/{{ location.id }}">{{ location.name }}</a></td>
+      <td data-label="Beet"><a href="/locations/{{ location.id }}">{{ location.name }}</a></td>
     </tr>
   {% else %}
     <tr>
@@ -241,7 +241,7 @@
   toggleButton.addEventListener('click', () => {
     const isHidden = newLocationForm.style.display === 'none';
     newLocationForm.style.display = isHidden ? 'block' : 'none';
-    toggleButton.textContent = isHidden ? 'Formular schließen' : 'Neue Location anlegen';
+    toggleButton.textContent = isHidden ? 'Formular schließen' : 'Neues Beet anlegen';
   });
 
   colorTriggers.forEach((trigger) => {
