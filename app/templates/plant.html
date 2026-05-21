@@ -188,12 +188,12 @@
   <button type="submit" aria-label="Pflanze löschen" title="Pflanze löschen">🗑️</button>
 </form>
 
-<div id="image-modal" style="display:none;position:fixed;inset:0;background:#000c;z-index:9999;align-items:center;justify-content:center;padding:1rem;">
-  <div style="position:relative;max-width:92vw;max-height:92vh;display:flex;align-items:center;gap:.5rem;">
-    <button type="button" id="image-prev" aria-label="Vorheriges Foto" style="font-size:2rem;line-height:1;padding:.5rem 1rem;">◀</button>
-    <img id="image-modal-img" src="" alt="Großansicht" style="max-width:80vw;max-height:88vh;border-radius:8px;background:#fff;">
-    <button type="button" id="image-next" aria-label="Nächstes Foto" style="font-size:2rem;line-height:1;padding:.5rem 1rem;">▶</button>
-    <button type="button" id="image-close" aria-label="Schließen" style="position:absolute;top:-.5rem;right:-.5rem;font-size:1.5rem;padding:.25rem .5rem;">✕</button>
+<div id="image-modal" class="image-modal" style="display:none;" aria-hidden="true">
+  <div class="image-modal-inner">
+    <button type="button" id="image-prev" class="image-modal-nav image-modal-nav-prev" aria-label="Vorheriges Foto">◀</button>
+    <img id="image-modal-img" src="" alt="Großansicht" class="image-modal-img">
+    <button type="button" id="image-next" class="image-modal-nav image-modal-nav-next" aria-label="Nächstes Foto">▶</button>
+    <button type="button" id="image-close" class="image-modal-close" aria-label="Schließen">✕</button>
   </div>
 </div>
 
@@ -223,8 +223,21 @@
 .timeline-form{margin:0}
 .timeline-form-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.6rem;align-items:start}
 .timeline-form-row textarea{min-height:5.2rem}
+.image-modal{position:fixed;inset:0;background:rgba(0,0,0,.86);z-index:9999;align-items:center;justify-content:center;padding:1rem;touch-action:pan-y}
+.image-modal-inner{position:relative;max-width:92vw;max-height:92vh;display:flex;align-items:center;gap:.5rem}
+.image-modal-img{max-width:min(84vw,1200px);max-height:88vh;border-radius:10px;background:#fff;box-shadow:0 18px 40px rgba(0,0,0,.45);object-fit:contain;user-select:none;-webkit-user-drag:none;touch-action:pan-y}
+.image-modal-nav{font-size:2rem;line-height:1;padding:.55rem 1rem;min-width:48px;min-height:48px;border-radius:999px;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.32);text-shadow:none}
+.image-modal-nav:disabled{opacity:.45;cursor:not-allowed}
+.image-modal-close{position:absolute;top:-.5rem;right:-.5rem;font-size:1.4rem;line-height:1;padding:.45rem .6rem;min-width:44px;min-height:44px;border-radius:999px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.32);text-shadow:none}
 @media (max-width: 640px){
   .timeline-form-row{grid-template-columns:1fr}
+  .image-modal{padding:0;background:#000}
+  .image-modal-inner{width:100vw;height:100dvh;max-width:none;max-height:none;display:grid;grid-template-columns:1fr;grid-template-rows:1fr}
+  .image-modal-img{width:100%;height:100%;max-width:none;max-height:none;border-radius:0;background:#000}
+  .image-modal-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:2}
+  .image-modal-nav-prev{left:.45rem}
+  .image-modal-nav-next{right:.45rem}
+  .image-modal-close{top:max(env(safe-area-inset-top), .45rem);right:max(env(safe-area-inset-right), .45rem)}
 }
 @media (max-width: 900px){
   .plant-top-row{grid-template-columns:1fr}
@@ -471,6 +484,10 @@
   const nextButton = document.getElementById('image-next');
   const closeButton = document.getElementById('image-close');
   let currentIndex = 0;
+  let touchStartX = null;
+  let touchStartY = null;
+  let touchMoved = false;
+  const SWIPE_THRESHOLD_PX = 45;
 
   const updateImage = () => {
     currentIndex = (currentIndex + imageButtons.length) % imageButtons.length;
@@ -484,11 +501,13 @@
     currentIndex = index;
     updateImage();
     modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
   };
 
   const closeModal = () => {
     modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
     modalImage.src = '';
     document.body.style.overflow = '';
   };
@@ -526,6 +545,46 @@
       updateImage();
     }
   });
+
+  modal.addEventListener('touchstart', (event) => {
+    const touch = event.changedTouches?.[0];
+    if (!touch) return;
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    touchMoved = false;
+  }, { passive: true });
+
+  modal.addEventListener('touchmove', (event) => {
+    const touch = event.changedTouches?.[0];
+    if (!touch || touchStartX === null || touchStartY === null) return;
+    const deltaX = touch.clientX - touchStartX;
+    const deltaY = touch.clientY - touchStartY;
+    if (Math.abs(deltaX) > 6 || Math.abs(deltaY) > 6) touchMoved = true;
+  }, { passive: true });
+
+  modal.addEventListener('touchend', (event) => {
+    const touch = event.changedTouches?.[0];
+    if (!touch || touchStartX === null || touchStartY === null) {
+      touchStartX = null;
+      touchStartY = null;
+      return;
+    }
+    const deltaX = touch.clientX - touchStartX;
+    const deltaY = touch.clientY - touchStartY;
+    if (Math.abs(deltaX) >= SWIPE_THRESHOLD_PX && Math.abs(deltaX) > Math.abs(deltaY)) {
+      if (deltaX < 0) {
+        currentIndex += 1;
+      } else {
+        currentIndex -= 1;
+      }
+      updateImage();
+    } else if (!touchMoved && event.target === modal) {
+      closeModal();
+    }
+    touchStartX = null;
+    touchStartY = null;
+    touchMoved = false;
+  }, { passive: true });
 })();
 </script>
 {% endblock %}
