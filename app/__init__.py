@@ -80,6 +80,7 @@ def create_app():
     app.config['AVATAR_FOLDER'] = os.getenv('AVATAR_FOLDER', '/data/avatars')
     app.config['MAP_FOLDER'] = os.getenv('MAP_FOLDER', '/data/maps')
     app.config['WIDGET_API_KEY'] = os.getenv('WIDGET_API_KEY', '').strip()
+    app.config['STATS_UPLOAD_CACHE_TTL_SECONDS'] = max(0, int(os.getenv('STATS_UPLOAD_CACHE_TTL_SECONDS', '60')))
 
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1)
 

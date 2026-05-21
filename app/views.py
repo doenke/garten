@@ -1,5 +1,6 @@
 import os
 import json
+import time
 from functools import wraps
 from datetime import datetime
 from flask import Blueprint, current_app, render_template, request, redirect, url_for, session, jsonify, send_from_directory
@@ -29,6 +30,13 @@ PLANTING_STATE_TYPES = {
     'Eingepflanzt': 'planting',
     'Umgepflanzt': 'transplant',
     'Ausgepflanzt': 'outplant',
+}
+
+_upload_stats_cache = {
+    'expires_at': 0.0,
+    'upload_folder': None,
+    'uploads': 0,
+    'upload_size_bytes': 0,
 }
 
 
@@ -153,17 +161,31 @@ def healthz():
 def api_stats():
     plant_count = db.session.query(db.func.count(Plant.id)).scalar() or 0
     bed_count = db.session.query(db.func.count(Location.id)).filter(Location.name != TRASH_LOCATION_NAME).scalar() or 0
-    upload_count = 0
-    upload_total_size = 0
     upload_folder = current_app.config.get('UPLOAD_FOLDER')
-    if upload_folder and os.path.isdir(upload_folder):
-        for root, _, files in os.walk(upload_folder):
-            for filename in files:
-                full_path = os.path.join(root, filename)
-                if not os.path.isfile(full_path):
-                    continue
-                upload_count += 1
-                upload_total_size += os.path.getsize(full_path)
+    cache_ttl = current_app.config.get('STATS_UPLOAD_CACHE_TTL_SECONDS', 60)
+    now = time.monotonic()
+    should_refresh = (
+        _upload_stats_cache['upload_folder'] != upload_folder
+        or now >= _upload_stats_cache['expires_at']
+    )
+    if should_refresh:
+        upload_count = 0
+        upload_total_size = 0
+        if upload_folder and os.path.isdir(upload_folder):
+            for root, _, files in os.walk(upload_folder):
+                for filename in files:
+                    full_path = os.path.join(root, filename)
+                    if not os.path.isfile(full_path):
+                        continue
+                    upload_count += 1
+                    upload_total_size += os.path.getsize(full_path)
+        _upload_stats_cache['upload_folder'] = upload_folder
+        _upload_stats_cache['uploads'] = upload_count
+        _upload_stats_cache['upload_size_bytes'] = upload_total_size
+        _upload_stats_cache['expires_at'] = now + max(0, cache_ttl)
+
+    upload_count = _upload_stats_cache['uploads']
+    upload_total_size = _upload_stats_cache['upload_size_bytes']
 
     database_size = 0
     db_uri = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')
