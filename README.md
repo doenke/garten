@@ -119,6 +119,15 @@ Beispielkonfiguration für `services.yaml` in gethomepage:
             - field: beds
               label: Beete
               format: number
+            - field: uploads
+              label: Uploads
+              format: number
+            - field: upload_size_bytes
+              label: Uploadgröße
+              format: bytes
+            - field: database_size_bytes
+              label: DB-Größe
+              format: bytes
 ```
 
 Tipp: Lege den Key in gethomepage als Umgebungsvariable ab (z. B. `HOMEPAGE_VAR_GARTEN_API_KEY`) und hinterlege ihn nicht im Klartext in der YAML.
