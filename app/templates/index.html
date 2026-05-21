@@ -81,7 +81,7 @@
   {% for plant, location in plants %}
     <tr data-row-link="/plants/{{ plant.id }}">
       <td data-label="Pflanze">{{ plant.name }}</td>
-      <td data-label="Bürgerlicher Name">{{ plant.common_name or '-' }}</td>
+      <td data-label="Bürgerlicher Name">{{ plant.common_name or '' }}</td>
       <td data-label="Beet"><a href="/locations/{{ location.id }}">{{ location.name }}</a></td>
     </tr>
   {% else %}
