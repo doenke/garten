@@ -2,12 +2,12 @@
 {% block content %}
 <section class="card">
 {% if garden_map and garden_map.filename %}
-<div style="position:relative; margin:0 auto .35rem; width:fit-content; max-width:100%;">
-  <img id="index-map-image" src="/maps/{{ garden_map.filename }}" alt="Luftbild des Gartens" style="max-width:100%;border-radius:10px;display:block;margin:0 auto;">
-  <svg id="index-map-overlay" style="position:absolute;left:0;top:0;width:100%;height:100%;" preserveAspectRatio="none"></svg>
+<div class="rel-inline fit-content mb-35" style="margin-left:auto;margin-right:auto;">
+  <img id="index-map-image" src="/maps/{{ garden_map.filename }}" alt="Luftbild des Gartens" class="map-image" style="margin:0 auto;">
+  <svg id="index-map-overlay" class="map-overlay" preserveAspectRatio="none"></svg>
 </div>
 {% endif %}
-<h2 style="margin:0;">Beete</h2>
+<h2 class="m-0">Beete</h2>
 <div class="table-search">
   <input type="search" id="locations-search" placeholder="Beete durchsuchen">
 </div>
@@ -45,7 +45,7 @@
 
 <dialog id="location-color-dialog">
   <form method="post" id="location-color-form" class="grid">
-    <h3 id="location-color-title" style="margin:0;">Farbe ändern</h3>
+    <h3 id="location-color-title" class="m-0">Farbe ändern</h3>
     <input type="color" id="location-color-input" name="color" value="#2f6d40" required>
     <div class="actions-inline">
       <button type="submit">Speichern</button>
@@ -54,18 +54,18 @@
   </form>
 </dialog>
 
-<div class="actions-inline" style="margin-top:1rem; margin-bottom:.75rem;">
+<div class="actions-inline mt-1 mb-75">
   <button type="button" id="toggle-new-location">Neues Beet anlegen</button>
 </div>
 
-<form method="post" action="/locations/new" id="new-location-form" class="grid" style="display:none; margin-top:1rem;">
+<form method="post" action="/locations/new" id="new-location-form" class="grid hidden mt-1">
   <input name="name" placeholder="Name" required>
   <input name="description" placeholder="Beschreibung">
   <label class="color-field">Farbe <input class="color-input-dot color-dot-lg" type="color" name="color" value="#2f6d40"></label>
   <button>anlegen</button>
 </form>
 
-<h2 style="margin:0;">Alle Pflanzen</h2>
+<h2 class="m-0">Alle Pflanzen</h2>
 <div class="table-search">
   <input type="search" id="index-plants-search" placeholder="Pflanzen durchsuchen">
 </div>
