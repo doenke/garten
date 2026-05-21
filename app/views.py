@@ -10,6 +10,13 @@ from .services.timeline_service import save_uploaded_attachment, set_single_titl
 main_bp = Blueprint('main', __name__)
 ALLOWED = {'png', 'jpg', 'jpeg', 'webp', 'gif', 'pdf'}
 IMAGE_TYPES = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
+ALLOWED_ATTACHMENT_MIME_TYPES = {
+    'image/png',
+    'image/jpeg',
+    'image/webp',
+    'image/gif',
+    'application/pdf',
+}
 TRASH_LOCATION_NAME = "Papierkorb"
 EVENT_TYPE_MAP = {
     'planting': 'plant_event',
@@ -346,7 +353,13 @@ def new_location_timeline_entry(location_id):
     description = (request.form.get('description') or '').strip()
     attachment = request.files.get('attachment')
 
-    unique = save_uploaded_attachment(attachment, current_app.config['UPLOAD_FOLDER'], ALLOWED)
+    unique = save_uploaded_attachment(
+        attachment,
+        current_app.config['UPLOAD_FOLDER'],
+        ALLOWED,
+        ALLOWED_ATTACHMENT_MIME_TYPES,
+        current_app.config.get('MAX_ATTACHMENT_SIZE_BYTES'),
+    )
     if not description or not unique:
         return redirect(url_for('main.location_detail', location_id=location.id))
 
@@ -666,7 +679,13 @@ def add_event(plant_id):
     description = request.form.get('description', '').strip()
 
     file = request.files.get('attachment')
-    attachment_filename = save_uploaded_attachment(file, current_app.config['UPLOAD_FOLDER'], ALLOWED)
+    attachment_filename = save_uploaded_attachment(
+        file,
+        current_app.config['UPLOAD_FOLDER'],
+        ALLOWED,
+        ALLOWED_ATTACHMENT_MIME_TYPES,
+        current_app.config.get('MAX_ATTACHMENT_SIZE_BYTES'),
+    )
     attachment_kind = None
     if attachment_filename:
         ext = attachment_filename.rsplit('.', 1)[1].lower()

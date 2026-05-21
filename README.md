@@ -68,6 +68,7 @@ docker compose up --build
 - `SECRET_KEY` – Flask Secret Key (Sessions/Signaturen)
 - `DATABASE_URL` – SQLAlchemy-Datenbankverbindung (z. B. SQLite in `/data`)
 - `UPLOAD_FOLDER` – Verzeichnis für hochgeladene Pflanzenfotos
+- `MAX_ATTACHMENT_SIZE_BYTES` – Maximalgröße pro Dateiupload (Standard: `15728640` = 15 MiB)
 - `AVATAR_FOLDER` – Verzeichnis für lokal gespeicherte Benutzer-Avatare
 - `MAP_FOLDER` – Verzeichnis für Karten-/Lageplan-Dateien
 - `WIDGET_API_KEY` – API-Key für den Statistik-Webservice `/api/stats`
