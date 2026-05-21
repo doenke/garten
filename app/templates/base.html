@@ -67,6 +67,7 @@
     .table-search{display:flex;align-items:center;gap:.4rem;margin:.35rem 0 .75rem}
     .table-search input{margin:0}
     .table-search button{padding:.5rem .7rem;border-radius:10px}
+    tbody tr[data-row-link]{cursor:pointer}
         @media (max-width:900px){.page-wrap{padding:.8rem .75rem}.site-header{flex-direction:column;align-items:stretch}.brand h1{font-size:1.2rem}}
     @media (max-width:700px){table,thead,tbody,th,td,tr{display:block} thead{display:none} tr{margin-bottom:.7rem} td{border:1px solid var(--border)!important;border-radius:10px!important} td::before{content:attr(data-label);display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem;font-weight:600}}
   </style>
@@ -109,5 +110,6 @@ const s=document.getElementById('themeSwitch');const saved=localStorage.getItem(
 s.addEventListener('change',()=>{localStorage.setItem('theme',s.value);document.documentElement.dataset.theme=s.value;});
 const avatarToggle=document.getElementById('avatar-toggle');const userMenu=document.getElementById('user-menu');
 if(avatarToggle&&userMenu){avatarToggle.addEventListener('click',(e)=>{e.stopPropagation();const isOpen=userMenu.classList.toggle('open');avatarToggle.setAttribute('aria-expanded',isOpen?'true':'false');});document.addEventListener('click',(e)=>{if(!userMenu.contains(e.target)&&e.target!==avatarToggle){userMenu.classList.remove('open');avatarToggle.setAttribute('aria-expanded','false');}});}
+document.querySelectorAll('tbody tr[data-row-link]').forEach((row)=>{row.addEventListener('click',(event)=>{if(event.target.closest('a,button,input,select,textarea,label,summary,[role="button"]')) return; const target=row.dataset.rowLink; if(target) window.location.href=target;});});
 </script>
 </body></html>
