@@ -77,6 +77,10 @@ def create_app():
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', '/data/uploads')
     app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+    app.config['MAX_ATTACHMENT_SIZE_BYTES'] = max(
+        0,
+        int(os.getenv('MAX_ATTACHMENT_SIZE_BYTES', str(15 * 1024 * 1024))),
+    )
     app.config['AVATAR_FOLDER'] = os.getenv('AVATAR_FOLDER', '/data/avatars')
     app.config['MAP_FOLDER'] = os.getenv('MAP_FOLDER', '/data/maps')
     app.config['WIDGET_API_KEY'] = os.getenv('WIDGET_API_KEY', '').strip()
@@ -130,4 +134,3 @@ def _ensure_timeline_title_entry_uniqueness(inspector):
             'CREATE UNIQUE INDEX IF NOT EXISTS ux_timeline_entry_single_title_per_scope '
             'ON timeline_entry (scope_type, scope_id) WHERE is_title_entry IS TRUE'
         ))
-
