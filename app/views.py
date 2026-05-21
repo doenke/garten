@@ -184,6 +184,11 @@ def manifest():
 def sw():
     return send_from_directory(current_app.static_folder, 'sw.js', mimetype='application/javascript')
 
+
+@main_bp.route('/favicon.svg')
+def favicon():
+    return send_from_directory(current_app.static_folder, 'favicon.svg', mimetype='image/svg+xml')
+
 @main_bp.route('/uploads/<path:filename>')
 @login_required
 def uploads(filename):
