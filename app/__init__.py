@@ -76,11 +76,11 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///garden.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', '/data/uploads')
-    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
     app.config['MAX_ATTACHMENT_SIZE_BYTES'] = max(
         0,
         int(os.getenv('MAX_ATTACHMENT_SIZE_BYTES', str(15 * 1024 * 1024))),
     )
+    app.config['MAX_CONTENT_LENGTH'] = app.config['MAX_ATTACHMENT_SIZE_BYTES']
     app.config['AVATAR_FOLDER'] = os.getenv('AVATAR_FOLDER', '/data/avatars')
     app.config['MAP_FOLDER'] = os.getenv('MAP_FOLDER', '/data/maps')
     app.config['WIDGET_API_KEY'] = os.getenv('WIDGET_API_KEY', '').strip()
