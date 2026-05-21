@@ -16,6 +16,10 @@ class User(db.Model):
 
 
 class Location(db.Model):
+    __table_args__ = (
+        db.Index('ix_location_name', 'name'),
+    )
+
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
@@ -26,6 +30,10 @@ class Location(db.Model):
 
 
 class Plant(db.Model):
+    __table_args__ = (
+        db.Index('ix_plant_location_id', 'location_id'),
+    )
+
     id = db.Column(db.Integer, primary_key=True)
     location_id = db.Column(db.Integer, db.ForeignKey('location.id'), nullable=False)
     name = db.Column(db.String(255), nullable=False)
