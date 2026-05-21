@@ -1,4 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import text
 from datetime import datetime
 
 
@@ -96,6 +97,14 @@ class TimelineEntry(db.Model):
     __table_args__ = (
         db.Index('ix_timeline_entry_scope_created_at', 'scope_type', 'scope_id', db.desc('created_at')),
         db.Index('ix_timeline_entry_scope_title_entry', 'scope_type', 'scope_id', 'is_title_entry'),
+        db.Index(
+            'ux_timeline_entry_single_title_per_scope',
+            'scope_type',
+            'scope_id',
+            unique=True,
+            sqlite_where=text('is_title_entry = 1'),
+            postgresql_where=text('is_title_entry IS TRUE'),
+        ),
     )
 
     id = db.Column(db.Integer, primary_key=True)

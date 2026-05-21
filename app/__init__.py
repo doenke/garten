@@ -119,9 +119,33 @@ def _run_schema_upgrades():
                 'ADD COLUMN is_title_entry BOOLEAN NOT NULL DEFAULT 0'
             )
         )
+    _ensure_timeline_title_entry_uniqueness(inspector)
     _migrate_legacy_timeline_entries(inspector)
     db.session.commit()
 
+
+
+
+def _ensure_timeline_title_entry_uniqueness(inspector):
+    table_names = set(inspector.get_table_names())
+    if 'timeline_entry' not in table_names:
+        return
+
+    existing_indexes = {index['name'] for index in inspector.get_indexes('timeline_entry')}
+    if 'ux_timeline_entry_single_title_per_scope' in existing_indexes:
+        return
+
+    dialect = db.engine.dialect.name
+    if dialect == 'sqlite':
+        db.session.execute(db.text(
+            'CREATE UNIQUE INDEX IF NOT EXISTS ux_timeline_entry_single_title_per_scope '
+            'ON timeline_entry (scope_type, scope_id) WHERE is_title_entry = 1'
+        ))
+    elif dialect == 'postgresql':
+        db.session.execute(db.text(
+            'CREATE UNIQUE INDEX IF NOT EXISTS ux_timeline_entry_single_title_per_scope '
+            'ON timeline_entry (scope_type, scope_id) WHERE is_title_entry IS TRUE'
+        ))
 
 def _migrate_legacy_timeline_entries(inspector):
     """Backfill timeline_entry from legacy timeline tables without duplicates."""

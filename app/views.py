@@ -262,17 +262,6 @@ def location_detail(location_id):
             )
             .all()
         )
-        if not title_events and timeline_read_fallback_enabled():
-            title_events = (
-                PlantEvent.query
-                .filter(
-                    PlantEvent.plant_id.in_(plant_ids),
-                    PlantEvent.is_title_entry.is_(True),
-                    PlantEvent.attachment_kind == 'image',
-                    PlantEvent.attachment_filename.isnot(None),
-                )
-                .all()
-            )
         plant_title_images_by_id = {
             (event.scope_id if hasattr(event, 'scope_id') else event.plant_id): event.attachment_filename
             for event in title_events

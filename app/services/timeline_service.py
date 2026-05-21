@@ -1,6 +1,8 @@
 import os
 from uuid import uuid4
 
+from sqlalchemy.exc import IntegrityError
+from werkzeug.exceptions import Conflict
 from werkzeug.utils import secure_filename
 
 
@@ -33,8 +35,15 @@ def set_single_title_entry(model, owner_filter, entry_id_field, entry_id_value):
         entry_id_field == entry_id_value,
     ).first_or_404()
 
-    model.query.filter(*owner_filter).update({'is_title_entry': False})
+    model.query.filter(*owner_filter).update({'is_title_entry': False}, synchronize_session=False)
     entry.is_title_entry = True
+
+    try:
+        model.query.session.flush()
+    except IntegrityError as exc:
+        model.query.session.rollback()
+        raise Conflict('Für diesen Bereich existiert bereits ein Titelbeitrag.') from exc
+
     return entry
 
 
