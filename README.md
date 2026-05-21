@@ -102,10 +102,10 @@ Beispielkonfiguration für `services.yaml` in gethomepage:
 - Garten:
         description: Pflanzen & Beete
         icon: mdi-flower
-        href: https://garten.example.com
+        href: https://gardenglow.example.com
         widget:
           type: customapi
-          url: https://garten.example.com/api/stats
+          url: https://gardenglow.example.com/api/stats
           method: GET
           headers:
             X-API-Key: "{{HOMEPAGE_VAR_GARTEN_API_KEY}}"
