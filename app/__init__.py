@@ -119,4 +119,97 @@ def _run_schema_upgrades():
                 'ADD COLUMN is_title_entry BOOLEAN NOT NULL DEFAULT 0'
             )
         )
+    _migrate_legacy_timeline_entries(inspector)
     db.session.commit()
+
+
+def _migrate_legacy_timeline_entries(inspector):
+    """Backfill timeline_entry from legacy timeline tables without duplicates."""
+    table_names = set(inspector.get_table_names())
+    if 'timeline_entry' not in table_names:
+        return
+
+    if 'plant_event' in table_names:
+        plant_event_columns = {
+            column['name']
+            for column in inspector.get_columns('plant_event')
+        }
+        plant_created_at_expr = 'pe.created_at' if 'created_at' in plant_event_columns else 'pe.event_at'
+        db.session.execute(
+            db.text(
+                f"""
+                INSERT INTO timeline_entry (
+                    scope_type, scope_id, created_at, event_at, event_type, title, description,
+                    attachment_filename, attachment_kind, is_title_entry, creator_id
+                )
+                SELECT
+                    'plant',
+                    pe.plant_id,
+                    {plant_created_at_expr},
+                    pe.event_at,
+                    pe.event_type,
+                    pe.title,
+                    pe.description,
+                    pe.attachment_filename,
+                    pe.attachment_kind,
+                    pe.is_title_entry,
+                    pe.creator_id
+                FROM plant_event pe
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM timeline_entry te
+                    WHERE te.scope_type = 'plant'
+                      AND te.scope_id = pe.plant_id
+                      AND te.created_at = {plant_created_at_expr}
+                      AND ((te.event_at = pe.event_at) OR (te.event_at IS NULL AND pe.event_at IS NULL))
+                      AND te.event_type = pe.event_type
+                      AND te.title = pe.title
+                      AND (te.description = pe.description OR (te.description IS NULL AND pe.description IS NULL))
+                      AND (te.attachment_filename = pe.attachment_filename OR (te.attachment_filename IS NULL AND pe.attachment_filename IS NULL))
+                      AND (te.attachment_kind = pe.attachment_kind OR (te.attachment_kind IS NULL AND pe.attachment_kind IS NULL))
+                      AND te.is_title_entry = pe.is_title_entry
+                      AND te.creator_id = pe.creator_id
+                )
+                """
+            )
+        )
+
+    if 'location_timeline_entry' in table_names:
+        db.session.execute(
+            db.text(
+                """
+                INSERT INTO timeline_entry (
+                    scope_type, scope_id, created_at, event_at, event_type, title, description,
+                    attachment_filename, attachment_kind, is_title_entry, creator_id
+                )
+                SELECT
+                    'location',
+                    lte.location_id,
+                    lte.created_at,
+                    lte.created_at,
+                    'location_update',
+                    NULL,
+                    lte.comment,
+                    lte.photo_filename,
+                    'image',
+                    lte.is_title_entry,
+                    lte.creator_id
+                FROM location_timeline_entry lte
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM timeline_entry te
+                    WHERE te.scope_type = 'location'
+                      AND te.scope_id = lte.location_id
+                      AND te.created_at = lte.created_at
+                      AND te.event_at = lte.created_at
+                      AND te.event_type = 'location_update'
+                      AND te.title IS NULL
+                      AND te.description = lte.comment
+                      AND te.attachment_filename = lte.photo_filename
+                      AND te.attachment_kind = 'image'
+                      AND te.is_title_entry = lte.is_title_entry
+                      AND te.creator_id = lte.creator_id
+                )
+                """
+            )
+        )
