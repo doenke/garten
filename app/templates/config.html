@@ -4,30 +4,30 @@
   <h2>Konfiguration</h2>
 
   <h3>Luftbild</h3>
-  <form method="post" action="/map/upload" enctype="multipart/form-data" class="grid" style="margin-bottom:1rem;">
+  <form method="post" action="/map/upload" enctype="multipart/form-data" class="grid mb-1">
     <input type="file" name="map_image" accept="image/*" required>
     <button>Luftbild hochladen</button>
   </form>
 
   {% if garden_map and garden_map.filename %}
-  <div style="position:relative;display:inline-block;max-width:100%;margin-bottom:1rem;line-height:0;">
-    <img id="overview-map-image" src="/maps/{{ garden_map.filename }}" style="display:block;max-width:100%;border-radius:10px;">
-    <svg id="overview-map-overlay" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;" preserveAspectRatio="none"></svg>
+  <div class="rel-inline mb-1 line-0">
+    <img id="overview-map-image" src="/maps/{{ garden_map.filename }}" class="map-image">
+    <svg id="overview-map-overlay" class="map-overlay overlay-no-pointer" preserveAspectRatio="none"></svg>
   </div>
 
   <h3>Kalibrierung</h3>
-  <p style="margin-top:0;">
+  <p class="mt-0">
     Dezimaltrennzeichen: Du kannst Koordinaten mit <strong>Komma</strong> oder <strong>Punkt</strong> eingeben (z. B. <code>51,234567</code>).
   </p>
-  <ol style="margin-top:0.25rem; margin-bottom:1rem;">
+  <ol class="mb-1" style="margin-top:0.25rem;">
     <li>Lade auf <a href="https://www.geoportal.nrw/" target="_blank" rel="noopener noreferrer">geoportal.nrw</a> (oder einer anderen Quelle) ein Luftbild herunter und lade es oben hoch.</li>
     <li>Markiere im Luftbild zwei gut erkennbare Punkte, die möglichst weit auseinanderliegen (in X und Y).</li>
     <li>Miss die exakten Koordinaten der beiden Punkte im Geoportal aus und trage sie hier ein, z. B. <code>Lat 51,234567</code> und <code>Lon 7,123456</code>.</li>
   </ol>
-  <form method="post" action="/map/calibration" id="calibration-form" class="grid" style="margin-bottom:1rem;">
+  <form method="post" action="/map/calibration" id="calibration-form" class="grid mb-1">
     <input type="hidden" name="calibration_points" id="calibration-points-input">
     <div><strong>Bildpunkte setzen:</strong> Nacheinander Punkt 1 und Punkt 2 im Bild anklicken.</div>
-    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:0.5rem;">
+    <div class="grid grid-auto-200">
       <label>Punkt 1 – Koordinate X
         <input type="text" id="p1-coord-x" placeholder="z. B. 52,520008">
       </label>
@@ -45,7 +45,7 @@
   </form>
 
   <h3>Grundstücksgrenze</h3>
-  <form method="post" action="/map/boundary" id="boundary-form" class="grid" style="margin-bottom:1rem;">
+  <form method="post" action="/map/boundary" id="boundary-form" class="grid mb-1">
     <input type="hidden" name="boundary_points" id="boundary-points-input">
     <div><strong>Polygon setzen:</strong> Punkte mit <kbd>Shift</kbd> + Klick nacheinander im Bild anklicken.</div>
     <div class="actions-inline">

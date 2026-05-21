@@ -13,7 +13,7 @@
   <div class="plant-detail-layout">
     <div class="plant-top-row">
       <div class="plant-main-column">
-        <h1 style="margin:0 0 .8rem 0;font-size:2.25rem;line-height:1.2;">{{ plant.name }}{% if plant.common_name %} ({{ plant.common_name }}){% endif %}</h1>
+        <h1 class="plant-title">{{ plant.name }}{% if plant.common_name %} ({{ plant.common_name }}){% endif %}</h1>
         <div class="plant-masterdata">
   <p><strong>Name:</strong> {{ plant.name }}</p>
   {% if plant.common_name %}<p><strong>Bürgerlicher Name:</strong> {{ plant.common_name }}</p>{% endif %}
@@ -41,7 +41,7 @@
 
   <details>
     <summary>Pflanzendaten ändern</summary>
-    <form method="post" action="/plants/{{ plant.id }}/masterdata" class="grid" style="margin-top:.75rem;">
+    <form method="post" action="/plants/{{ plant.id }}/masterdata" class="grid mt-75">
       <input name="name" value="{{ plant.name }}" placeholder="Name" required>
       <input name="common_name" value="{{ plant.common_name or '' }}" placeholder="Bürgerlicher Name">
       <input name="source" value="{{ plant.source or '' }}" placeholder="Quelle">
@@ -90,16 +90,16 @@
     {% if garden_map and garden_map.filename and location %}
     <div class="plant-map-panel">
       <div class="plant-map-wrapper">
-        <img id="plant-map-image" src="/maps/{{ garden_map.filename }}" style="max-width:100%;border-radius:10px;display:block;">
+        <img id="plant-map-image" src="/maps/{{ garden_map.filename }}" class="map-image">
         <button type="button" id="plant-position-edit-toggle" class="plant-position-edit-icon" aria-label="Position setzen" title="Position setzen">✏️</button>
         <svg id="plant-map-overlay-base"></svg>
         <svg id="plant-map-overlay-markers"></svg>
       </div>
-      <form method="post" action="/plants/{{ plant.id }}/position" class="grid" style="margin-top:.75rem;">
+      <form method="post" action="/plants/{{ plant.id }}/position" class="grid mt-75">
         <input type="hidden" id="plant-map-x" name="map_x" value="{{ plant.map_x if plant.map_x is not none else '' }}">
         <input type="hidden" id="plant-map-y" name="map_y" value="{{ plant.map_y if plant.map_y is not none else '' }}">
         <div class="actions-inline">
-          <button type="submit" id="plant-position-save" style="display:none;">Speichern</button>
+          <button type="submit" id="plant-position-save" class="hidden">Speichern</button>
         </div>
       </form>
     </div>
@@ -109,9 +109,9 @@
 
 
 <div class="card">
-  <h3 style="margin-top:0;">Aktionen</h3>
-  <div class="plant-actions-row" style="margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
-    <form method="post" action="/plants/{{ plant.id }}/move" style="display:flex;align-items:center;gap:.5rem;flex-wrap:nowrap;margin:0;">
+  <h3 class="mt-0">Aktionen</h3>
+  <div class="plant-actions-row mb-75 flex items-center gap-5 wrap">
+    <form method="post" action="/plants/{{ plant.id }}/move" class="flex items-center gap-5 nowrap inline-form">
       <select id="location_id" name="location_id" required aria-label="Beet auswählen">
         {% for location in locations %}
         <option value="{{ location.id }}" {% if location.id == plant.location_id %}selected{% endif %}>{{ location.name }}</option>
@@ -120,24 +120,24 @@
       <button type="submit">Verschieben</button>
     </form>
     {% if not is_planted %}
-    <form method="post" action="/plants/{{ plant.id }}/events/system/planting" style="margin:0;">
+    <form method="post" action="/plants/{{ plant.id }}/events/system/planting" class="inline-form">
       <button type="submit">Einpflanzen</button>
     </form>
     {% else %}
-    <form method="post" action="/plants/{{ plant.id }}/events/system/outplant" style="margin:0;">
+    <form method="post" action="/plants/{{ plant.id }}/events/system/outplant" class="inline-form">
       <button type="submit">Auspflanzen</button>
     </form>
     {% endif %}
-    <form method="post" action="/plants/{{ plant.id }}/events/system/care_event" style="margin:0;">
+    <form method="post" action="/plants/{{ plant.id }}/events/system/care_event" class="inline-form">
       <button type="submit">Pflege</button>
     </form>
-    <form method="post" action="/plants/{{ plant.id }}/events/system/measurement" style="margin:0;">
+    <form method="post" action="/plants/{{ plant.id }}/events/system/measurement" class="inline-form">
       <button type="submit">Messen</button>
     </form>
   </div>
 
   {% if not is_planted %}
-  <div style="background:#ffe5e5; border:2px solid #e11; color:#900; padding:1rem; border-radius:8px; font-weight:700; margin-bottom:.75rem;">
+  <div class="alert-danger mb-75">
     Pflanze ist nicht eingepflanzt
   </div>
   {% endif %}
@@ -188,7 +188,7 @@
   <button type="submit" aria-label="Pflanze löschen" title="Pflanze löschen">🗑️</button>
 </form>
 
-<div id="image-modal" class="image-modal" style="display:none;" aria-hidden="true">
+<div id="image-modal" class="image-modal hidden" aria-hidden="true">
   <div class="image-modal-inner">
     <button type="button" id="image-prev" class="image-modal-nav image-modal-nav-prev" aria-label="Vorheriges Foto">◀</button>
     <img id="image-modal-img" src="" alt="Großansicht" class="image-modal-img">
@@ -199,6 +199,7 @@
 
 
 <style>
+.plant-title{margin:0 0 .8rem 0;font-size:2.25rem;line-height:1.2}
 .plant-detail-layout{display:block}
 .plant-top-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,460px);gap:1rem;align-items:start}
 .plant-main-column{min-width:0}

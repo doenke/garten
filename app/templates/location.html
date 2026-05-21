@@ -8,22 +8,22 @@
 {% endblock %}
 {% block content %}
 <section class="card">
-<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem;">
-  <h2 style="margin:0;">{{ location.name }}</h2>
-  <button type="button" id="toggle-polygon-edit" aria-label="Polygon bearbeiten" title="Polygon bearbeiten" style="margin:0;padding:.45rem .6rem;line-height:1;">✏️</button>
+<div class="flex items-center gap-5 mb-35">
+  <h2 class="m-0">{{ location.name }}</h2>
+  <button type="button" id="toggle-polygon-edit" aria-label="Polygon bearbeiten" title="Polygon bearbeiten" class="icon-btn">✏️</button>
 </div>
 {% if garden_map and garden_map.filename %}
-<div style="position:relative;display:inline-block;max-width:100%;margin-bottom:.75rem;">
-  <img id="location-map-image" src="/maps/{{ garden_map.filename }}" style="display:block;max-width:100%;border-radius:10px;">
-  <svg id="location-map-overlay" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;" preserveAspectRatio="none"></svg>
+<div class="rel-inline mb-75">
+  <img id="location-map-image" src="/maps/{{ garden_map.filename }}" class="map-image">
+  <svg id="location-map-overlay" class="map-overlay overlay-no-pointer" preserveAspectRatio="none"></svg>
 </div>
 {% else %}
 <p>Kein Luftbild vorhanden. Bitte zuerst in der Konfiguration hochladen.</p>
 {% endif %}
-<form method="post" action="/locations/{{ location.id }}/map" id="polygon-form" class="grid" style="display:none;margin-bottom:1rem;">
+<form method="post" action="/locations/{{ location.id }}/map" id="polygon-form" class="grid hidden mb-1">
   <input type="hidden" name="polygon_points" id="polygon-points-field" value='{{ location.polygon_points or "[]" }}'>
   <label>Farbe <input type="color" name="color" value="{{ location.color or '#2f6d40' }}"></label>
-  <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+  <div class="flex gap-5 wrap">
     <button type="submit">Polygon speichern</button>
     <button type="button" id="clear-polygon-points">Polygonpunkte löschen</button>
   </div>
@@ -48,7 +48,7 @@
       <td>{{ p.common_name or '' }}</td>
       <td>
         {% if plant_title_images_by_id.get(p.id) %}
-        <img src="/uploads/{{ plant_title_images_by_id.get(p.id) }}" alt="Titelbild von {{ p.name }}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;display:block;">
+        <img src="/uploads/{{ plant_title_images_by_id.get(p.id) }}" alt="Titelbild von {{ p.name }}" class="thumb-60">
         {% else %}
         -
         {% endif %}
@@ -58,9 +58,9 @@
   </tbody>
 </table>
 
-<button type="button" id="toggle-plant-form" style="margin-bottom:1rem;">Pflanze anlegen</button>
+<button type="button" id="toggle-plant-form" class="mb-1">Pflanze anlegen</button>
 
-<form method="post" action="/locations/{{location.id}}/plants/new" id="plant-form" class="grid" style="display:none; margin-bottom:1rem;">
+<form method="post" action="/locations/{{location.id}}/plants/new" id="plant-form" class="grid hidden mb-1">
 <input name="name" placeholder="Name" required>
 <input name="common_name" placeholder="Umgangssprachlicher Name">
 <input name="source" placeholder="gekauft bei / bekommen von">
@@ -75,7 +75,7 @@
 </form>
 
 <h3>Timeline</h3>
-<form method="post" action="/locations/{{ location.id }}/timeline/new" enctype="multipart/form-data" class="grid" style="margin-bottom:1rem;">
+<form method="post" action="/locations/{{ location.id }}/timeline/new" enctype="multipart/form-data" class="grid mb-1">
   <textarea name="description" placeholder="Beschreibung" required></textarea>
   <input type="file" name="attachment" accept="image/*,application/pdf" required>
   <button>Eintrag mit Anhang hinzufügen</button>
