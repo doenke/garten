@@ -100,7 +100,7 @@ Beispielkonfiguration für `services.yaml` in gethomepage:
 
 ```yaml
 - Garten:
-    - Pflanzen & Beete:
+        description: Pflanzen & Beete
         icon: mdi-flower
         href: https://garten.example.com
         widget:
