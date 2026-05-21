@@ -6,39 +6,9 @@ from datetime import datetime
 from flask import Blueprint, current_app, g, render_template, request, redirect, url_for, session, jsonify, send_from_directory
 from .models import db, User, Location, Plant, PlantPhoto, PlantNote, GardenMap, TimelineEntry
 from .services.timeline_service import save_uploaded_attachment, set_single_title_entry, delete_timeline_entry, build_unique_upload_name
+from .design import UPLOAD_DESIGN, GARDEN_DESIGN, TIMELINE_DESIGN
 
 main_bp = Blueprint('main', __name__)
-ALLOWED = {'png', 'jpg', 'jpeg', 'webp', 'gif', 'pdf'}
-IMAGE_TYPES = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
-ALLOWED_ATTACHMENT_MIME_TYPES = {
-    'image/png',
-    'image/jpeg',
-    'image/webp',
-    'image/gif',
-    'application/pdf',
-}
-TRASH_LOCATION_NAME = "Papierkorb"
-EVENT_TYPE_MAP = {
-    'planting': 'plant_event',
-    'outplant': 'plant_event',
-    'transplant': 'plant_event',
-    'user_comment': 'user_event',
-    'care_event': 'care_event',
-    'measurement': 'measurement_event',
-}
-
-SYSTEM_EVENT_TEMPLATES = {
-    'planting': {'title': 'Eingepflanzt', 'description': 'Pflanze wurde eingepflanzt.'},
-    'transplant': {'title': 'Umgepflanzt', 'description': 'Pflanze wurde umgepflanzt.'},
-    'outplant': {'title': 'Ausgepflanzt', 'description': 'Pflanze wurde ausgepflanzt.'},
-}
-
-PLANTING_STATE_TYPES = {
-    'Eingepflanzt': 'planting',
-    'Umgepflanzt': 'transplant',
-    'Ausgepflanzt': 'outplant',
-}
-
 _upload_stats_cache = {
     'expires_at': 0.0,
     'upload_folder': None,
@@ -66,14 +36,14 @@ def create_timeline_entry(*, scope_type, scope_id, creator_id, created_at=None, 
 
 def location_sort_criteria():
     return (
-        db.case((Location.name == TRASH_LOCATION_NAME, 1), else_=0).asc(),
+        db.case((Location.name == GARDEN_DESIGN.trash_location_name, 1), else_=0).asc(),
         Location.name.asc(),
         Location.id.asc(),
     )
 
 
 def create_system_event(plant_id, key, creator_id, event_at=None, description=None):
-    tpl = SYSTEM_EVENT_TEMPLATES[key]
+    tpl = TIMELINE_DESIGN.system_event_templates[key]
     create_timeline_entry(
         scope_type='plant',
         scope_id=plant_id,
@@ -104,7 +74,7 @@ def login_required(f):
     return wrapped
 
 def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in UPLOAD_DESIGN.allowed_extensions
 
 
 def widget_api_key_required(f):
@@ -143,7 +113,7 @@ def get_or_create_garden_map():
     return garden_map
 
 def get_or_create_trash_location():
-    trash_locations = Location.query.filter_by(name=TRASH_LOCATION_NAME).order_by(Location.id.asc()).all()
+    trash_locations = Location.query.filter_by(name=GARDEN_DESIGN.trash_location_name).order_by(Location.id.asc()).all()
     if trash_locations:
         trash = trash_locations[0]
         for duplicate in trash_locations[1:]:
@@ -152,7 +122,7 @@ def get_or_create_trash_location():
         db.session.flush()
         return trash
     trash = Location(
-        name=TRASH_LOCATION_NAME,
+        name=GARDEN_DESIGN.trash_location_name,
         description="Automatisch erstellt. Gelöschte Pflanzen landen hier.",
         user_id=current_user().id,
         creator_id=current_user().id
@@ -174,7 +144,7 @@ def healthz():
 @widget_api_key_required
 def api_stats():
     plant_count = db.session.query(db.func.count(Plant.id)).scalar() or 0
-    bed_count = db.session.query(db.func.count(Location.id)).filter(Location.name != TRASH_LOCATION_NAME).scalar() or 0
+    bed_count = db.session.query(db.func.count(Location.id)).filter(Location.name != GARDEN_DESIGN.trash_location_name).scalar() or 0
     upload_folder = current_app.config.get('UPLOAD_FOLDER')
     cache_ttl = current_app.config.get('STATS_UPLOAD_CACHE_TTL_SECONDS', 60)
     now = time.monotonic()
@@ -252,7 +222,7 @@ def index():
     plants = (
         db.session.query(Plant, Location)
         .join(Location, Plant.location_id == Location.id)
-        .filter(Location.name != TRASH_LOCATION_NAME)
+        .filter(Location.name != GARDEN_DESIGN.trash_location_name)
         .order_by(Location.name.asc(), Plant.name.asc())
         .all()
     )
@@ -283,7 +253,7 @@ def config():
 @login_required
 def new_location():
     user = current_user()
-    loc = Location(name=request.form['name'], description=request.form.get('description'), color=request.form.get('color') or '#2f6d40', user_id=user.id, creator_id=user.id)
+    loc = Location(name=request.form['name'], description=request.form.get('description'), color=request.form.get('color') or GARDEN_DESIGN.default_location_color, user_id=user.id, creator_id=user.id)
     db.session.add(loc)
     db.session.commit()
     return redirect(url_for('main.index'))
@@ -338,7 +308,7 @@ def location_detail(location_id):
             {
                 'id': other_loc.id,
                 'name': other_loc.name,
-                'color': other_loc.color or '#2f6d40',
+                'color': other_loc.color or GARDEN_DESIGN.default_location_color,
                 'polygon_points': other_loc.polygon_points or '[]',
             }
             for other_loc in other_locations
@@ -356,8 +326,8 @@ def new_location_timeline_entry(location_id):
     unique = save_uploaded_attachment(
         attachment,
         current_app.config['UPLOAD_FOLDER'],
-        ALLOWED,
-        ALLOWED_ATTACHMENT_MIME_TYPES,
+        UPLOAD_DESIGN.allowed_extensions,
+        UPLOAD_DESIGN.allowed_mime_types,
         current_app.config.get('MAX_ATTACHMENT_SIZE_BYTES'),
     )
     if not description or not unique:
@@ -428,7 +398,7 @@ def new_plant(location_id):
     db.session.add(p)
     db.session.flush()
     event_at = datetime.utcnow()
-    tpl = SYSTEM_EVENT_TEMPLATES['planting']
+    tpl = TIMELINE_DESIGN.system_event_templates['planting']
     create_timeline_entry(
         scope_type='plant',
         scope_id=p.id,
@@ -445,7 +415,7 @@ def new_plant(location_id):
 @login_required
 def delete_location(location_id):
     location = Location.query.get_or_404(location_id)
-    if location.name == TRASH_LOCATION_NAME:
+    if location.name == GARDEN_DESIGN.trash_location_name:
         return redirect(url_for('main.index'))
     trash = get_or_create_trash_location()
     if location.id == trash.id:
@@ -468,8 +438,8 @@ def plant_detail(plant_id):
     photos = PlantPhoto.query.filter_by(plant_id=plant.id).order_by(PlantPhoto.uploaded_at.desc()).all()
     notes = PlantNote.query.filter_by(plant_id=plant.id).order_by(PlantNote.created_at.desc()).all()
     month_names = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
-    last_plant_event = next((ev for ev in events if ev.event_type == 'plant_event' and ev.title in PLANTING_STATE_TYPES), None)
-    is_planted = bool(last_plant_event and PLANTING_STATE_TYPES[last_plant_event.title] in {'planting', 'transplant'})
+    last_plant_event = next((ev for ev in events if ev.event_type == 'plant_event' and ev.title in TIMELINE_DESIGN.planting_state_types), None)
+    is_planted = bool(last_plant_event and TIMELINE_DESIGN.planting_state_types[last_plant_event.title] in {'planting', 'transplant'})
     location = Location.query.get(plant.location_id)
     garden_map = GardenMap.query.order_by(GardenMap.id.asc()).first()
     location_plants = Plant.query.filter_by(location_id=plant.location_id).order_by(Plant.name.asc()).all()
@@ -540,7 +510,7 @@ def save_boundary():
 @login_required
 def save_location_map(location_id):
     loc = Location.query.get_or_404(location_id)
-    loc.color = request.form.get('color') or '#2f6d40'
+    loc.color = request.form.get('color') or GARDEN_DESIGN.default_location_color
     loc.polygon_points = request.form.get('polygon_points') or '[]'
     db.session.commit()
     return redirect(url_for('main.location_detail', location_id=location_id))
@@ -550,9 +520,9 @@ def save_location_map(location_id):
 @login_required
 def save_location_color(location_id):
     loc = Location.query.get_or_404(location_id)
-    if loc.name == TRASH_LOCATION_NAME:
+    if loc.name == GARDEN_DESIGN.trash_location_name:
         return redirect(request.referrer or url_for('main.index'))
-    loc.color = request.form.get('color') or '#2f6d40'
+    loc.color = request.form.get('color') or GARDEN_DESIGN.default_location_color
     db.session.commit()
     return redirect(request.referrer or url_for('main.index'))
 
@@ -682,14 +652,14 @@ def add_event(plant_id):
     attachment_filename = save_uploaded_attachment(
         file,
         current_app.config['UPLOAD_FOLDER'],
-        ALLOWED,
-        ALLOWED_ATTACHMENT_MIME_TYPES,
+        UPLOAD_DESIGN.allowed_extensions,
+        UPLOAD_DESIGN.allowed_mime_types,
         current_app.config.get('MAX_ATTACHMENT_SIZE_BYTES'),
     )
     attachment_kind = None
     if attachment_filename:
         ext = attachment_filename.rsplit('.', 1)[1].lower()
-        attachment_kind = 'image' if ext in IMAGE_TYPES else 'pdf'
+        attachment_kind = 'image' if ext in UPLOAD_DESIGN.image_extensions else 'pdf'
 
     if title or description or attachment_filename:
         create_timeline_entry(scope_type='plant', scope_id=plant_id, event_type=event_type, event_at=event_at, title=title, description=description or None, attachment_filename=attachment_filename, attachment_kind=attachment_kind, creator_id=current_user().id)
@@ -728,7 +698,7 @@ def add_system_event(plant_id, event_key):
         return redirect(url_for('main.plant_detail', plant_id=plant_id))
     if event_key in {'care_event', 'measurement'}:
         titles = {'care_event': 'Pflege', 'measurement': 'Messen'}
-        create_timeline_entry(scope_type='plant', scope_id=plant_id, event_type=EVENT_TYPE_MAP[event_key], event_at=datetime.utcnow(), title=titles[event_key], description=None, creator_id=current_user().id)
+        create_timeline_entry(scope_type='plant', scope_id=plant_id, event_type=TIMELINE_DESIGN.event_type_map[event_key], event_at=datetime.utcnow(), title=titles[event_key], description=None, creator_id=current_user().id)
     else:
         create_system_event(plant_id, event_key, current_user().id)
     db.session.commit()
