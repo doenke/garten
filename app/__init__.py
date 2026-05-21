@@ -105,7 +105,6 @@ def _run_schema_upgrades():
     """Apply lightweight, idempotent schema upgrades for existing databases."""
     inspector = inspect(db.engine)
     _ensure_timeline_title_entry_uniqueness(inspector)
-    _drop_legacy_timeline_tables(inspector)
     db.session.commit()
 
 
@@ -132,10 +131,3 @@ def _ensure_timeline_title_entry_uniqueness(inspector):
             'ON timeline_entry (scope_type, scope_id) WHERE is_title_entry IS TRUE'
         ))
 
-def _drop_legacy_timeline_tables(inspector):
-    """Follow-up cleanup: remove deprecated legacy timeline tables."""
-    table_names = set(inspector.get_table_names())
-    if 'location_timeline_entry' in table_names:
-        db.session.execute(db.text('DROP TABLE location_timeline_entry'))
-    if 'plant_event' in table_names:
-        db.session.execute(db.text('DROP TABLE plant_event'))
