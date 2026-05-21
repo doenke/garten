@@ -45,7 +45,7 @@
     {% for p in plants %}
     <tr data-row-link="/plants/{{ p.id }}">
       <td>{{ p.name }}</td>
-      <td>{{ p.common_name or '-' }}</td>
+      <td>{{ p.common_name or '' }}</td>
       <td>
         {% if plant_title_images_by_id.get(p.id) %}
         <img src="/uploads/{{ plant_title_images_by_id.get(p.id) }}" alt="Titelbild von {{ p.name }}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;display:block;">
