@@ -29,14 +29,6 @@
   </div>
 </form>
 
-{% if title_entry %}
-<article class="timeline-entry" style="margin-bottom:1rem;border:2px solid var(--primary, #2f6d40);">
-  <small>Titelbeitrag</small>
-  <p style="margin:.4rem 0 .6rem;">{{ title_entry.comment }}</p>
-  <img src="/uploads/{{ title_entry.photo_filename }}" alt="Titelbeitrag" style="max-width:100%;border-radius:10px;">
-</article>
-{% endif %}
-
 <h3>Pflanzen</h3>
 <div class="table-search">
   <input type="search" id="location-plants-search" placeholder="Pflanzen durchsuchen">
@@ -84,19 +76,19 @@
 
 <h3>Timeline</h3>
 <form method="post" action="/locations/{{ location.id }}/timeline/new" enctype="multipart/form-data" class="grid" style="margin-bottom:1rem;">
-  <textarea name="comment" placeholder="Kommentar" required></textarea>
-  <input type="file" name="photo" accept="image/*" required>
-  <button>Kommentar mit Foto hinzufügen</button>
+  <textarea name="description" placeholder="Beschreibung" required></textarea>
+  <input type="file" name="attachment" accept="image/*,application/pdf" required>
+  <button>Eintrag mit Anhang hinzufügen</button>
 </form>
 {% for entry in timeline_entries %}
 {% set header_html = None %}
 {% set meta_text = entry.created_at.strftime('%d.%m.%Y %H:%M') ~ (' · Titelbeitrag' if entry.is_title_entry else '') %}
 {% set entry_title = None %}
-{% set entry_text = entry.comment %}
-{% set image_url = '/uploads/' ~ entry.photo_filename %}
+{% set entry_text = entry.description %}
+{% set image_url = '/uploads/' ~ entry.attachment_filename if entry.attachment_filename and entry.attachment_kind == 'image' else None %}
 {% set image_alt = 'Timeline-Foto' %}
-{% set image_button = false %}
-{% set pdf_url = None %}
+{% set image_button = entry.attachment_filename and entry.attachment_kind == 'image' %}
+{% set pdf_url = '/uploads/' ~ entry.attachment_filename if entry.attachment_filename and entry.attachment_kind == 'pdf' else None %}
 {% set delete_action = '/locations/' ~ location.id ~ '/timeline/' ~ entry.id ~ '/delete' %}
 {% set title_action = '/locations/' ~ location.id ~ '/timeline/' ~ entry.id ~ '/set-title' %}
 {% set is_title_entry = entry.is_title_entry %}

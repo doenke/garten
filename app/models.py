@@ -71,6 +71,7 @@ class PlantNote(db.Model):
 
 
 class PlantEvent(db.Model):
+    """Deprecated legacy model. Data now lives in TimelineEntry."""
     id = db.Column(db.Integer, primary_key=True)
     plant_id = db.Column(db.Integer, db.ForeignKey('plant.id'), nullable=False)
     event_type = db.Column(db.String(32), nullable=False)
@@ -84,6 +85,7 @@ class PlantEvent(db.Model):
 
 
 class LocationTimelineEntry(db.Model):
+    """Deprecated legacy model. Data now lives in TimelineEntry."""
     id = db.Column(db.Integer, primary_key=True)
     location_id = db.Column(db.Integer, db.ForeignKey('location.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
