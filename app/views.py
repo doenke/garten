@@ -459,16 +459,14 @@ def new_plant(location_id):
         bloom_start_month=bloom_start_month,
         bloom_end_month=bloom_end_month,
         flower_color=request.form.get('flower_color'),
-        soil=request.form.get('soil'),
         height_without_bloom_cm=request.form.get('height_without_bloom_cm', type=int),
         height_with_bloom_cm=request.form.get('height_with_bloom_cm', type=int),
         info=request.form.get('info'),
         creator_id=current_user().id
     )
     p.light_needs = selected_light_needs
-    soil_labels = parse_soil_properties(request.form.get('soil_properties') or request.form.get('soil'))
+    soil_labels = parse_soil_properties(request.form.get('soil_properties'))
     p.soil_properties = get_or_create_soil_properties(soil_labels)
-    p.soil = ', '.join(soil_labels) if soil_labels else None
     db.session.add(p)
     db.session.flush()
     event_at = datetime.utcnow()
@@ -643,7 +641,6 @@ def update_masterdata(plant_id):
         'bloom_start_month': 'Blütezeit von',
         'bloom_end_month': 'Blütezeit bis',
         'flower_color': 'Blütenfarbe',
-        'soil': 'Boden',
         'height_without_bloom_cm': 'Höhe ohne Blüte (cm)',
         'height_with_bloom_cm': 'Höhe mit Blüte (cm)',
         'info': 'Info',
@@ -662,7 +659,6 @@ def update_masterdata(plant_id):
         'bloom_start_month': bloom_start_month,
         'bloom_end_month': bloom_end_month,
         'flower_color': request.form.get('flower_color', '').strip() or None,
-        'soil': request.form.get('soil', '').strip() or None,
         'height_without_bloom_cm': request.form.get('height_without_bloom_cm', type=int),
         'height_with_bloom_cm': request.form.get('height_with_bloom_cm', type=int),
         'info': request.form.get('info', '').strip() or None,
@@ -695,7 +691,6 @@ def update_masterdata(plant_id):
     if old_soil_display != new_soil_display:
         changes.append(f"Bodeneigenschaften: {old_soil_display} → {new_soil_display}")
         plant.soil_properties = new_soil_properties
-        plant.soil = new_soil_display if new_soil_display != '-' else None
 
     if changes:
         create_timeline_entry(

@@ -66,7 +66,6 @@ class Plant(db.Model):
     bloom_start_month = db.Column(db.Integer)
     bloom_end_month = db.Column(db.Integer)
     flower_color = db.Column(db.String(64))
-    soil = db.Column(db.Text)
     soil_properties = db.relationship('SoilProperty', secondary=plant_soil_property, lazy='select', order_by='SoilProperty.label')
     height_without_bloom_cm = db.Column(db.Integer)
     height_with_bloom_cm = db.Column(db.Integer)
