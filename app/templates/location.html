@@ -225,12 +225,22 @@
     locationImage.style.webkitMaskSize = "100% 100%";
   };
 
-  let polygonEditEnabled = false;
+  let polygonEditEnabled = polygonPoints.length === 0;
   let draggedPointIndex = null;
   const clamp01 = (value) => Math.max(0, Math.min(1, value));
   const syncPolygonField = () => {
     if (!polygonField) return;
     polygonField.value = JSON.stringify(polygonPoints);
+  };
+  const applyPolygonEditMode = () => {
+    if (polygonForm) {
+      polygonForm.style.display = polygonEditEnabled ? 'grid' : 'none';
+    }
+    if (togglePolygonEditButton) {
+      togglePolygonEditButton.textContent = '✏️';
+      togglePolygonEditButton.title = polygonEditEnabled ? 'Polygon-Bearbeitung beenden' : 'Polygon bearbeiten';
+      togglePolygonEditButton.setAttribute('aria-label', polygonEditEnabled ? 'Polygon-Bearbeitung beenden' : 'Polygon bearbeiten');
+    }
   };
 
   const handleMapClick = (event) => {
@@ -290,13 +300,11 @@
     togglePolygonEditButton.addEventListener('click', () => {
       polygonEditEnabled = !polygonEditEnabled;
       draggedPointIndex = null;
-      polygonForm.style.display = polygonEditEnabled ? 'grid' : 'none';
-      togglePolygonEditButton.textContent = '✏️';
-      togglePolygonEditButton.title = polygonEditEnabled ? 'Polygon-Bearbeitung beenden' : 'Polygon bearbeiten';
-      togglePolygonEditButton.setAttribute('aria-label', polygonEditEnabled ? 'Polygon-Bearbeitung beenden' : 'Polygon bearbeiten');
+      applyPolygonEditMode();
       renderOverlay();
     });
   }
+  applyPolygonEditMode();
 
   if (clearPolygonPointsButton && polygonField) {
     clearPolygonPointsButton.addEventListener('click', () => {
