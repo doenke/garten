@@ -5,7 +5,7 @@ from .auth import auth_bp, oauth
 from .views import main_bp
 import os
 from sqlalchemy import inspect
-from .models import LightNeed, Plant, plant_light_need
+from .models import LightNeed, Plant, SoilProperty, plant_light_need, plant_soil_property
 
 
 _WEAK_SECRET_KEY_VALUES = {
@@ -110,6 +110,7 @@ def _run_schema_upgrades():
     """Apply lightweight, idempotent schema upgrades for existing databases."""
     inspector = inspect(db.engine)
     _ensure_light_need_schema(inspector)
+    _ensure_soil_property_schema(inspector)
     _clear_legacy_light_need_data(inspector)
     _ensure_timeline_title_entry_uniqueness(inspector)
     db.session.commit()
@@ -165,3 +166,29 @@ def _ensure_light_need_schema(inspector):
         if key not in existing:
             db.session.add(LightNeed(key=key, label=label))
     db.session.flush()
+
+
+def _ensure_soil_property_schema(inspector):
+    table_names = set(inspector.get_table_names())
+    if 'soil_property' not in table_names:
+        SoilProperty.__table__.create(bind=db.engine, checkfirst=True)
+    if 'plant_soil_property' not in table_names:
+        plant_soil_property.create(bind=db.engine, checkfirst=True)
+
+    plants = Plant.query.all()
+    for plant in plants:
+        if plant.soil_properties:
+            continue
+        raw_soil = (plant.soil or '').strip()
+        if not raw_soil:
+            continue
+        labels = [part.strip() for part in raw_soil.split(',') if part.strip()]
+        properties = []
+        for label in labels:
+            property_item = SoilProperty.query.filter(db.func.lower(SoilProperty.label) == label.lower()).first()
+            if not property_item:
+                property_item = SoilProperty(label=label)
+                db.session.add(property_item)
+                db.session.flush()
+            properties.append(property_item)
+        plant.soil_properties = properties
