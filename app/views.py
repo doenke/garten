@@ -46,11 +46,13 @@ _upload_stats_cache = {
     'upload_size_bytes': 0,
 }
 
-LIGHT_NEED_KEY_TO_LABEL = {
-    'full_sun': 'Sonnig',
-    'part_shade': 'Halbschatten',
-    'shade': 'Schatten',
-}
+LIGHT_NEED_OPTIONS = [
+    {'key': 'full_sun', 'label': 'Sonnig', 'icon': '☀️'},
+    {'key': 'part_shade', 'label': 'Halbschatten', 'icon': '⛅'},
+    {'key': 'shade', 'label': 'Schatten', 'icon': '🌑'},
+]
+LIGHT_NEED_KEY_TO_LABEL = {item['key']: item['label'] for item in LIGHT_NEED_OPTIONS}
+LIGHT_NEED_ICON_BY_KEY = {item['key']: item['icon'] for item in LIGHT_NEED_OPTIONS}
 
 
 def parse_light_need_keys(values):
@@ -349,6 +351,7 @@ def location_detail(location_id):
         user=current_user(),
         creators={u.id: u for u in User.query.all()},
         garden_map=garden_map,
+        light_need_options=LIGHT_NEED_OPTIONS,
         other_location_polygons=[
             {
                 'id': other_loc.id,
@@ -429,7 +432,7 @@ def new_plant(location_id):
         name=request.form['name'],
         common_name=request.form.get('common_name'),
         source=request.form.get('source'),
-        light_need=', '.join(item.label for item in selected_light_needs),
+        light_need='',
         bloom_start_month=bloom_start_month,
         bloom_end_month=bloom_end_month,
         flower_color=request.form.get('flower_color'),
@@ -509,6 +512,8 @@ def plant_detail(plant_id):
         garden_map=garden_map,
         location_plant_markers=location_plant_markers,
         title_event=title_event,
+        light_need_options=LIGHT_NEED_OPTIONS,
+        light_need_icon_by_key=LIGHT_NEED_ICON_BY_KEY,
     )
 
 
@@ -643,7 +648,7 @@ def update_masterdata(plant_id):
     if old_light_need_display != new_light_need_display:
         changes.append(f"Lichtbedarf: {old_light_need_display} → {new_light_need_display}")
         plant.light_needs = new_light_needs
-        plant.light_need = new_light_need_display
+        plant.light_need = ''
 
     if changes:
         create_timeline_entry(
