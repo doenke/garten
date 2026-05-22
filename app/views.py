@@ -4,7 +4,7 @@ import time
 from functools import wraps
 from datetime import datetime
 from flask import Blueprint, current_app, g, render_template, request, redirect, url_for, session, jsonify, send_from_directory
-from .models import db, User, Location, Plant, PlantPhoto, PlantNote, GardenMap, TimelineEntry
+from .models import db, User, Location, Plant, PlantPhoto, PlantNote, GardenMap, TimelineEntry, LightNeed
 from .services.timeline_service import save_uploaded_attachment, set_single_title_entry, delete_timeline_entry, build_unique_upload_name
 
 main_bp = Blueprint('main', __name__)
@@ -45,6 +45,21 @@ _upload_stats_cache = {
     'uploads': 0,
     'upload_size_bytes': 0,
 }
+
+LIGHT_NEED_KEY_TO_LABEL = {
+    'full_sun': 'Sonnig',
+    'part_shade': 'Halbschatten',
+    'shade': 'Schatten',
+}
+
+
+def parse_light_need_keys(values):
+    keys = [value.strip() for value in values if value and value.strip() in LIGHT_NEED_KEY_TO_LABEL]
+    return keys
+
+
+def format_light_need_labels(light_needs):
+    return ', '.join(light_need.label for light_need in light_needs)
 
 
 def create_timeline_entry(*, scope_type, scope_id, creator_id, created_at=None, event_at=None, event_type=None, title=None, description=None, attachment_filename=None, attachment_kind=None):
@@ -403,9 +418,8 @@ def delete_location_timeline_entry(location_id, entry_id):
 @main_bp.route('/locations/<int:location_id>/plants/new', methods=['POST'])
 @login_required
 def new_plant(location_id):
-    light_needs = request.form.getlist('light_need')
-    if not light_needs:
-        light_needs = ['Unbekannt']
+    light_need_keys = parse_light_need_keys(request.form.getlist('light_need'))
+    selected_light_needs = LightNeed.query.filter(LightNeed.key.in_(light_need_keys)).order_by(LightNeed.id.asc()).all()
     bloom_start_month, bloom_end_month, bloom_months_valid = parse_bloom_months(request.form)
     if not bloom_months_valid:
         return redirect(url_for('main.location_detail', location_id=location_id))
@@ -415,7 +429,7 @@ def new_plant(location_id):
         name=request.form['name'],
         common_name=request.form.get('common_name'),
         source=request.form.get('source'),
-        light_need=', '.join(light_needs),
+        light_need=', '.join(item.label for item in selected_light_needs),
         bloom_start_month=bloom_start_month,
         bloom_end_month=bloom_end_month,
         flower_color=request.form.get('flower_color'),
@@ -425,6 +439,7 @@ def new_plant(location_id):
         info=request.form.get('info'),
         creator_id=current_user().id
     )
+    p.light_needs = selected_light_needs
     db.session.add(p)
     db.session.flush()
     event_at = datetime.utcnow()
@@ -601,7 +616,6 @@ def update_masterdata(plant_id):
         'name': request.form.get('name', '').strip(),
         'common_name': request.form.get('common_name', '').strip() or None,
         'source': request.form.get('source', '').strip() or None,
-        'light_need': request.form.get('light_need', '').strip() or 'Unbekannt',
         'bloom_start_month': bloom_start_month,
         'bloom_end_month': bloom_end_month,
         'flower_color': request.form.get('flower_color', '').strip() or None,
@@ -621,6 +635,15 @@ def update_masterdata(plant_id):
             new_display = new_value if new_value not in (None, '') else '-'
             changes.append(f"{field_labels[field]}: {old_display} → {new_display}")
             setattr(plant, field, new_value)
+
+    light_need_keys = parse_light_need_keys(request.form.getlist('light_need'))
+    new_light_needs = LightNeed.query.filter(LightNeed.key.in_(light_need_keys)).order_by(LightNeed.id.asc()).all()
+    old_light_need_display = format_light_need_labels(plant.light_needs) or '-'
+    new_light_need_display = format_light_need_labels(new_light_needs) or '-'
+    if old_light_need_display != new_light_need_display:
+        changes.append(f"Lichtbedarf: {old_light_need_display} → {new_light_need_display}")
+        plant.light_needs = new_light_needs
+        plant.light_need = new_light_need_display
 
     if changes:
         create_timeline_entry(
