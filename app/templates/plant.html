@@ -45,8 +45,8 @@
       <input name="name" value="{{ plant.name }}" placeholder="Name" required>
       <input name="common_name" value="{{ plant.common_name or '' }}" placeholder="Bürgerlicher Name">
       <input name="source" value="{{ plant.source or '' }}" placeholder="Quelle">
-      <fieldset>
-        <legend>Lichtbedarf (Mehrfachauswahl)</legend>
+      <fieldset class="light-need-group">
+        <legend>Lichtbedarf</legend>
         {% set selected_light_need_keys = plant.light_needs | map(attribute='key') | list %}
         {% for option in light_need_options %}
         <label class="light-need-option"><input type="checkbox" name="light_need" value="{{ option.key }}" {% if option.key in selected_light_need_keys %}checked{% endif %}> <span>{{ option.icon }} {{ option.label }}</span></label>
@@ -225,9 +225,6 @@
 #plant-map-overlay-markers{pointer-events:none}
 #plant-map-overlay-markers .plant-marker{cursor:pointer;pointer-events:all}
 .plant-position-edit-icon{position:absolute;top:.5rem;right:.5rem;z-index:2;border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:.35rem .5rem;line-height:1;cursor:pointer}
-.light-need-option{display:flex;align-items:center;gap:.45rem}
-.light-need-option span{display:inline-flex;align-items:center;gap:.35rem}
-
 .timeline-panel{display:flex;flex-direction:column;gap:.85rem}
 .timeline-panel-title{margin:0}
 .timeline-toolbar{display:flex;flex-direction:column;gap:.6rem}
