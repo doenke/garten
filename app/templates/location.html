@@ -316,11 +316,17 @@
 
   const togglePlantFormButton = document.getElementById('toggle-plant-form');
   const plantForm = document.getElementById('plant-form');
-  togglePlantFormButton.addEventListener('click', () => {
-    const isHidden = plantForm.style.display === 'none';
-    plantForm.style.display = isHidden ? 'block' : 'none';
-    togglePlantFormButton.textContent = isHidden ? 'Pflanze anlegen ausblenden' : 'Pflanze anlegen';
-  });
+  const syncPlantFormVisibility = (isVisible) => {
+    plantForm.classList.toggle('hidden', !isVisible);
+    togglePlantFormButton.textContent = isVisible ? 'Pflanze anlegen ausblenden' : 'Pflanze anlegen';
+  };
+
+  if (togglePlantFormButton && plantForm) {
+    syncPlantFormVisibility(false);
+    togglePlantFormButton.addEventListener('click', () => {
+      syncPlantFormVisibility(plantForm.classList.contains('hidden'));
+    });
+  }
 
   const locationPlantsSearch = document.getElementById('location-plants-search');
   const locationPlantsTable = document.querySelector('table');
