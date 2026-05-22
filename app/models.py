@@ -11,11 +11,21 @@ plant_light_need = db.Table(
     db.Column('light_need_id', db.Integer, db.ForeignKey('light_need.id'), primary_key=True),
 )
 
+plant_soil_property = db.Table(
+    'plant_soil_property',
+    db.Column('plant_id', db.Integer, db.ForeignKey('plant.id'), primary_key=True),
+    db.Column('soil_property_id', db.Integer, db.ForeignKey('soil_property.id'), primary_key=True),
+)
+
 
 class LightNeed(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String(32), unique=True, nullable=False)
     label = db.Column(db.String(64), nullable=False)
+
+class SoilProperty(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    label = db.Column(db.String(128), unique=True, nullable=False)
 
 
 class User(db.Model):
@@ -57,6 +67,7 @@ class Plant(db.Model):
     bloom_end_month = db.Column(db.Integer)
     flower_color = db.Column(db.String(64))
     soil = db.Column(db.Text)
+    soil_properties = db.relationship('SoilProperty', secondary=plant_soil_property, lazy='select', order_by='SoilProperty.label')
     height_without_bloom_cm = db.Column(db.Integer)
     height_with_bloom_cm = db.Column(db.Integer)
     info = db.Column(db.Text)
@@ -67,6 +78,10 @@ class Plant(db.Model):
     @property
     def light_need_labels(self):
         return [light_need.label for light_need in self.light_needs]
+
+    @property
+    def soil_property_labels(self):
+        return [soil_property.label for soil_property in self.soil_properties]
 
 
 class GardenMap(db.Model):

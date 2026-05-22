@@ -4,7 +4,7 @@ import time
 from functools import wraps
 from datetime import datetime
 from flask import Blueprint, current_app, g, render_template, request, redirect, url_for, session, jsonify, send_from_directory
-from .models import db, User, Location, Plant, PlantPhoto, PlantNote, GardenMap, TimelineEntry, LightNeed
+from .models import db, User, Location, Plant, PlantPhoto, PlantNote, GardenMap, TimelineEntry, LightNeed, SoilProperty
 from .services.timeline_service import save_uploaded_attachment, set_single_title_entry, delete_timeline_entry, build_unique_upload_name
 
 main_bp = Blueprint('main', __name__)
@@ -62,6 +62,29 @@ def parse_light_need_keys(values):
 
 def format_light_need_labels(light_needs):
     return ', '.join(light_need.label for light_need in light_needs)
+
+
+def parse_soil_properties(raw_value):
+    labels = []
+    for value in (raw_value or '').split(','):
+        cleaned = value.strip()
+        if cleaned and cleaned.lower() not in {entry.lower() for entry in labels}:
+            labels.append(cleaned)
+    return labels
+
+
+def get_or_create_soil_properties(labels):
+    properties = []
+    for label in labels:
+        existing = SoilProperty.query.filter(db.func.lower(SoilProperty.label) == label.lower()).first()
+        if existing:
+            properties.append(existing)
+            continue
+        new_entry = SoilProperty(label=label)
+        db.session.add(new_entry)
+        db.session.flush()
+        properties.append(new_entry)
+    return properties
 
 
 def create_timeline_entry(*, scope_type, scope_id, creator_id, created_at=None, event_at=None, event_type=None, title=None, description=None, attachment_filename=None, attachment_kind=None):
@@ -443,6 +466,9 @@ def new_plant(location_id):
         creator_id=current_user().id
     )
     p.light_needs = selected_light_needs
+    soil_labels = parse_soil_properties(request.form.get('soil_properties') or request.form.get('soil'))
+    p.soil_properties = get_or_create_soil_properties(soil_labels)
+    p.soil = ', '.join(soil_labels) if soil_labels else None
     db.session.add(p)
     db.session.flush()
     event_at = datetime.utcnow()
@@ -496,6 +522,16 @@ def plant_detail(plant_id):
         for item in location_plants
     ]
     title_event = next((event for event in events if event.is_title_entry), None)
+    top_soil_properties = (
+        db.session.query(SoilProperty.label, db.func.count().label('usage_count'))
+        .select_from(Plant)
+        .join(Plant.soil_properties)
+        .group_by(SoilProperty.id, SoilProperty.label)
+        .order_by(db.desc('usage_count'), SoilProperty.label.asc())
+        .limit(5)
+        .all()
+    )
+    soil_property_suggestions = SoilProperty.query.order_by(SoilProperty.label.asc()).all()
     return render_template(
         'plant.html',
         plant=plant,
@@ -514,6 +550,8 @@ def plant_detail(plant_id):
         title_event=title_event,
         light_need_options=LIGHT_NEED_OPTIONS,
         light_need_icon_by_key=LIGHT_NEED_ICON_BY_KEY,
+        top_soil_properties=[item.label for item in top_soil_properties],
+        soil_property_suggestions=soil_property_suggestions,
     )
 
 
@@ -649,6 +687,15 @@ def update_masterdata(plant_id):
         changes.append(f"Lichtbedarf: {old_light_need_display} → {new_light_need_display}")
         plant.light_needs = new_light_needs
         plant.light_need = ''
+
+    new_soil_labels = parse_soil_properties(request.form.get('soil_properties'))
+    new_soil_properties = get_or_create_soil_properties(new_soil_labels)
+    old_soil_display = ', '.join(plant.soil_property_labels) or '-'
+    new_soil_display = ', '.join(item.label for item in new_soil_properties) or '-'
+    if old_soil_display != new_soil_display:
+        changes.append(f"Bodeneigenschaften: {old_soil_display} → {new_soil_display}")
+        plant.soil_properties = new_soil_properties
+        plant.soil = new_soil_display if new_soil_display != '-' else None
 
     if changes:
         create_timeline_entry(
