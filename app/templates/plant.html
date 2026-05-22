@@ -44,9 +44,12 @@
     <form method="post" action="/plants/{{ plant.id }}/masterdata" class="grid mt-75">
       <fieldset class="form-section">
         <legend>Basisdaten</legend>
-        <input name="name" value="{{ plant.name }}" placeholder="Name" required>
-        <input name="common_name" value="{{ plant.common_name or '' }}" placeholder="Bürgerlicher Name">
-        <input name="source" value="{{ plant.source or '' }}" placeholder="Quelle">
+        <label for="plant-name">Name</label>
+        <input id="plant-name" name="name" value="{{ plant.name }}" required>
+        <label for="plant-common-name">Bürgerlicher Name</label>
+        <input id="plant-common-name" name="common_name" value="{{ plant.common_name or '' }}">
+        <label for="plant-source">Quelle</label>
+        <input id="plant-source" name="source" value="{{ plant.source or '' }}" placeholder="z. B. Gärtnerei Musterhof">
       </fieldset>
       <fieldset class="form-section">
         <legend>Standort &amp; Boden</legend>
@@ -57,7 +60,8 @@
           <label class="light-need-option"><input type="checkbox" name="light_need" value="{{ option.key }}" {% if option.key in selected_light_need_keys %}checked{% endif %}> <span>{{ option.icon }} {{ option.label }}</span></label>
           {% endfor %}
         </fieldset>
-        <input id="soil-property-input" list="soil-property-suggestions" placeholder="Bodeneigenschaft eingeben und Enter drücken">
+        <label for="soil-property-input">Bodeneigenschaften</label>
+        <input id="soil-property-input" list="soil-property-suggestions" placeholder="z. B. humos, kalkhaltig">
         <datalist id="soil-property-suggestions">
           {% for suggestion in soil_property_suggestions %}
           <option value="{{ suggestion.label }}"></option>
@@ -76,35 +80,44 @@
       <fieldset class="form-section">
         <legend>Blüte &amp; Wuchs</legend>
         <div class="actions-inline">
-          <select name="bloom_start_month">
+          <label for="plant-bloom-start">Blütezeit von</label>
+          <select id="plant-bloom-start" name="bloom_start_month">
             <option value="">Blütezeit von</option>
             {% for m in range(1,13) %}
             <option value="{{ m }}" {% if plant.bloom_start_month == m %}selected{% endif %}>{{ month_names[m-1] }}</option>
             {% endfor %}
           </select>
-          <select name="bloom_end_month">
+          <label for="plant-bloom-end">Blütezeit bis</label>
+          <select id="plant-bloom-end" name="bloom_end_month">
             <option value="">Blütezeit bis</option>
             {% for m in range(1,13) %}
             <option value="{{ m }}" {% if plant.bloom_end_month == m %}selected{% endif %}>{{ month_names[m-1] }}</option>
             {% endfor %}
           </select>
         </div>
-        <input name="flower_color" value="{{ plant.flower_color or '' }}" placeholder="Blütenfarbe">
+        <label for="plant-flower-color">Blütenfarbe</label>
+        <input id="plant-flower-color" name="flower_color" value="{{ plant.flower_color or '' }}">
         <div class="actions-inline">
-          <input type="number" min="0" name="height_without_bloom_cm" value="{{ plant.height_without_bloom_cm or '' }}" placeholder="Höhe ohne Blüte (cm)">
-          <input type="number" min="0" name="height_with_bloom_cm" value="{{ plant.height_with_bloom_cm or '' }}" placeholder="Höhe mit Blüte (cm)">
+          <label for="plant-height-without-bloom">Höhe ohne Blüte (cm)</label>
+          <input id="plant-height-without-bloom" type="number" min="0" name="height_without_bloom_cm" value="{{ plant.height_without_bloom_cm or '' }}">
+          <label for="plant-height-with-bloom">Höhe mit Blüte (cm)</label>
+          <input id="plant-height-with-bloom" type="number" min="0" name="height_with_bloom_cm" value="{{ plant.height_with_bloom_cm or '' }}">
         </div>
       </fieldset>
       <fieldset class="form-section">
         <legend>Position</legend>
         <div class="actions-inline">
-          <input type="number" step="any" name="map_x" value="{{ plant.map_x if plant.map_x is not none else '' }}" placeholder="Position X (Lat)">
-          <input type="number" step="any" name="map_y" value="{{ plant.map_y if plant.map_y is not none else '' }}" placeholder="Position Y (Lon)">
+          <label for="plant-map-x-input">Position X (Lat)</label>
+          <input id="plant-map-x-input" type="number" step="any" name="map_x" value="{{ plant.map_x if plant.map_x is not none else '' }}">
+          <label for="plant-map-y-input">Position Y (Lon)</label>
+          <input id="plant-map-y-input" type="number" step="any" name="map_y" value="{{ plant.map_y if plant.map_y is not none else '' }}">
         </div>
+        <small class="muted">Koordinaten relativ zur Beetkarte: X = Breitengrad (Lat), Y = Längengrad (Lon).</small>
       </fieldset>
       <fieldset class="form-section">
         <legend>Notizen</legend>
-        <textarea name="info" placeholder="Info">{{ plant.info or '' }}</textarea>
+        <label for="plant-info">Info</label>
+        <textarea id="plant-info" name="info" placeholder="z. B. Besonderheiten zum Standort">{{ plant.info or '' }}</textarea>
       </fieldset>
       <button type="submit">Pflanzendaten speichern</button>
     </form>
