@@ -61,7 +61,6 @@
           {% endfor %}
         </fieldset>
         <label for="soil-property-input">Bodeneigenschaften</label>
-        <p class="field-hint mt-0 mb-0">Zugewiesen: aktuell hinterlegte Eigenschaften. Auswahl: Vorschläge zum schnellen Hinzufügen.</p>
         <input id="soil-property-input" list="soil-property-suggestions" placeholder="z. B. humos, kalkhaltig">
         <datalist id="soil-property-suggestions">
           {% for suggestion in soil_property_suggestions %}
