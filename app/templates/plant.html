@@ -116,6 +116,11 @@
         </div>
       </fieldset>
       <fieldset class="form-section">
+        <legend>Notizen</legend>
+        <label for="plant-info">Info</label>
+        <textarea id="plant-info" name="info" placeholder="z. B. Besonderheiten zum Standort">{{ plant.info or '' }}</textarea>
+      </fieldset>
+      <fieldset class="form-section">
         <legend>Position</legend>
         <div class="field-pair">
           <div class="field-pair-item">
@@ -127,11 +132,6 @@
             <input id="plant-map-y-input" type="number" step="any" name="map_y" value="{{ plant.map_y if plant.map_y is not none else '' }}">
           </div>
         </div>
-      </fieldset>
-      <fieldset class="form-section">
-        <legend>Notizen</legend>
-        <label for="plant-info">Info</label>
-        <textarea id="plant-info" name="info" placeholder="z. B. Besonderheiten zum Standort">{{ plant.info or '' }}</textarea>
       </fieldset>
       <button type="submit">Pflanzendaten speichern</button>
     </form>
