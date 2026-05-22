@@ -112,6 +112,18 @@ def location_sort_criteria():
     )
 
 
+
+
+def get_flower_color_suggestions():
+    colors = (
+        db.session.query(Plant.flower_color)
+        .filter(Plant.flower_color.isnot(None))
+        .distinct()
+        .order_by(Plant.flower_color.asc())
+        .all()
+    )
+    return [color[0].strip() for color in colors if color[0] and color[0].strip()]
+
 def create_system_event(plant_id, key, creator_id, event_at=None, description=None):
     tpl = SYSTEM_EVENT_TEMPLATES[key]
     create_timeline_entry(
@@ -375,6 +387,7 @@ def location_detail(location_id):
         creators={u.id: u for u in User.query.all()},
         garden_map=garden_map,
         light_need_options=LIGHT_NEED_OPTIONS,
+        flower_color_suggestions=get_flower_color_suggestions(),
         other_location_polygons=[
             {
                 'id': other_loc.id,
@@ -549,6 +562,7 @@ def plant_detail(plant_id):
         light_need_icon_by_key=LIGHT_NEED_ICON_BY_KEY,
         top_soil_properties=[item.label for item in top_soil_properties],
         soil_property_suggestions=soil_property_suggestions,
+        flower_color_suggestions=get_flower_color_suggestions(),
     )
 
 
