@@ -42,55 +42,70 @@
   <details>
     <summary>Pflanzendaten ändern</summary>
     <form method="post" action="/plants/{{ plant.id }}/masterdata" class="grid mt-75">
-      <input name="name" value="{{ plant.name }}" placeholder="Name" required>
-      <input name="common_name" value="{{ plant.common_name or '' }}" placeholder="Bürgerlicher Name">
-      <input name="source" value="{{ plant.source or '' }}" placeholder="Quelle">
-      <fieldset class="light-need-group">
-        <legend>Lichtbedarf</legend>
-        {% set selected_light_need_keys = plant.light_needs | map(attribute='key') | list %}
-        {% for option in light_need_options %}
-        <label class="light-need-option"><input type="checkbox" name="light_need" value="{{ option.key }}" {% if option.key in selected_light_need_keys %}checked{% endif %}> <span>{{ option.icon }} {{ option.label }}</span></label>
-        {% endfor %}
+      <fieldset class="form-section">
+        <legend>Basisdaten</legend>
+        <input name="name" value="{{ plant.name }}" placeholder="Name" required>
+        <input name="common_name" value="{{ plant.common_name or '' }}" placeholder="Bürgerlicher Name">
+        <input name="source" value="{{ plant.source or '' }}" placeholder="Quelle">
       </fieldset>
-      <div class="actions-inline">
-        <select name="bloom_start_month">
-          <option value="">Blütezeit von</option>
-          {% for m in range(1,13) %}
-          <option value="{{ m }}" {% if plant.bloom_start_month == m %}selected{% endif %}>{{ month_names[m-1] }}</option>
+      <fieldset class="form-section">
+        <legend>Standort &amp; Boden</legend>
+        <fieldset class="light-need-group">
+          <legend>Lichtbedarf</legend>
+          {% set selected_light_need_keys = plant.light_needs | map(attribute='key') | list %}
+          {% for option in light_need_options %}
+          <label class="light-need-option"><input type="checkbox" name="light_need" value="{{ option.key }}" {% if option.key in selected_light_need_keys %}checked{% endif %}> <span>{{ option.icon }} {{ option.label }}</span></label>
           {% endfor %}
-        </select>
-        <select name="bloom_end_month">
-          <option value="">Blütezeit bis</option>
-          {% for m in range(1,13) %}
-          <option value="{{ m }}" {% if plant.bloom_end_month == m %}selected{% endif %}>{{ month_names[m-1] }}</option>
+        </fieldset>
+        <input id="soil-property-input" list="soil-property-suggestions" placeholder="Bodeneigenschaft eingeben und Enter drücken">
+        <datalist id="soil-property-suggestions">
+          {% for suggestion in soil_property_suggestions %}
+          <option value="{{ suggestion.label }}"></option>
           {% endfor %}
-        </select>
-      </div>
-      <input name="flower_color" value="{{ plant.flower_color or '' }}" placeholder="Blütenfarbe">
-      <input id="soil-property-input" list="soil-property-suggestions" placeholder="Bodeneigenschaft eingeben und Enter drücken">
-      <datalist id="soil-property-suggestions">
-        {% for suggestion in soil_property_suggestions %}
-        <option value="{{ suggestion.label }}"></option>
-        {% endfor %}
-      </datalist>
-      <input type="hidden" id="soil-properties-hidden" name="soil_properties" value="{{ plant.soil_property_labels | join(', ') }}">
-      <div id="soil-properties-selected" class="chip-row"></div>
-      {% if top_soil_properties %}
-      <div class="chip-row">
-        {% for soil_label in top_soil_properties %}
-        <button type="button" class="chip soil-top-chip" data-soil-label="{{ soil_label }}">{{ soil_label }}</button>
-        {% endfor %}
-      </div>
-      {% endif %}
-      <div class="actions-inline">
-        <input type="number" min="0" name="height_without_bloom_cm" value="{{ plant.height_without_bloom_cm or '' }}" placeholder="Höhe ohne Blüte (cm)">
-        <input type="number" min="0" name="height_with_bloom_cm" value="{{ plant.height_with_bloom_cm or '' }}" placeholder="Höhe mit Blüte (cm)">
-      </div>
-      <div class="actions-inline">
-        <input type="number" step="any" name="map_x" value="{{ plant.map_x if plant.map_x is not none else '' }}" placeholder="Position X (Lat)">
-        <input type="number" step="any" name="map_y" value="{{ plant.map_y if plant.map_y is not none else '' }}" placeholder="Position Y (Lon)">
-      </div>
-      <textarea name="info" placeholder="Info">{{ plant.info or '' }}</textarea>
+        </datalist>
+        <input type="hidden" id="soil-properties-hidden" name="soil_properties" value="{{ plant.soil_property_labels | join(', ') }}">
+        <div id="soil-properties-selected" class="chip-row"></div>
+        {% if top_soil_properties %}
+        <div class="chip-row">
+          {% for soil_label in top_soil_properties %}
+          <button type="button" class="chip soil-top-chip" data-soil-label="{{ soil_label }}">{{ soil_label }}</button>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </fieldset>
+      <fieldset class="form-section">
+        <legend>Blüte &amp; Wuchs</legend>
+        <div class="actions-inline">
+          <select name="bloom_start_month">
+            <option value="">Blütezeit von</option>
+            {% for m in range(1,13) %}
+            <option value="{{ m }}" {% if plant.bloom_start_month == m %}selected{% endif %}>{{ month_names[m-1] }}</option>
+            {% endfor %}
+          </select>
+          <select name="bloom_end_month">
+            <option value="">Blütezeit bis</option>
+            {% for m in range(1,13) %}
+            <option value="{{ m }}" {% if plant.bloom_end_month == m %}selected{% endif %}>{{ month_names[m-1] }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <input name="flower_color" value="{{ plant.flower_color or '' }}" placeholder="Blütenfarbe">
+        <div class="actions-inline">
+          <input type="number" min="0" name="height_without_bloom_cm" value="{{ plant.height_without_bloom_cm or '' }}" placeholder="Höhe ohne Blüte (cm)">
+          <input type="number" min="0" name="height_with_bloom_cm" value="{{ plant.height_with_bloom_cm or '' }}" placeholder="Höhe mit Blüte (cm)">
+        </div>
+      </fieldset>
+      <fieldset class="form-section">
+        <legend>Position</legend>
+        <div class="actions-inline">
+          <input type="number" step="any" name="map_x" value="{{ plant.map_x if plant.map_x is not none else '' }}" placeholder="Position X (Lat)">
+          <input type="number" step="any" name="map_y" value="{{ plant.map_y if plant.map_y is not none else '' }}" placeholder="Position Y (Lon)">
+        </div>
+      </fieldset>
+      <fieldset class="form-section">
+        <legend>Notizen</legend>
+        <textarea name="info" placeholder="Info">{{ plant.info or '' }}</textarea>
+      </fieldset>
       <button type="submit">Pflanzendaten speichern</button>
     </form>
   </details>
@@ -243,6 +258,10 @@
 .light-need-group legend{justify-self:start;text-align:left}
 .light-need-option{display:inline-flex;align-items:center;gap:.45rem;white-space:nowrap}
 .light-need-option span{display:inline-flex;align-items:center;gap:.35rem;white-space:nowrap}
+.form-section{display:grid;gap:.6rem;padding:.8rem .9rem;margin:0;border:1px solid var(--border);border-radius:10px;background:color-mix(in srgb,var(--surface-soft) 70%,transparent)}
+.form-section + .form-section{margin-top:.35rem}
+fieldset{border:1px solid var(--border);border-radius:10px}
+legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
 .chip-row{display:flex;flex-wrap:wrap;gap:.4rem}
 .chip{border:1px solid var(--border);border-radius:999px;padding:.25rem .65rem;background:var(--surface-soft);cursor:pointer}
 .chip.selected{background:var(--accent-soft)}
