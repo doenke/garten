@@ -79,38 +79,50 @@
       </fieldset>
       <fieldset class="form-section">
         <legend>Blüte &amp; Wuchs</legend>
-        <div class="actions-inline">
-          <label for="plant-bloom-start">Blütezeit von</label>
-          <select id="plant-bloom-start" name="bloom_start_month">
-            <option value="">Blütezeit von</option>
-            {% for m in range(1,13) %}
-            <option value="{{ m }}" {% if plant.bloom_start_month == m %}selected{% endif %}>{{ month_names[m-1] }}</option>
-            {% endfor %}
-          </select>
-          <label for="plant-bloom-end">Blütezeit bis</label>
-          <select id="plant-bloom-end" name="bloom_end_month">
-            <option value="">Blütezeit bis</option>
-            {% for m in range(1,13) %}
-            <option value="{{ m }}" {% if plant.bloom_end_month == m %}selected{% endif %}>{{ month_names[m-1] }}</option>
-            {% endfor %}
-          </select>
+        <div class="field-pair">
+          <div class="field-pair-item">
+            <label for="plant-bloom-start">Blütezeit von</label>
+            <select id="plant-bloom-start" name="bloom_start_month">
+              <option value="">Blütezeit von</option>
+              {% for m in range(1,13) %}
+              <option value="{{ m }}" {% if plant.bloom_start_month == m %}selected{% endif %}>{{ month_names[m-1] }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field-pair-item">
+            <label for="plant-bloom-end">Blütezeit bis</label>
+            <select id="plant-bloom-end" name="bloom_end_month">
+              <option value="">Blütezeit bis</option>
+              {% for m in range(1,13) %}
+              <option value="{{ m }}" {% if plant.bloom_end_month == m %}selected{% endif %}>{{ month_names[m-1] }}</option>
+              {% endfor %}
+            </select>
+          </div>
         </div>
         <label for="plant-flower-color">Blütenfarbe</label>
         <input id="plant-flower-color" name="flower_color" value="{{ plant.flower_color or '' }}">
-        <div class="actions-inline">
-          <label for="plant-height-without-bloom">Höhe ohne Blüte (cm)</label>
-          <input id="plant-height-without-bloom" type="number" min="0" name="height_without_bloom_cm" value="{{ plant.height_without_bloom_cm or '' }}">
-          <label for="plant-height-with-bloom">Höhe mit Blüte (cm)</label>
-          <input id="plant-height-with-bloom" type="number" min="0" name="height_with_bloom_cm" value="{{ plant.height_with_bloom_cm or '' }}">
+        <div class="field-pair">
+          <div class="field-pair-item">
+            <label for="plant-height-without-bloom">Höhe ohne Blüte (cm)</label>
+            <input id="plant-height-without-bloom" type="number" min="0" name="height_without_bloom_cm" value="{{ plant.height_without_bloom_cm or '' }}">
+          </div>
+          <div class="field-pair-item">
+            <label for="plant-height-with-bloom">Höhe mit Blüte (cm)</label>
+            <input id="plant-height-with-bloom" type="number" min="0" name="height_with_bloom_cm" value="{{ plant.height_with_bloom_cm or '' }}">
+          </div>
         </div>
       </fieldset>
       <fieldset class="form-section">
         <legend>Position</legend>
-        <div class="actions-inline">
-          <label for="plant-map-x-input">Position X (Lat)</label>
-          <input id="plant-map-x-input" type="number" step="any" name="map_x" value="{{ plant.map_x if plant.map_x is not none else '' }}">
-          <label for="plant-map-y-input">Position Y (Lon)</label>
-          <input id="plant-map-y-input" type="number" step="any" name="map_y" value="{{ plant.map_y if plant.map_y is not none else '' }}">
+        <div class="field-pair">
+          <div class="field-pair-item">
+            <label for="plant-map-x-input">Position X (Lat)</label>
+            <input id="plant-map-x-input" type="number" step="any" name="map_x" value="{{ plant.map_x if plant.map_x is not none else '' }}">
+          </div>
+          <div class="field-pair-item">
+            <label for="plant-map-y-input">Position Y (Lon)</label>
+            <input id="plant-map-y-input" type="number" step="any" name="map_y" value="{{ plant.map_y if plant.map_y is not none else '' }}">
+          </div>
         </div>
         <small class="muted">Koordinaten relativ zur Beetkarte: X = Breitengrad (Lat), Y = Längengrad (Lon).</small>
       </fieldset>
@@ -278,6 +290,8 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
 .chip-row{display:flex;flex-wrap:wrap;gap:.4rem}
 .chip{border:1px solid var(--border);border-radius:999px;padding:.25rem .65rem;background:var(--surface-soft);cursor:pointer}
 .chip.selected{background:var(--accent-soft)}
+.field-pair{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.field-pair-item{display:grid;gap:.35rem}
 
 .timeline-panel{display:flex;flex-direction:column;gap:.85rem}
 .timeline-panel-title{margin:0}
@@ -293,6 +307,7 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
 .image-modal-nav:disabled{opacity:.45;cursor:not-allowed}
 .image-modal-close{position:absolute;top:-.5rem;right:-.5rem;font-size:1.4rem;line-height:1;padding:.45rem .6rem;min-width:44px;min-height:44px;border-radius:999px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.32);text-shadow:none}
 @media (max-width: 640px){
+  .field-pair{grid-template-columns:1fr}
   .timeline-form-row{grid-template-columns:1fr}
   .image-modal{padding:0;background:#000;overscroll-behavior:none}
   .image-modal-inner{width:100vw;height:100dvh;max-width:none;max-height:none;display:grid;grid-template-columns:1fr;grid-template-rows:1fr}
