@@ -115,6 +115,15 @@ def _run_schema_upgrades():
     db.session.commit()
 
 
+def _clear_legacy_light_need_data(inspector):
+    """Clear legacy text values in plant.light_need."""
+    table_names = set(inspector.get_table_names())
+    if 'plant' not in table_names:
+        return
+
+    Plant.query.filter(Plant.light_need != '').update({'light_need': ''}, synchronize_session=False)
+
+
 
 
 def _ensure_timeline_title_entry_uniqueness(inspector):
@@ -156,4 +165,3 @@ def _ensure_light_need_schema(inspector):
         if key not in existing:
             db.session.add(LightNeed(key=key, label=label))
     db.session.flush()
-
