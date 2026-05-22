@@ -526,7 +526,6 @@ def plant_detail(plant_id):
         .join(Plant.soil_properties)
         .group_by(SoilProperty.id, SoilProperty.label)
         .order_by(db.desc('usage_count'), SoilProperty.label.asc())
-        .limit(5)
         .all()
     )
     soil_property_suggestions = SoilProperty.query.order_by(SoilProperty.label.asc()).all()
