@@ -110,6 +110,7 @@ def _run_schema_upgrades():
     """Apply lightweight, idempotent schema upgrades for existing databases."""
     inspector = inspect(db.engine)
     _ensure_light_need_schema(inspector)
+    _clear_legacy_light_need_data(inspector)
     _ensure_timeline_title_entry_uniqueness(inspector)
     db.session.commit()
 
@@ -156,15 +157,3 @@ def _ensure_light_need_schema(inspector):
             db.session.add(LightNeed(key=key, label=label))
     db.session.flush()
 
-    label_to_key = {
-        'Sonnig': 'full_sun',
-        'Halbschatten': 'part_shade',
-        'Schatten': 'shade',
-    }
-    light_need_by_key = {item.key: item for item in LightNeed.query.all()}
-    for plant in Plant.query.all():
-        if plant.light_needs:
-            continue
-        raw_values = [part.strip() for part in (plant.light_need or '').split(',') if part.strip()]
-        keys = [label_to_key[value] for value in raw_values if value in label_to_key]
-        plant.light_needs = [light_need_by_key[key] for key in keys]
