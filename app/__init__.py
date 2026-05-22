@@ -174,21 +174,3 @@ def _ensure_soil_property_schema(inspector):
         SoilProperty.__table__.create(bind=db.engine, checkfirst=True)
     if 'plant_soil_property' not in table_names:
         plant_soil_property.create(bind=db.engine, checkfirst=True)
-
-    plants = Plant.query.all()
-    for plant in plants:
-        if plant.soil_properties:
-            continue
-        raw_soil = (plant.soil or '').strip()
-        if not raw_soil:
-            continue
-        labels = [part.strip() for part in raw_soil.split(',') if part.strip()]
-        properties = []
-        for label in labels:
-            property_item = SoilProperty.query.filter(db.func.lower(SoilProperty.label) == label.lower()).first()
-            if not property_item:
-                property_item = SoilProperty(label=label)
-                db.session.add(property_item)
-                db.session.flush()
-            properties.append(property_item)
-        plant.soil_properties = properties
