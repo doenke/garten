@@ -75,16 +75,9 @@
             <div id="soil-properties-selected" class="chip-row"></div>
           </div>
           {% if top_soil_properties %}
-          {% set selected_soil_property_labels = plant.soil_property_labels | map('lower') | list %}
           <div>
             <p class="soil-section-label">Auswahl</p>
-            <div class="chip-row">
-              {% for soil_label in top_soil_properties %}
-              {% if soil_label | lower not in selected_soil_property_labels %}
-              <button type="button" class="chip soil-top-chip" data-soil-label="{{ soil_label }}">{{ soil_label }}</button>
-              {% endif %}
-              {% endfor %}
-            </div>
+            <div id="soil-top-chips" class="chip-row" data-top-soil-properties='{{ top_soil_properties | tojson }}'></div>
           </div>
           {% endif %}
         </div>
@@ -347,12 +340,25 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
   const soilSelectedWrapper = document.getElementById('soil-properties-selected');
   if (soilInput && soilHidden && soilSelectedWrapper) {
     const selected = new Map();
-    const topSoilButtons = Array.from(document.querySelectorAll('.soil-top-chip'));
+    const topSoilWrapper = document.getElementById('soil-top-chips');
+    const topSoilLabels = topSoilWrapper ? JSON.parse(topSoilWrapper.dataset.topSoilProperties || '[]') : [];
     const updateTopSoilButtons = () => {
-      topSoilButtons.forEach((button) => {
-        const label = (button.dataset.soilLabel || '').trim();
-        const key = label.toLowerCase();
-        button.classList.toggle('hidden', selected.has(key));
+      if (!topSoilWrapper) return;
+      topSoilWrapper.innerHTML = '';
+      let renderedCount = 0;
+      topSoilLabels.forEach((label) => {
+        if (renderedCount >= 5) return;
+        const normalizedLabel = (label || '').trim();
+        const key = normalizedLabel.toLowerCase();
+        if (!normalizedLabel || selected.has(key)) return;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'chip soil-top-chip';
+        button.dataset.soilLabel = normalizedLabel;
+        button.textContent = normalizedLabel;
+        button.addEventListener('click', () => addSoil(normalizedLabel));
+        topSoilWrapper.appendChild(button);
+        renderedCount += 1;
       });
     };
     const renderSoil = () => {
@@ -387,9 +393,7 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
       }
     });
     soilInput.addEventListener('blur', () => addSoil(soilInput.value));
-    topSoilButtons.forEach((button) => {
-      button.addEventListener('click', () => addSoil(button.dataset.soilLabel || ''));
-    });
+
   }
 
   const mapImage = document.getElementById('plant-map-image');
