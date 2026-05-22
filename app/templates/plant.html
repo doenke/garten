@@ -18,7 +18,7 @@
   <p><strong>Name:</strong> {{ plant.name }}</p>
   {% if plant.common_name %}<p><strong>Bürgerlicher Name:</strong> {{ plant.common_name }}</p>{% endif %}
   {% if plant.source %}<p><strong>Quelle:</strong> {{ plant.source }}</p>{% endif %}
-  {% if plant.light_need %}<p><strong>Lichtbedarf:</strong> {{ plant.light_need }}</p>{% endif %}
+  {% if plant.light_need_labels %}<p><strong>Lichtbedarf:</strong> {{ plant.light_need_labels | join(', ') }}</p>{% endif %}
   {% if plant.flower_color %}<p><strong>Blütenfarbe:</strong> {{ plant.flower_color }}</p>{% endif %}
   {% if plant.soil %}<p><strong>Boden:</strong> {{ plant.soil }}</p>{% endif %}
   {% if plant.height_without_bloom_cm is not none and plant.height_with_bloom_cm is not none %}
@@ -45,7 +45,13 @@
       <input name="name" value="{{ plant.name }}" placeholder="Name" required>
       <input name="common_name" value="{{ plant.common_name or '' }}" placeholder="Bürgerlicher Name">
       <input name="source" value="{{ plant.source or '' }}" placeholder="Quelle">
-      <input name="light_need" value="{{ plant.light_need or '' }}" placeholder="Lichtbedarf">
+      <fieldset>
+        <legend>Lichtbedarf (Mehrfachauswahl)</legend>
+        {% set selected_light_need_keys = plant.light_needs | map(attribute='key') | list %}
+        <label><input type="checkbox" name="light_need" value="full_sun" {% if 'full_sun' in selected_light_need_keys %}checked{% endif %}> Sonnig</label>
+        <label><input type="checkbox" name="light_need" value="part_shade" {% if 'part_shade' in selected_light_need_keys %}checked{% endif %}> Halbschatten</label>
+        <label><input type="checkbox" name="light_need" value="shade" {% if 'shade' in selected_light_need_keys %}checked{% endif %}> Schatten</label>
+      </fieldset>
       <div class="actions-inline">
         <select name="bloom_start_month">
           <option value="">Blütezeit von</option>

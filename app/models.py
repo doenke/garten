@@ -5,6 +5,18 @@ from datetime import datetime
 
 db = SQLAlchemy()
 
+plant_light_need = db.Table(
+    'plant_light_need',
+    db.Column('plant_id', db.Integer, db.ForeignKey('plant.id'), primary_key=True),
+    db.Column('light_need_id', db.Integer, db.ForeignKey('light_need.id'), primary_key=True),
+)
+
+
+class LightNeed(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(32), unique=True, nullable=False)
+    label = db.Column(db.String(64), nullable=False)
+
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -40,6 +52,7 @@ class Plant(db.Model):
     common_name = db.Column(db.String(255))
     source = db.Column(db.String(255))
     light_need = db.Column(db.String(128), nullable=False)
+    light_needs = db.relationship('LightNeed', secondary=plant_light_need, lazy='select', order_by='LightNeed.id')
     bloom_start_month = db.Column(db.Integer)
     bloom_end_month = db.Column(db.Integer)
     flower_color = db.Column(db.String(64))
@@ -50,6 +63,10 @@ class Plant(db.Model):
     map_x = db.Column(db.Float)
     map_y = db.Column(db.Float)
     creator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    @property
+    def light_need_labels(self):
+        return [light_need.label for light_need in self.light_needs]
 
 
 class GardenMap(db.Model):

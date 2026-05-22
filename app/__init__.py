@@ -5,6 +5,7 @@ from .auth import auth_bp, oauth
 from .views import main_bp
 import os
 from sqlalchemy import inspect
+from .models import LightNeed, Plant, plant_light_need
 
 
 _WEAK_SECRET_KEY_VALUES = {
@@ -108,6 +109,7 @@ def create_app():
 def _run_schema_upgrades():
     """Apply lightweight, idempotent schema upgrades for existing databases."""
     inspector = inspect(db.engine)
+    _ensure_light_need_schema(inspector)
     _ensure_timeline_title_entry_uniqueness(inspector)
     db.session.commit()
 
@@ -134,3 +136,35 @@ def _ensure_timeline_title_entry_uniqueness(inspector):
             'CREATE UNIQUE INDEX IF NOT EXISTS ux_timeline_entry_single_title_per_scope '
             'ON timeline_entry (scope_type, scope_id) WHERE is_title_entry IS TRUE'
         ))
+
+
+def _ensure_light_need_schema(inspector):
+    table_names = set(inspector.get_table_names())
+    if 'light_need' not in table_names:
+        LightNeed.__table__.create(bind=db.engine, checkfirst=True)
+    if 'plant_light_need' not in table_names:
+        plant_light_need.create(bind=db.engine, checkfirst=True)
+
+    key_label_pairs = [
+        ('full_sun', 'Sonnig'),
+        ('part_shade', 'Halbschatten'),
+        ('shade', 'Schatten'),
+    ]
+    existing = {row.key for row in LightNeed.query.all()}
+    for key, label in key_label_pairs:
+        if key not in existing:
+            db.session.add(LightNeed(key=key, label=label))
+    db.session.flush()
+
+    label_to_key = {
+        'Sonnig': 'full_sun',
+        'Halbschatten': 'part_shade',
+        'Schatten': 'shade',
+    }
+    light_need_by_key = {item.key: item for item in LightNeed.query.all()}
+    for plant in Plant.query.all():
+        if plant.light_needs:
+            continue
+        raw_values = [part.strip() for part in (plant.light_need or '').split(',') if part.strip()]
+        keys = [label_to_key[value] for value in raw_values if value in label_to_key]
+        plant.light_needs = [light_need_by_key[key] for key in keys]
