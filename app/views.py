@@ -4,7 +4,7 @@ import time
 from functools import wraps
 from datetime import datetime
 from flask import Blueprint, current_app, g, render_template, request, redirect, url_for, session, jsonify, send_from_directory
-from .models import db, User, Location, Plant, PlantPhoto, PlantNote, GardenMap, TimelineEntry, LightNeed, SoilProperty
+from .models import db, User, Location, Plant, PlantPhoto, PlantNote, GardenMap, TimelineEntry, LightNeed, SoilProperty, plant_soil_property
 from .services.timeline_service import save_uploaded_attachment, set_single_title_entry, delete_timeline_entry, build_unique_upload_name
 
 main_bp = Blueprint('main', __name__)
@@ -534,9 +534,11 @@ def plant_detail(plant_id):
     ]
     title_event = next((event for event in events if event.is_title_entry), None)
     top_soil_properties = (
-        db.session.query(SoilProperty.label, db.func.count().label('usage_count'))
-        .select_from(Plant)
-        .join(Plant.soil_properties)
+        db.session.query(
+            SoilProperty.label,
+            db.func.count(plant_soil_property.c.plant_id).label('usage_count'),
+        )
+        .outerjoin(plant_soil_property, plant_soil_property.c.soil_property_id == SoilProperty.id)
         .group_by(SoilProperty.id, SoilProperty.label)
         .order_by(db.desc('usage_count'), SoilProperty.label.asc())
         .all()
