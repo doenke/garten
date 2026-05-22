@@ -61,6 +61,7 @@
           {% endfor %}
         </fieldset>
         <label for="soil-property-input">Bodeneigenschaften</label>
+        <p class="field-hint mt-0 mb-0">Zugewiesen: aktuell hinterlegte Eigenschaften. Auswahl: Vorschläge zum schnellen Hinzufügen.</p>
         <input id="soil-property-input" list="soil-property-suggestions" placeholder="z. B. humos, kalkhaltig">
         <datalist id="soil-property-suggestions">
           {% for suggestion in soil_property_suggestions %}
@@ -68,14 +69,25 @@
           {% endfor %}
         </datalist>
         <input type="hidden" id="soil-properties-hidden" name="soil_properties" value="{{ plant.soil_property_labels | join(', ') }}">
-        <div id="soil-properties-selected" class="chip-row"></div>
-        {% if top_soil_properties %}
-        <div class="chip-row">
-          {% for soil_label in top_soil_properties %}
-          <button type="button" class="chip soil-top-chip" data-soil-label="{{ soil_label }}">{{ soil_label }}</button>
-          {% endfor %}
+        <div class="soil-sections">
+          <div>
+            <p class="soil-section-label">Zugewiesen</p>
+            <div id="soil-properties-selected" class="chip-row"></div>
+          </div>
+          {% if top_soil_properties %}
+          {% set selected_soil_property_labels = plant.soil_property_labels | map('lower') | list %}
+          <div>
+            <p class="soil-section-label">Auswahl</p>
+            <div class="chip-row">
+              {% for soil_label in top_soil_properties %}
+              {% if soil_label | lower not in selected_soil_property_labels %}
+              <button type="button" class="chip soil-top-chip" data-soil-label="{{ soil_label }}">{{ soil_label }}</button>
+              {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
         </div>
-        {% endif %}
       </fieldset>
       <fieldset class="form-section">
         <legend>Blüte &amp; Wuchs</legend>
@@ -289,6 +301,8 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
 .chip-row{display:flex;flex-wrap:wrap;gap:.4rem}
 .chip{border:1px solid var(--border);border-radius:999px;padding:.25rem .65rem;background:var(--surface-soft);cursor:pointer}
 .chip.selected{background:var(--accent-soft)}
+.soil-sections{display:grid;gap:.45rem}
+.soil-section-label{margin:0;font-size:.82rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.02em}
 .field-pair{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
 .field-pair-item{display:grid;gap:.35rem}
 
@@ -333,6 +347,14 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
   const soilSelectedWrapper = document.getElementById('soil-properties-selected');
   if (soilInput && soilHidden && soilSelectedWrapper) {
     const selected = new Map();
+    const topSoilButtons = Array.from(document.querySelectorAll('.soil-top-chip'));
+    const updateTopSoilButtons = () => {
+      topSoilButtons.forEach((button) => {
+        const label = (button.dataset.soilLabel || '').trim();
+        const key = label.toLowerCase();
+        button.classList.toggle('hidden', selected.has(key));
+      });
+    };
     const renderSoil = () => {
       soilSelectedWrapper.innerHTML = '';
       soilHidden.value = Array.from(selected.values()).join(', ');
@@ -347,6 +369,7 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
         });
         soilSelectedWrapper.appendChild(chip);
       });
+      updateTopSoilButtons();
     };
     const addSoil = (rawLabel) => {
       const label = (rawLabel || '').trim();
@@ -364,7 +387,7 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
       }
     });
     soilInput.addEventListener('blur', () => addSoil(soilInput.value));
-    document.querySelectorAll('.soil-top-chip').forEach((button) => {
+    topSoilButtons.forEach((button) => {
       button.addEventListener('click', () => addSoil(button.dataset.soilLabel || ''));
     });
   }
