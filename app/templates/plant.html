@@ -239,8 +239,10 @@
 #plant-map-overlay-markers{pointer-events:none}
 #plant-map-overlay-markers .plant-marker{cursor:pointer;pointer-events:all}
 .plant-position-edit-icon{position:absolute;top:.5rem;right:.5rem;z-index:2;border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:.35rem .5rem;line-height:1;cursor:pointer}
-.light-need-option{display:flex;align-items:center;gap:.45rem}
-.light-need-option span{display:inline-flex;align-items:center;gap:.35rem}
+.light-need-group{display:grid;gap:.45rem;text-align:left;justify-items:start}
+.light-need-group legend{justify-self:start;text-align:left}
+.light-need-option{display:inline-flex;align-items:center;gap:.45rem;white-space:nowrap}
+.light-need-option span{display:inline-flex;align-items:center;gap:.35rem;white-space:nowrap}
 .chip-row{display:flex;flex-wrap:wrap;gap:.4rem}
 .chip{border:1px solid var(--border);border-radius:999px;padding:.25rem .65rem;background:var(--surface-soft);cursor:pointer}
 .chip.selected{background:var(--accent-soft)}
