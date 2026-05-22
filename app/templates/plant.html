@@ -104,7 +104,8 @@
           </div>
         </div>
         <label for="plant-flower-color">Blütenfarbe</label>
-        <input id="plant-flower-color" name="flower_color" value="{{ plant.flower_color or '' }}">
+        <input id="plant-flower-color" name="flower_color" value="{{ plant.flower_color or '' }}" list="flower-color-suggestions">
+        <datalist id="flower-color-suggestions">{% for color in flower_color_suggestions %}<option value="{{ color }}">{% endfor %}</datalist>
         <div class="field-pair">
           <div class="field-pair-item">
             <label for="plant-height-without-bloom">Höhe ohne Blüte (cm)</label>
