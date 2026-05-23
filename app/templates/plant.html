@@ -339,12 +339,17 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
   if (soilInput && soilHidden && soilSelectedWrapper) {
     const selected = new Map();
     const topSoilWrapper = document.getElementById('soil-top-chips');
+    const suggestionOptions = Array.from(document.querySelectorAll('#soil-property-suggestions option'));
+    const suggestionLabels = suggestionOptions
+      .map((option) => (option.value || '').trim())
+      .filter(Boolean);
     const topSoilLabels = topSoilWrapper ? JSON.parse(topSoilWrapper.dataset.topSoilProperties || '[]') : [];
+    const availableTopSoilLabels = topSoilLabels.length ? topSoilLabels : suggestionLabels;
     const updateTopSoilButtons = () => {
       if (!topSoilWrapper) return;
       topSoilWrapper.innerHTML = '';
       let renderedCount = 0;
-      topSoilLabels.forEach((label) => {
+      availableTopSoilLabels.forEach((label) => {
         if (renderedCount >= 5) return;
         const normalizedLabel = (label || '').trim();
         const key = normalizedLabel.toLowerCase();
