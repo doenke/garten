@@ -389,6 +389,7 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
       soilInput.value = '';
     };
     (soilHidden.value || '').split(',').forEach(addSoil);
+    renderSoil();
     soilInput.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' || event.key === ',') {
         event.preventDefault();
