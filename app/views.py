@@ -555,9 +555,10 @@ def plant_detail(plant_id):
         fallback_soil_properties = SoilProperty.query
         if assigned_soil_property_ids:
             fallback_soil_properties = fallback_soil_properties.filter(~SoilProperty.id.in_(assigned_soil_property_ids))
+        if existing_top_labels:
+            fallback_soil_properties = fallback_soil_properties.filter(~SoilProperty.label.in_(existing_top_labels))
         fallback_soil_properties = (
             fallback_soil_properties
-            .filter(~SoilProperty.label.in_(existing_top_labels))
             .order_by(SoilProperty.label.asc())
             .limit(5 - len(top_soil_properties))
             .all()
