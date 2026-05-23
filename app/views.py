@@ -538,7 +538,7 @@ def plant_detail(plant_id):
             SoilProperty.label,
             db.func.count(plant_soil_property.c.plant_id).label('usage_count'),
         )
-        .outerjoin(plant_soil_property, plant_soil_property.c.soil_property_id == SoilProperty.id)
+        .join(plant_soil_property, plant_soil_property.c.soil_property_id == SoilProperty.id)
         .group_by(SoilProperty.id, SoilProperty.label)
         .order_by(db.desc('usage_count'), SoilProperty.label.asc())
         .all()
