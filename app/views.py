@@ -533,16 +533,36 @@ def plant_detail(plant_id):
         for item in location_plants
     ]
     title_event = next((event for event in events if event.is_title_entry), None)
-    top_soil_properties = (
+    assigned_soil_property_ids = [soil_property.id for soil_property in plant.soil_properties]
+    top_soil_properties_query = (
         db.session.query(
             SoilProperty.label,
             db.func.count(plant_soil_property.c.plant_id).label('usage_count'),
         )
         .join(plant_soil_property, plant_soil_property.c.soil_property_id == SoilProperty.id)
+    )
+    if assigned_soil_property_ids:
+        top_soil_properties_query = top_soil_properties_query.filter(~SoilProperty.id.in_(assigned_soil_property_ids))
+    top_soil_properties = (
+        top_soil_properties_query
         .group_by(SoilProperty.id, SoilProperty.label)
         .order_by(db.desc('usage_count'), SoilProperty.label.asc())
+        .limit(5)
         .all()
     )
+    if len(top_soil_properties) < 5:
+        existing_top_labels = {item.label for item in top_soil_properties}
+        fallback_soil_properties = SoilProperty.query
+        if assigned_soil_property_ids:
+            fallback_soil_properties = fallback_soil_properties.filter(~SoilProperty.id.in_(assigned_soil_property_ids))
+        fallback_soil_properties = (
+            fallback_soil_properties
+            .filter(~SoilProperty.label.in_(existing_top_labels))
+            .order_by(SoilProperty.label.asc())
+            .limit(5 - len(top_soil_properties))
+            .all()
+        )
+        top_soil_properties += [(item.label, 0) for item in fallback_soil_properties]
     soil_property_suggestions = SoilProperty.query.order_by(SoilProperty.label.asc()).all()
     return render_template(
         'plant.html',
@@ -562,7 +582,7 @@ def plant_detail(plant_id):
         title_event=title_event,
         light_need_options=LIGHT_NEED_OPTIONS,
         light_need_icon_by_key=LIGHT_NEED_ICON_BY_KEY,
-        top_soil_properties=[item.label for item in top_soil_properties],
+        top_soil_properties=[item[0] for item in top_soil_properties],
         soil_property_suggestions=soil_property_suggestions,
         flower_color_suggestions=get_flower_color_suggestions(),
     )
