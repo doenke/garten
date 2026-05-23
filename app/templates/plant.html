@@ -20,7 +20,7 @@
   {% if plant.source %}<p><strong>Quelle:</strong> {{ plant.source }}</p>{% endif %}
   {% if plant.light_needs %}<p><strong>Lichtbedarf:</strong> {% for light_need in plant.light_needs %}<span>{{ light_need_icon_by_key.get(light_need.key, '•') }} {{ light_need.label }}{% if not loop.last %}, {% endif %}</span>{% endfor %}</p>{% endif %}
   {% if plant.flower_color %}<p><strong>Blütenfarbe:</strong> {{ plant.flower_color }}</p>{% endif %}
-  <p><strong>Bodeneigenschaften:</strong> {% for label in (plant.soil_property_labels if plant.soil_properties else top_soil_properties[:5]) %}<span>{{ label }}{% if not loop.last %}, {% endif %}</span>{% endfor %}</p>
+  <p><strong>Bodeneigenschaften:</strong> {% if plant.soil_property_labels %}{% for label in plant.soil_property_labels %}<span>{{ label }}{% if not loop.last %}, {% endif %}</span>{% endfor %}{% else %}-{% endif %}</p>
   {% if plant.height_without_bloom_cm is not none and plant.height_with_bloom_cm is not none %}
   <p><strong>Höhe:</strong> {{ plant.height_without_bloom_cm }} / {{ plant.height_with_bloom_cm }} cm</p>
   {% endif %}
