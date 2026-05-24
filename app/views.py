@@ -6,7 +6,7 @@ import requests
 from functools import wraps
 from datetime import datetime
 from flask import Blueprint, current_app, g, render_template, request, redirect, url_for, session, jsonify, send_from_directory, flash
-from .models import db, User, Location, Plant, PlantPhoto, PlantNote, GardenMap, TimelineEntry, LightNeed, SoilProperty, DatabaseCatalog, DatabaseIdentifier, plant_soil_property
+from .models import db, User, Location, Plant, PlantPhoto, PlantNote, GardenMap, TimelineEntry, LightNeed, SoilProperty, DatabaseCatalog, PlantDatabaseIdentifier, plant_soil_property
 from .services.timeline_service import save_uploaded_attachment, set_single_title_entry, delete_timeline_entry, build_unique_upload_name
 
 main_bp = Blueprint('main', __name__)
@@ -229,7 +229,7 @@ def _build_database_links_for_plant(plant):
     for item in plant.database_identifiers:
         if not item.catalog or not item.catalog.enabled:
             continue
-        identifier = (item.identifier or '').strip()
+        identifier = (item.external_id or '').strip()
         if not identifier:
             continue
         url = (item.catalog.record_url_template or '').replace('{id}', identifier)
@@ -521,6 +521,20 @@ def update_catalogs():
         catalog.enabled = request.form.get(f'enabled_{catalog.id}') == 'on'
         catalog.record_url_template = (request.form.get(f'record_url_template_{catalog.id}') or catalog.record_url_template).strip()
         catalog.search_url_template = (request.form.get(f'search_url_template_{catalog.id}') or '').strip() or None
+    new_catalog_key = (request.form.get('new_catalog_key') or '').strip().lower()
+    new_catalog_label = (request.form.get('new_catalog_label') or '').strip()
+    new_record_url_template = (request.form.get('new_record_url_template') or '').strip()
+    new_search_url_template = (request.form.get('new_search_url_template') or '').strip() or None
+    if new_catalog_key and new_catalog_label and new_record_url_template:
+        normalized_key = re.sub(r'[^a-z0-9_]+', '_', new_catalog_key).strip('_')
+        if normalized_key and not DatabaseCatalog.query.filter_by(key=normalized_key).first():
+            db.session.add(DatabaseCatalog(
+                key=normalized_key,
+                label=new_catalog_label,
+                enabled=True,
+                record_url_template=new_record_url_template,
+                search_url_template=new_search_url_template,
+            ))
     db.session.commit()
     return redirect(url_for('main.config'))
 
@@ -803,6 +817,7 @@ def plant_detail(plant_id):
         soil_property_suggestions=soil_property_suggestions,
         flower_color_suggestions=get_flower_color_suggestions(),
         database_links=_build_database_links_for_plant(plant),
+        database_catalogs=DatabaseCatalog.query.order_by(DatabaseCatalog.label.asc()).all(),
     )
 
 
@@ -923,15 +938,7 @@ def suggest_common_name(plant_id):
 
 def upsert_plant_database_identifiers(plant, form):
     catalog_by_key = {catalog.key: catalog for catalog in get_or_create_database_catalogs()}
-    field_map = {
-        'wfo': 'wfo_id',
-        'powo_ipni': 'powo_ipni_lsid',
-        'gbif': 'gbif_id',
-        'floraweb': 'floraweb_id',
-    }
-    desired_values = {}
-    for catalog_key, form_field in field_map.items():
-        desired_values[catalog_key] = (form.get(form_field) or '').strip()
+    desired_values = {catalog_key: (form.get(f'database_id_{catalog_key}') or '').strip() for catalog_key in catalog_by_key.keys()}
 
     existing_by_key = {entry.catalog.key: entry for entry in plant.database_identifiers if entry.catalog}
     new_entries = []
@@ -940,14 +947,15 @@ def upsert_plant_database_identifiers(plant, form):
         existing_entry = existing_by_key.get(catalog_key)
         if not desired:
             continue
-        if existing_entry and existing_entry.identifier == desired:
+        if existing_entry and existing_entry.external_id == desired:
             new_entries.append(existing_entry)
             continue
-        matched = DatabaseIdentifier.query.filter_by(catalog_id=catalog.id, identifier=desired).first()
+        matched = PlantDatabaseIdentifier.query.filter_by(plant_id=plant.id, catalog_id=catalog.id).first()
         if matched:
+            matched.external_id = desired
             new_entries.append(matched)
         else:
-            created = DatabaseIdentifier(catalog_id=catalog.id, identifier=desired)
+            created = PlantDatabaseIdentifier(plant_id=plant.id, catalog_id=catalog.id, external_id=desired)
             db.session.add(created)
             db.session.flush()
             new_entries.append(created)
@@ -1046,9 +1054,9 @@ def update_masterdata(plant_id):
         changes.append(f"Bodeneigenschaften: {old_soil_display} → {new_soil_display}")
         plant.soil_properties = new_soil_properties
 
-    before_ids = {f"{entry.catalog.key}:{entry.identifier}" for entry in plant.database_identifiers if entry.catalog}
+    before_ids = {f"{entry.catalog.key}:{entry.external_id}" for entry in plant.database_identifiers if entry.catalog}
     upsert_plant_database_identifiers(plant, request.form)
-    after_ids = {f"{entry.catalog.key}:{entry.identifier}" for entry in plant.database_identifiers if entry.catalog}
+    after_ids = {f"{entry.catalog.key}:{entry.external_id}" for entry in plant.database_identifiers if entry.catalog}
     if before_ids != after_ids:
         changes.append('Datenbank-IDs wurden aktualisiert.')
 

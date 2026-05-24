@@ -67,10 +67,11 @@
         <small id="magic-common-name-status" class="muted"></small>
         <label>Datenbank-IDs</label>
         <div class="magic-field-row">
-          <input id="plant-wfo-id" name="wfo_id" value="{{ (plant.database_identifiers | selectattr('catalog.key', 'equalto', 'wfo') | map(attribute='identifier') | list | first) or '' }}" placeholder="WFO-ID">
-          <input id="plant-powo-id" name="powo_ipni_lsid" value="{{ (plant.database_identifiers | selectattr('catalog.key', 'equalto', 'powo_ipni') | map(attribute='identifier') | list | first) or '' }}" placeholder="POWO/IPNI-LSID">
-          <input id="plant-gbif-id" name="gbif_id" value="{{ (plant.database_identifiers | selectattr('catalog.key', 'equalto', 'gbif') | map(attribute='identifier') | list | first) or '' }}" placeholder="GBIF-ID">
-          <input id="plant-floraweb-id" name="floraweb_id" value="{{ (plant.database_identifiers | selectattr('catalog.key', 'equalto', 'floraweb') | map(attribute='identifier') | list | first) or '' }}" placeholder="FloraWeb-ID">
+          <div class="grid">
+            {% for catalog in database_catalogs %}
+            <input id="plant-db-{{ catalog.key }}" name="database_id_{{ catalog.key }}" value="{{ (plant.database_identifiers | selectattr('catalog.key', 'equalto', catalog.key) | map(attribute='external_id') | list | first) or '' }}" placeholder="{{ catalog.label }}-ID">
+            {% endfor %}
+          </div>
           <button type="button" id="magic-external-ids" class="btn secondary" title="IDs in Datenbanken suchen">🪄</button>
         </div>
         <small id="magic-external-ids-status" class="muted"></small>
@@ -471,10 +472,7 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
   const magicIdsButton = document.getElementById('magic-external-ids');
   const scientificNameInput = document.getElementById('plant-scientific-name');
   const idsStatus = document.getElementById('magic-external-ids-status');
-  const wfoInput = document.getElementById('plant-wfo-id');
-  const powoInput = document.getElementById('plant-powo-id');
-  const gbifInput = document.getElementById('plant-gbif-id');
-  const florawebInput = document.getElementById('plant-floraweb-id');
+  const databaseCatalogKeys = {{ database_catalogs | map(attribute='key') | list | tojson }};
   if (magicIdsButton && scientificNameInput) {
     magicIdsButton.addEventListener('click', async () => {
       const sourceName = (scientificNameInput.value || nameInput.value || '').trim();
@@ -491,10 +489,10 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
         const data = await response.json();
         if (!response.ok || !data.ok) throw new Error(data.error || 'Kein Vorschlag gefunden');
         if (data.matches) {
-          if (wfoInput && data.matches.wfo) wfoInput.value = data.matches.wfo;
-          if (powoInput && data.matches.powo_ipni) powoInput.value = data.matches.powo_ipni;
-          if (gbifInput && data.matches.gbif) gbifInput.value = data.matches.gbif;
-          if (florawebInput && data.matches.floraweb) florawebInput.value = data.matches.floraweb;
+          databaseCatalogKeys.forEach((catalogKey) => {
+            const input = document.getElementById(`plant-db-${catalogKey}`);
+            if (input && data.matches[catalogKey]) input.value = data.matches[catalogKey];
+          });
         }
         if (idsStatus) idsStatus.textContent = 'ID-Vorschläge übernommen.';
       } catch (error) {
