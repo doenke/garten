@@ -505,8 +505,8 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
         if (!px) return '';
         const baseX = px.x * mapImage.naturalWidth;
         const baseY = px.y * mapImage.naturalHeight;
-        const x = baseX;
-        const y = baseY;
+        const x = (baseX * zoomScale) + zoomTranslateX;
+        const y = (baseY * zoomScale) + zoomTranslateY;
         const isCurrentPlant = Number(entry.id) === currentPlantId;
         const radius = isCurrentPlant ? 6 : 6;
         const color = isCurrentPlant ? '#d7263d' : '#2663eb';
@@ -523,11 +523,9 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
       const transform = `translate(${zoomTranslateX}px, ${zoomTranslateY}px) scale(${zoomScale})`;
       mapImage.style.transform = transform;
       baseOverlay.style.transform = transform;
-      markerOverlay.style.transform = transform;
     } else {
       mapImage.style.transform = '';
       baseOverlay.style.transform = '';
-      markerOverlay.style.transform = '';
     }
   };
 
