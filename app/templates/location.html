@@ -60,9 +60,13 @@
 
 <button type="button" id="toggle-plant-form" class="mb-1">Pflanze anlegen</button>
 
-<form method="post" action="/locations/{{location.id}}/plants/new" id="plant-form" class="grid hidden mb-1">
-<input name="name" placeholder="Name" required>
-<input name="common_name" placeholder="Umgangssprachlicher Name">
+<form method="post" action="/locations/{{location.id}}/plants/new" id="plant-form" class="grid hidden mb-1" style="display:none;">
+<input id="new-plant-name" name="name" placeholder="Name" required>
+<div class="magic-field-row">
+  <input id="new-plant-common-name" name="common_name" placeholder="Bürgerlicher Name">
+  <button type="button" id="magic-new-plant-common-name" class="btn secondary" title="Bürgerlichen Namen automatisch suchen">🪄</button>
+</div>
+<small id="magic-new-plant-common-name-status" class="muted"></small>
 <input name="source" placeholder="gekauft bei / bekommen von">
 <fieldset class="light-need-group"><legend>Lichtbedarf</legend>{% for option in light_need_options %}<label class="light-need-option"><input type="checkbox" name="light_need" value="{{ option.key }}"> <span>{{ option.icon }} {{ option.label }}</span></label>{% endfor %}</fieldset>
 <label>Blütezeit von <select name="bloom_start_month"><option value="">Monat</option>{% set month_names = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'] %}{% for m in range(1,13) %}<option value="{{ m }}">{{ month_names[m-1] }}</option>{% endfor %}</select> bis <select name="bloom_end_month"><option value="">Monat</option>{% for m in range(1,13) %}<option value="{{ m }}">{{ month_names[m-1] }}</option>{% endfor %}</select></label>
@@ -327,6 +331,46 @@
     syncPlantFormVisibility(false);
     togglePlantFormButton.addEventListener('click', () => {
       syncPlantFormVisibility(plantForm.classList.contains('hidden'));
+    });
+  }
+
+  const magicNewPlantButton = document.getElementById('magic-new-plant-common-name');
+  const newPlantNameInput = document.getElementById('new-plant-name');
+  const newPlantCommonNameInput = document.getElementById('new-plant-common-name');
+  const magicNewPlantStatus = document.getElementById('magic-new-plant-common-name-status');
+
+  if (magicNewPlantButton && newPlantNameInput && newPlantCommonNameInput) {
+    magicNewPlantButton.addEventListener('click', async () => {
+      const sourceName = (newPlantNameInput.value || '').trim();
+      if (!sourceName) {
+        if (magicNewPlantStatus) magicNewPlantStatus.textContent = 'Bitte zuerst einen Namen eintragen.';
+        newPlantNameInput.focus();
+        return;
+      }
+
+      magicNewPlantButton.disabled = true;
+      const oldText = magicNewPlantButton.textContent;
+      magicNewPlantButton.textContent = '…';
+      if (magicNewPlantStatus) magicNewPlantStatus.textContent = 'Suche läuft …';
+
+      try {
+        const response = await fetch('/plants/common-name-suggest', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({name: sourceName}),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error(data.error || 'Kein Vorschlag gefunden');
+        newPlantCommonNameInput.value = data.common_name || '';
+        const confidenceText = typeof data.confidence === 'number' ? ` (Confidence: ${Math.round(data.confidence * 100)}%)` : '';
+        const sourceCount = Array.isArray(data.sources) ? data.sources.length : 0;
+        if (magicNewPlantStatus) magicNewPlantStatus.textContent = `Vorschlag übernommen${confidenceText}. Quellen: ${sourceCount}.`;
+      } catch (error) {
+        if (magicNewPlantStatus) magicNewPlantStatus.textContent = error.message || 'Automatisches Ausfüllen fehlgeschlagen.';
+      } finally {
+        magicNewPlantButton.disabled = false;
+        magicNewPlantButton.textContent = oldText;
+      }
     });
   }
 

@@ -845,6 +845,23 @@ def suggest_common_name(plant_id):
     confidence = 0.88 if common_name.lower() != name_value.lower() else 0.55
     return jsonify({'ok': True, 'common_name': common_name, 'confidence': confidence, 'sources': sources, 'language': lookup_language})
 
+
+@main_bp.route('/plants/common-name-suggest', methods=['POST'])
+@login_required
+def suggest_common_name_for_new_plant():
+    payload = request.get_json(silent=True) or {}
+    name_value = (payload.get('name') or '').strip()
+    if not name_value:
+        return jsonify({'ok': False, 'error': 'Bitte zuerst einen Namen eingeben.'}), 400
+
+    lookup_language = current_app.config.get('COMMON_NAME_LOOKUP_LANG', 'de')
+    common_name, sources = _lookup_common_name_from_web(name_value, language_code=lookup_language)
+    if not common_name:
+        return jsonify({'ok': False, 'error': 'Kein Vorschlag gefunden.'}), 404
+
+    confidence = 0.88 if common_name.lower() != name_value.lower() else 0.55
+    return jsonify({'ok': True, 'common_name': common_name, 'confidence': confidence, 'sources': sources, 'language': lookup_language})
+
 @main_bp.route('/plants/<int:plant_id>/masterdata', methods=['POST'])
 @login_required
 def update_masterdata(plant_id):
