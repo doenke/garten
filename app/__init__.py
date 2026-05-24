@@ -112,18 +112,9 @@ def _run_schema_upgrades():
     inspector = inspect(db.engine)
     _ensure_light_need_schema(inspector)
     _ensure_soil_property_schema(inspector)
-    _clear_legacy_light_need_data(inspector)
     _ensure_timeline_title_entry_uniqueness(inspector)
     db.session.commit()
 
-
-def _clear_legacy_light_need_data(inspector):
-    """Clear legacy text values in plant.light_need."""
-    table_names = set(inspector.get_table_names())
-    if 'plant' not in table_names:
-        return
-
-    Plant.query.filter(Plant.light_need != '').update({'light_need': ''}, synchronize_session=False)
 
 
 
