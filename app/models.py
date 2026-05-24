@@ -85,7 +85,7 @@ class Plant(db.Model):
         'DatabaseIdentifier',
         secondary=plant_database_identifier,
         lazy='select',
-        order_by='DatabaseCatalog.label',
+        order_by='DatabaseIdentifier.id',
     )
 
     @property
