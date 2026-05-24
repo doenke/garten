@@ -17,13 +17,6 @@ plant_soil_property = db.Table(
     db.Column('soil_property_id', db.Integer, db.ForeignKey('soil_property.id'), primary_key=True),
 )
 
-plant_database_identifier = db.Table(
-    'plant_database_identifier',
-    db.Column('plant_id', db.Integer, db.ForeignKey('plant.id'), primary_key=True),
-    db.Column('database_identifier_id', db.Integer, db.ForeignKey('database_identifier.id'), primary_key=True),
-)
-
-
 class LightNeed(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String(32), unique=True, nullable=False)
@@ -82,10 +75,11 @@ class Plant(db.Model):
     map_y = db.Column(db.Float)
     creator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     database_identifiers = db.relationship(
-        'DatabaseIdentifier',
-        secondary=plant_database_identifier,
+        'PlantDatabaseIdentifier',
+        back_populates='plant',
         lazy='select',
-        order_by='DatabaseIdentifier.id',
+        cascade='all, delete-orphan',
+        order_by='PlantDatabaseIdentifier.id',
     )
 
     @property
@@ -113,14 +107,16 @@ class DatabaseCatalog(db.Model):
     search_url_template = db.Column(db.String(1024))
 
 
-class DatabaseIdentifier(db.Model):
+class PlantDatabaseIdentifier(db.Model):
     __table_args__ = (
-        db.UniqueConstraint('catalog_id', 'identifier', name='ux_database_identifier_catalog_identifier'),
+        db.UniqueConstraint('plant_id', 'catalog_id', name='ux_plant_database_identifier_plant_catalog'),
     )
 
     id = db.Column(db.Integer, primary_key=True)
+    plant_id = db.Column(db.Integer, db.ForeignKey('plant.id'), nullable=False, index=True)
     catalog_id = db.Column(db.Integer, db.ForeignKey('database_catalog.id'), nullable=False, index=True)
-    identifier = db.Column(db.String(255), nullable=False)
+    external_id = db.Column(db.String(255), nullable=False)
+    plant = db.relationship('Plant', back_populates='database_identifiers')
     catalog = db.relationship('DatabaseCatalog')
 
 

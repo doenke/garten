@@ -74,6 +74,21 @@
       </label>
     </fieldset>
     {% endfor %}
+    <fieldset class="form-section">
+      <legend>Neuen Katalog hinzufügen</legend>
+      <label>Technischer Schlüssel (z. B. <code>itis</code>)
+        <input name="new_catalog_key" placeholder="nur Kleinbuchstaben, Zahlen, _">
+      </label>
+      <label>Anzeigename
+        <input name="new_catalog_label" placeholder="z. B. ITIS">
+      </label>
+      <label>Datensatz-URL-Template (mit <code>{id}</code>)
+        <input name="new_record_url_template" placeholder="https://example.org/taxon/{id}">
+      </label>
+      <label>Such-URL-Template (optional, mit <code>{q}</code>)
+        <input name="new_search_url_template" placeholder="https://example.org/search?q={q}">
+      </label>
+    </fieldset>
     <button type="submit">Kataloge speichern</button>
   </form>
 </section>
