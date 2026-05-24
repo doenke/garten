@@ -56,6 +56,27 @@
   </form>
   {% endif %}
 </section>
+<section class="card">
+  <h3>Datenbank-Kataloge</h3>
+  <form method="post" action="/config/catalogs" class="grid">
+    {% for catalog in database_catalogs %}
+    <fieldset class="form-section">
+      <legend>{{ catalog.key }}</legend>
+      <label><input type="checkbox" name="enabled_{{ catalog.id }}" {% if catalog.enabled %}checked{% endif %}> Aktiv</label>
+      <label>Name
+        <input name="label_{{ catalog.id }}" value="{{ catalog.label }}">
+      </label>
+      <label>Datensatz-URL-Template (mit <code>{id}</code>)
+        <input name="record_url_template_{{ catalog.id }}" value="{{ catalog.record_url_template }}">
+      </label>
+      <label>Such-URL-Template (optional, mit <code>{q}</code>)
+        <input name="search_url_template_{{ catalog.id }}" value="{{ catalog.search_url_template or '' }}">
+      </label>
+    </fieldset>
+    {% endfor %}
+    <button type="submit">Kataloge speichern</button>
+  </form>
+</section>
 
 <script>
   const allLocations = [

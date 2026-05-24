@@ -17,6 +17,12 @@ plant_soil_property = db.Table(
     db.Column('soil_property_id', db.Integer, db.ForeignKey('soil_property.id'), primary_key=True),
 )
 
+plant_database_identifier = db.Table(
+    'plant_database_identifier',
+    db.Column('plant_id', db.Integer, db.ForeignKey('plant.id'), primary_key=True),
+    db.Column('database_identifier_id', db.Integer, db.ForeignKey('database_identifier.id'), primary_key=True),
+)
+
 
 class LightNeed(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -59,6 +65,8 @@ class Plant(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     location_id = db.Column(db.Integer, db.ForeignKey('location.id'), nullable=False)
     name = db.Column(db.String(255), nullable=False)
+    cultivar = db.Column(db.String(255))
+    scientific_name = db.Column(db.String(255), index=True)
     common_name = db.Column(db.String(255))
     source = db.Column(db.String(255))
     light_need = db.Column(db.String(128), nullable=False)
@@ -73,6 +81,12 @@ class Plant(db.Model):
     map_x = db.Column(db.Float)
     map_y = db.Column(db.Float)
     creator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    database_identifiers = db.relationship(
+        'DatabaseIdentifier',
+        secondary=plant_database_identifier,
+        lazy='select',
+        order_by='DatabaseCatalog.label',
+    )
 
     @property
     def light_need_labels(self):
@@ -88,6 +102,26 @@ class GardenMap(db.Model):
     filename = db.Column(db.String(255))
     calibration_points = db.Column(db.Text)
     boundary_points = db.Column(db.Text)
+
+
+class DatabaseCatalog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(64), unique=True, nullable=False)
+    label = db.Column(db.String(128), nullable=False)
+    enabled = db.Column(db.Boolean, nullable=False, default=True)
+    record_url_template = db.Column(db.String(1024), nullable=False)
+    search_url_template = db.Column(db.String(1024))
+
+
+class DatabaseIdentifier(db.Model):
+    __table_args__ = (
+        db.UniqueConstraint('catalog_id', 'identifier', name='ux_database_identifier_catalog_identifier'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    catalog_id = db.Column(db.Integer, db.ForeignKey('database_catalog.id'), nullable=False, index=True)
+    identifier = db.Column(db.String(255), nullable=False)
+    catalog = db.relationship('DatabaseCatalog')
 
 
 class PlantPhoto(db.Model):
