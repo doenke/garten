@@ -47,7 +47,11 @@
         <label for="plant-name">Name</label>
         <input id="plant-name" name="name" value="{{ plant.name }}" required>
         <label for="plant-common-name">Bürgerlicher Name</label>
-        <input id="plant-common-name" name="common_name" value="{{ plant.common_name or '' }}">
+        <div class="magic-field-row">
+          <input id="plant-common-name" name="common_name" value="{{ plant.common_name or '' }}">
+          <button type="button" id="magic-common-name" class="btn secondary" title="Bürgerlichen Namen automatisch suchen">🪄</button>
+        </div>
+        <small id="magic-common-name-status" class="muted"></small>
         <label for="plant-source">Quelle</label>
         <input id="plant-source" name="source" value="{{ plant.source or '' }}" placeholder="z. B. Gärtnerei Musterhof">
       </fieldset>
@@ -296,6 +300,8 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
 .soil-section-label{margin:0;font-size:.82rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.02em}
 .field-pair{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
 .field-pair-item{display:grid;gap:.35rem}
+.magic-field-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.45rem;align-items:center}
+#magic-common-name{min-width:2.6rem;padding:.45rem .55rem}
 
 .timeline-panel{display:flex;flex-direction:column;gap:.85rem}
 .timeline-panel-title{margin:0}
@@ -398,6 +404,47 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
     });
     soilInput.addEventListener('blur', () => addSoil(soilInput.value));
 
+  }
+
+
+  const magicButton = document.getElementById('magic-common-name');
+  const commonNameInput = document.getElementById('plant-common-name');
+  const nameInput = document.getElementById('plant-name');
+  const magicStatus = document.getElementById('magic-common-name-status');
+
+  if (magicButton && commonNameInput && nameInput) {
+    magicButton.addEventListener('click', async () => {
+      const sourceName = (nameInput.value || '').trim();
+      if (!sourceName) {
+        if (magicStatus) magicStatus.textContent = 'Bitte zuerst einen Namen eintragen.';
+        nameInput.focus();
+        return;
+      }
+
+      magicButton.disabled = true;
+      const oldText = magicButton.textContent;
+      magicButton.textContent = '…';
+      if (magicStatus) magicStatus.textContent = 'Suche läuft …';
+
+      try {
+        const response = await fetch('/plants/{{ plant.id }}/common-name-suggest', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({name: sourceName}),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error(data.error || 'Kein Vorschlag gefunden');
+        commonNameInput.value = data.common_name || '';
+        const confidenceText = typeof data.confidence === 'number' ? ` (Confidence: ${Math.round(data.confidence * 100)}%)` : '';
+        const sourceCount = Array.isArray(data.sources) ? data.sources.length : 0;
+        if (magicStatus) magicStatus.textContent = `Vorschlag übernommen${confidenceText}. Quellen: ${sourceCount}.`;
+      } catch (error) {
+        if (magicStatus) magicStatus.textContent = error.message || 'Automatisches Ausfüllen fehlgeschlagen.';
+      } finally {
+        magicButton.disabled = false;
+        magicButton.textContent = oldText;
+      }
+    });
   }
 
   const mapImage = document.getElementById('plant-map-image');

@@ -1,6 +1,8 @@
-import os
 import json
 import time
+import re
+
+import requests
 from functools import wraps
 from datetime import datetime
 from flask import Blueprint, current_app, g, render_template, request, redirect, url_for, session, jsonify, send_from_directory, flash
@@ -53,6 +55,87 @@ LIGHT_NEED_OPTIONS = [
 ]
 LIGHT_NEED_KEY_TO_LABEL = {item['key']: item['label'] for item in LIGHT_NEED_OPTIONS}
 LIGHT_NEED_ICON_BY_KEY = {item['key']: item['icon'] for item in LIGHT_NEED_OPTIONS}
+
+
+
+
+def _guess_common_name_from_text(scientific_name, text):
+    if not text:
+        return None
+    patterns = [
+        r"(?:known as|called|also known as|auch genannt|deutsch(?:er|e)? name:?|trivialname:?|volksname:?)[\s:]+([^\.\,;\(\)]+)",
+        r"(?:is a|ist eine?|ist ein)\s+[^\.]*?\(([^\)]+)\)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        if not match:
+            continue
+        candidate = match.group(1).strip().strip('\"\'')
+        candidate = re.sub(r"\s+", ' ', candidate)
+        if candidate and candidate.lower() != scientific_name.lower() and len(candidate) <= 120:
+            return candidate
+    return None
+
+
+def _lookup_common_name_from_web(scientific_name, language_code='de'):
+    query = (scientific_name or '').strip()
+    language = (language_code or 'de').strip().lower()
+    if not query:
+        return None, []
+
+    if not re.fullmatch(r'[a-z]{2,10}', language):
+        language = 'de'
+
+    base_domain = f'https://{language}.wikipedia.org'
+    search_url = f'{base_domain}/w/api.php'
+    summary_url = f'{base_domain}/api/rest_v1/page/summary'
+
+    sources = []
+    common_name = None
+
+    try:
+        response = requests.get(
+            search_url,
+            params={
+                'action': 'query',
+                'list': 'search',
+                'srsearch': query,
+                'utf8': 1,
+                'format': 'json',
+            },
+            timeout=6,
+        )
+        response.raise_for_status()
+        search_results = response.json().get('query', {}).get('search', [])
+    except requests.RequestException:
+        search_results = []
+
+    for item in search_results[:3]:
+        title = (item.get('title') or '').strip()
+        if not title:
+            continue
+        page_slug = title.replace(' ', '_')
+        sources.append(f'{base_domain}/wiki/{page_slug}')
+        try:
+            summary_response = requests.get(
+                f'{summary_url}/{page_slug}',
+                timeout=6,
+            )
+            summary_response.raise_for_status()
+            extract = (summary_response.json().get('extract') or '').strip()
+        except requests.RequestException:
+            continue
+
+        common_name = _guess_common_name_from_text(query, extract)
+        if common_name:
+            break
+
+    if not common_name and search_results:
+        first_title = (search_results[0].get('title') or '').strip()
+        if first_title and first_title.lower() != query.lower():
+            common_name = first_title
+
+    return common_name, list(dict.fromkeys(sources))
 
 
 def parse_light_need_keys(values):
@@ -703,6 +786,25 @@ def save_plant_position(plant_id):
     return redirect(url_for('main.plant_detail', plant_id=plant_id))
 
 
+
+
+
+@main_bp.route('/plants/<int:plant_id>/common-name-suggest', methods=['POST'])
+@login_required
+def suggest_common_name(plant_id):
+    plant = Plant.query.get_or_404(plant_id)
+    payload = request.get_json(silent=True) or {}
+    name_value = (payload.get('name') or plant.name or '').strip()
+    if not name_value:
+        return jsonify({'ok': False, 'error': 'Bitte zuerst einen Namen eingeben.'}), 400
+
+    lookup_language = current_app.config.get('COMMON_NAME_LOOKUP_LANG', 'de')
+    common_name, sources = _lookup_common_name_from_web(name_value, language_code=lookup_language)
+    if not common_name:
+        return jsonify({'ok': False, 'error': 'Kein Vorschlag gefunden.'}), 404
+
+    confidence = 0.88 if common_name.lower() != name_value.lower() else 0.55
+    return jsonify({'ok': True, 'common_name': common_name, 'confidence': confidence, 'sources': sources, 'language': lookup_language})
 
 @main_bp.route('/plants/<int:plant_id>/masterdata', methods=['POST'])
 @login_required
