@@ -151,3 +151,8 @@ export SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(48))
 ```
 
 Wenn `SECRET_KEY` fehlt oder zu schwach ist, bricht die App mit einer klaren Konfigurations-Exception beim Start ab.
+
+
+## Umgebungsvariablen
+
+- `COMMON_NAME_LOOKUP_LANG` steuert die Sprache für die automatische Suche des „Bürgerlichen Namens“ über Wikipedia. Standard: `de` (Deutsch).
