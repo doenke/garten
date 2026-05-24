@@ -105,6 +105,7 @@ class DatabaseCatalog(db.Model):
     enabled = db.Column(db.Boolean, nullable=False, default=True)
     record_url_template = db.Column(db.String(1024), nullable=False)
     search_url_template = db.Column(db.String(1024))
+    icon_url = db.Column(db.String(1024))
 
 
 class PlantDatabaseIdentifier(db.Model):

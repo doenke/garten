@@ -72,6 +72,9 @@
       <label>Such-URL-Template (optional, mit <code>{q}</code>)
         <input name="search_url_template_{{ catalog.id }}" value="{{ catalog.search_url_template or '' }}">
       </label>
+      <label>Icon-URL (optional)
+        <input name="icon_url_{{ catalog.id }}" value="{{ catalog.icon_url or '' }}" placeholder="https://example.org/favicon.ico">
+      </label>
     </fieldset>
     {% endfor %}
     <fieldset class="form-section">
@@ -87,6 +90,9 @@
       </label>
       <label>Such-URL-Template (optional, mit <code>{q}</code>)
         <input name="new_search_url_template" placeholder="https://example.org/search?q={q}">
+      </label>
+      <label>Icon-URL (optional)
+        <input name="new_icon_url" placeholder="https://example.org/favicon.ico">
       </label>
     </fieldset>
     <button type="submit">Kataloge speichern</button>
