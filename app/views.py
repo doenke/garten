@@ -3,7 +3,7 @@ import json
 import time
 from functools import wraps
 from datetime import datetime
-from flask import Blueprint, current_app, g, render_template, request, redirect, url_for, session, jsonify, send_from_directory
+from flask import Blueprint, current_app, g, render_template, request, redirect, url_for, session, jsonify, send_from_directory, flash
 from .models import db, User, Location, Plant, PlantPhoto, PlantNote, GardenMap, TimelineEntry, LightNeed, SoilProperty, plant_soil_property
 from .services.timeline_service import save_uploaded_attachment, set_single_title_entry, delete_timeline_entry, build_unique_upload_name
 
@@ -407,13 +407,27 @@ def new_location_timeline_entry(location_id):
     description = (request.form.get('description') or '').strip()
     attachment = request.files.get('attachment')
 
-    unique = save_uploaded_attachment(
+    unique, upload_error = save_uploaded_attachment(
         attachment,
         current_app.config['UPLOAD_FOLDER'],
         ALLOWED,
         ALLOWED_ATTACHMENT_MIME_TYPES,
         current_app.config.get('MAX_ATTACHMENT_SIZE_BYTES'),
     )
+    if not description:
+        flash('Bitte Beschreibung eingeben.', 'warning')
+        return redirect(url_for('main.location_detail', location_id=location.id))
+    if upload_error == 'too_large':
+        flash('Datei zu groß (max. 15 MB).', 'error')
+        return redirect(url_for('main.location_detail', location_id=location.id))
+    if upload_error == 'mime_not_allowed':
+        flash('Dateityp nicht erlaubt. Bitte Bild oder PDF hochladen.', 'error')
+        return redirect(url_for('main.location_detail', location_id=location.id))
+    if upload_error == 'extension_not_allowed':
+        flash('Dateiendung nicht erlaubt. Bitte Bild oder PDF hochladen.', 'error')
+        return redirect(url_for('main.location_detail', location_id=location.id))
+    if not unique:
+        flash('Bitte eine Datei auswählen.', 'warning')
     attachment_kind = None
     if unique:
         ext = unique.rsplit('.', 1)[1].lower()
@@ -466,6 +480,7 @@ def new_plant(location_id):
     selected_light_needs = LightNeed.query.filter(LightNeed.key.in_(light_need_keys)).order_by(LightNeed.id.asc()).all()
     bloom_start_month, bloom_end_month, bloom_months_valid = parse_bloom_months(request.form)
     if not bloom_months_valid:
+        flash('Bitte beide Monate für die Blütezeit angeben oder beide leer lassen.', 'warning')
         return redirect(url_for('main.location_detail', location_id=location_id))
 
     p = Plant(
@@ -711,6 +726,7 @@ def update_masterdata(plant_id):
 
     bloom_start_month, bloom_end_month, bloom_months_valid = parse_bloom_months(request.form)
     if not bloom_months_valid:
+        flash('Bitte beide Monate für die Blütezeit angeben oder beide leer lassen.', 'warning')
         return redirect(url_for('main.plant_detail', plant_id=plant.id))
 
     updates = {
@@ -810,13 +826,22 @@ def add_event(plant_id):
     description = request.form.get('description', '').strip()
 
     file = request.files.get('attachment')
-    attachment_filename = save_uploaded_attachment(
+    attachment_filename, upload_error = save_uploaded_attachment(
         file,
         current_app.config['UPLOAD_FOLDER'],
         ALLOWED,
         ALLOWED_ATTACHMENT_MIME_TYPES,
         current_app.config.get('MAX_ATTACHMENT_SIZE_BYTES'),
     )
+    if upload_error == 'too_large':
+        flash('Datei zu groß (max. 15 MB).', 'error')
+        return redirect(url_for('main.plant_detail', plant_id=plant_id))
+    if upload_error == 'mime_not_allowed':
+        flash('Dateityp nicht erlaubt. Bitte Bild oder PDF hochladen.', 'error')
+        return redirect(url_for('main.plant_detail', plant_id=plant_id))
+    if upload_error == 'extension_not_allowed':
+        flash('Dateiendung nicht erlaubt. Bitte Bild oder PDF hochladen.', 'error')
+        return redirect(url_for('main.plant_detail', plant_id=plant_id))
     attachment_kind = None
     if attachment_filename:
         ext = attachment_filename.rsplit('.', 1)[1].lower()
@@ -825,6 +850,8 @@ def add_event(plant_id):
     if title or description or attachment_filename:
         create_timeline_entry(scope_type='plant', scope_id=plant_id, event_type=event_type, event_at=event_at, title=title, description=description or None, attachment_filename=attachment_filename, attachment_kind=attachment_kind, creator_id=current_user().id)
         db.session.commit()
+    else:
+        flash('Bitte Titel, Beschreibung oder Datei angeben.', 'warning')
     return redirect(url_for('main.plant_detail', plant_id=plant_id))
 
 

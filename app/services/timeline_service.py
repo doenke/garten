@@ -15,29 +15,29 @@ def build_unique_upload_name(filename):
 
 def save_uploaded_attachment(file, upload_folder, allowed_exts, allowed_mime_types=None, max_size_bytes=None):
     if not file or not file.filename:
-        return None
+        return None, None
 
     if '.' not in file.filename:
-        return None
+        return None, 'extension_not_allowed'
 
     ext = file.filename.rsplit('.', 1)[1].lower()
     if ext not in allowed_exts:
-        return None
+        return None, 'extension_not_allowed'
 
     mimetype = (file.mimetype or '').split(';', 1)[0].strip().lower()
     if allowed_mime_types and mimetype not in allowed_mime_types:
-        return None
+        return None, 'mime_not_allowed'
 
     if max_size_bytes is not None:
         file.stream.seek(0, os.SEEK_END)
         file_size = file.stream.tell()
         file.stream.seek(0)
         if file_size > max_size_bytes:
-            return None
+            return None, 'too_large'
 
     unique = build_unique_upload_name(file.filename)
     file.save(os.path.join(upload_folder, unique))
-    return unique
+    return unique, None
 
 
 def set_single_title_entry(model, owner_filter, entry_id_field, entry_id_value):
