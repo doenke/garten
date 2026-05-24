@@ -428,14 +428,20 @@ def new_location_timeline_entry(location_id):
         return redirect(url_for('main.location_detail', location_id=location.id))
     if not unique:
         flash('Bitte eine Datei auswählen.', 'warning')
+    attachment_kind = None
+    if unique:
+        ext = unique.rsplit('.', 1)[1].lower()
+        attachment_kind = 'image' if ext in IMAGE_TYPES else 'pdf'
+
+    if not description and not unique:
         return redirect(url_for('main.location_detail', location_id=location.id))
 
     create_timeline_entry(
         scope_type='location',
         scope_id=location.id,
-        description=description,
+        description=description or None,
         attachment_filename=unique,
-        attachment_kind='image',
+        attachment_kind=attachment_kind,
         creator_id=current_user().id,
     )
     db.session.commit()
@@ -669,8 +675,28 @@ def save_plant_position(plant_id):
     plant = Plant.query.get_or_404(plant_id)
     is_json_request = request.is_json
     payload = request.get_json(silent=True) if is_json_request else None
-    plant.map_x = (payload or {}).get('map_x') if is_json_request else request.form.get('map_x', type=float)
-    plant.map_y = (payload or {}).get('map_y') if is_json_request else request.form.get('map_y', type=float)
+    try:
+        map_x_raw = (payload or {}).get('map_x') if is_json_request else request.form.get('map_x')
+        map_y_raw = (payload or {}).get('map_y') if is_json_request else request.form.get('map_y')
+
+        map_x = float(map_x_raw) if map_x_raw not in (None, '') else None
+        map_y = float(map_y_raw) if map_y_raw not in (None, '') else None
+    except (TypeError, ValueError):
+        if is_json_request:
+            return jsonify({'ok': False, 'error': 'Ungültige Koordinaten'}), 400
+        return redirect(url_for('main.plant_detail', plant_id=plant_id))
+
+    if map_x is not None and not -90 <= map_x <= 90:
+        if is_json_request:
+            return jsonify({'ok': False, 'error': 'Breitengrad muss zwischen -90 und 90 liegen'}), 400
+        return redirect(url_for('main.plant_detail', plant_id=plant_id))
+    if map_y is not None and not -180 <= map_y <= 180:
+        if is_json_request:
+            return jsonify({'ok': False, 'error': 'Längengrad muss zwischen -180 und 180 liegen'}), 400
+        return redirect(url_for('main.plant_detail', plant_id=plant_id))
+
+    plant.map_x = map_x
+    plant.map_y = map_y
     db.session.commit()
     if is_json_request:
         return jsonify({'ok': True, 'map_x': plant.map_x, 'map_y': plant.map_y})
@@ -694,8 +720,8 @@ def update_masterdata(plant_id):
         'height_without_bloom_cm': 'Höhe ohne Blüte (cm)',
         'height_with_bloom_cm': 'Höhe mit Blüte (cm)',
         'info': 'Info',
-        'map_x': 'Position X (Lat)',
-        'map_y': 'Position Y (Lon)',
+        'map_x': 'Breitengrad',
+        'map_y': 'Längengrad',
     }
 
     bloom_start_month, bloom_end_month, bloom_months_valid = parse_bloom_months(request.form)
