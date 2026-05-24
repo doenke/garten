@@ -13,7 +13,17 @@
   <div class="plant-detail-layout">
     <div class="plant-top-row">
       <div class="plant-main-column">
-        <h1 class="plant-title">{{ plant.name }}{% if plant.common_name %} ({{ plant.common_name }}){% endif %}</h1>
+        <div class="plant-title-row">
+          <h1 class="plant-title">{{ plant.name }}{% if plant.common_name %} ({{ plant.common_name }}){% endif %}</h1>
+          <a
+            class="plant-title-search-link"
+            href="https://duckduckgo.com/?q={{ (plant.name ~ (' ' ~ plant.common_name if plant.common_name else '')) | urlencode }}"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Pflanzentitel bei DuckDuckGo suchen"
+            title="Bei DuckDuckGo suchen"
+          >🔍</a>
+        </div>
         <div class="plant-masterdata">
   <p><strong>Name:</strong> {{ plant.name }}</p>
   {% if plant.cultivar %}<p><strong>Sorte/Kultivar:</strong> {{ plant.cultivar }}</p>{% endif %}
@@ -291,6 +301,9 @@
 
 <style>
 .plant-title{margin:0 0 .8rem 0;font-size:2.25rem;line-height:1.2}
+.plant-title-row{display:flex;align-items:flex-start;gap:.5rem}
+.plant-title-search-link{display:inline-flex;align-items:center;justify-content:center;width:2rem;height:2rem;border-radius:999px;text-decoration:none;font-size:1.1rem;line-height:1;background:var(--surface-soft);border:1px solid var(--border)}
+.plant-title-search-link:hover,.plant-title-search-link:focus-visible{background:var(--accent-soft);outline:none}
 .plant-detail-layout{display:block}
 .plant-top-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,460px);gap:1rem;align-items:start}
 .plant-main-column{min-width:0}
