@@ -77,8 +77,41 @@ def _guess_common_name_from_text(scientific_name, text):
     return None
 
 
+def _normalize_scientific_name_for_lookup(scientific_name):
+    value = re.sub(r'\s+', ' ', (scientific_name or '').strip())
+    if not value:
+        return None
+
+    # remove cultivar designations and marketing names in quotes
+    value = re.sub(r'"[^"]+"', '', value)
+    value = re.sub(r"'[^']+'", '', value)
+    value = re.sub(r'\s+', ' ', value).strip(' ,;:-')
+
+    tokens = value.split()
+    if len(tokens) < 2:
+        return value or None
+
+    def _is_species_token(token):
+        return bool(re.fullmatch(r'[a-z][a-z\-]*', token))
+
+    selected = [tokens[0]]
+    for token in tokens[1:]:
+        cleaned = token.strip(' ,;()')
+        if not cleaned:
+            continue
+        if cleaned.lower() in {'x', '×'} or _is_species_token(cleaned):
+            selected.append(cleaned)
+            continue
+        break
+
+    if len(selected) < 2:
+        return ' '.join(tokens[:2])
+    return ' '.join(selected)
+
+
 def _lookup_common_name_from_web(scientific_name, language_code='de'):
     query = (scientific_name or '').strip()
+    normalized_query = _normalize_scientific_name_for_lookup(query)
     language = (language_code or 'de').strip().lower()
     if not query:
         return None, []
@@ -93,22 +126,27 @@ def _lookup_common_name_from_web(scientific_name, language_code='de'):
     sources = []
     common_name = None
 
-    try:
-        response = requests.get(
-            search_url,
-            params={
-                'action': 'query',
-                'list': 'search',
-                'srsearch': query,
-                'utf8': 1,
-                'format': 'json',
-            },
-            timeout=6,
-        )
-        response.raise_for_status()
-        search_results = response.json().get('query', {}).get('search', [])
-    except requests.RequestException:
-        search_results = []
+    def _search(term):
+        try:
+            response = requests.get(
+                search_url,
+                params={
+                    'action': 'query',
+                    'list': 'search',
+                    'srsearch': term,
+                    'utf8': 1,
+                    'format': 'json',
+                },
+                timeout=6,
+            )
+            response.raise_for_status()
+            return response.json().get('query', {}).get('search', [])
+        except requests.RequestException:
+            return []
+
+    search_results = _search(query)
+    if not search_results and normalized_query and normalized_query.lower() != query.lower():
+        search_results = _search(normalized_query)
 
     for item in search_results[:3]:
         title = (item.get('title') or '').strip()
@@ -126,13 +164,14 @@ def _lookup_common_name_from_web(scientific_name, language_code='de'):
         except requests.RequestException:
             continue
 
-        common_name = _guess_common_name_from_text(query, extract)
+        common_name = _guess_common_name_from_text(normalized_query or query, extract)
         if common_name:
             break
 
     if not common_name and search_results:
         first_title = (search_results[0].get('title') or '').strip()
-        if first_title and first_title.lower() != query.lower():
+        normalized_title = _normalize_scientific_name_for_lookup(first_title) or first_title
+        if first_title and normalized_title.lower() != (normalized_query or query).lower():
             common_name = first_title
 
     return common_name, list(dict.fromkeys(sources))
