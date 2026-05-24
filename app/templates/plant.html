@@ -215,10 +215,10 @@
       <form method="post" action="/plants/{{ plant.id }}/events" enctype="multipart/form-data" class="grid timeline-form">
         <div class="timeline-form-row">
           <input name="title" placeholder="Titel">
-          <input id="event-attachment" type="file" name="attachment" accept="image/*,application/pdf" capture="environment">
+          <textarea name="description" placeholder="Beschreibung"></textarea>
         </div>
         <div class="timeline-form-row">
-          <textarea name="description" placeholder="Beschreibung"></textarea>
+          <input id="event-attachment" type="file" name="attachment" accept="image/*,application/pdf" capture="environment">
           <button>Speichern</button>
         </div>
       </form>
