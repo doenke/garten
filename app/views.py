@@ -233,7 +233,7 @@ def _build_database_links_for_plant(plant):
     for item in plant.database_identifiers:
         if not item.catalog or not item.catalog.enabled:
             continue
-        identifier = (item.external_id or '').strip()
+        identifier = (item.taxonomy_id or '').strip()
         if not identifier:
             continue
         url = (item.catalog.record_url_template or '').replace('{id}', identifier)
@@ -955,24 +955,24 @@ def upsert_plant_database_identifiers(plant, form):
         existing_entry = existing_by_key.get(catalog_key)
         if not desired:
             continue
-        if existing_entry and existing_entry.external_id == desired:
+        if existing_entry and existing_entry.taxonomy_id == desired:
             new_entries.append(existing_entry)
             continue
         matched = PlantDatabaseIdentifier.query.filter_by(plant_id=plant.id, catalog_id=catalog.id).first()
         if matched:
-            matched.external_id = desired
+            matched.taxonomy_id = desired
             new_entries.append(matched)
         else:
-            created = PlantDatabaseIdentifier(plant_id=plant.id, catalog_id=catalog.id, external_id=desired)
+            created = PlantDatabaseIdentifier(plant_id=plant.id, catalog_id=catalog.id, taxonomy_id=desired)
             db.session.add(created)
             db.session.flush()
             new_entries.append(created)
     plant.database_identifiers = new_entries
 
 
-@main_bp.route('/plants/<int:plant_id>/external-ids-suggest', methods=['POST'])
+@main_bp.route('/plants/<int:plant_id>/taxonomy-ids-suggest', methods=['POST'])
 @login_required
-def suggest_external_ids(plant_id):
+def suggest_taxonomy_ids(plant_id):
     plant = Plant.query.get_or_404(plant_id)
     payload = request.get_json(silent=True) or {}
     scientific_name = (payload.get('scientific_name') or plant.scientific_name or plant.name or '').strip()
@@ -1062,9 +1062,9 @@ def update_masterdata(plant_id):
         changes.append(f"Bodeneigenschaften: {old_soil_display} → {new_soil_display}")
         plant.soil_properties = new_soil_properties
 
-    before_ids = {f"{entry.catalog.key}:{entry.external_id}" for entry in plant.database_identifiers if entry.catalog}
+    before_ids = {f"{entry.catalog.key}:{entry.taxonomy_id}" for entry in plant.database_identifiers if entry.catalog}
     upsert_plant_database_identifiers(plant, request.form)
-    after_ids = {f"{entry.catalog.key}:{entry.external_id}" for entry in plant.database_identifiers if entry.catalog}
+    after_ids = {f"{entry.catalog.key}:{entry.taxonomy_id}" for entry in plant.database_identifiers if entry.catalog}
     if before_ids != after_ids:
         changes.append('Datenbank-IDs wurden aktualisiert.')
 
