@@ -86,6 +86,17 @@ DEFAULT_DATABASE_CATALOGS = [
     },
 ]
 
+TAXONOMY_ID_RESOLVER_CONFIG = {
+    'gbif': {
+        'mode': 'gbif_species_match',
+        'prefer_statuses': {'ACCEPTED'},
+        'kingdom': 'Plantae',
+    },
+    'wfo': {'mode': 'none'},
+    'powo_ipni': {'mode': 'none'},
+    'floraweb': {'mode': 'none'},
+}
+
 
 
 
@@ -970,6 +981,39 @@ def upsert_plant_database_identifiers(plant, form):
     plant.database_identifiers = new_entries
 
 
+def _gbif_species_match_id(scientific_name, config):
+    try:
+        response = requests.get(
+            'https://api.gbif.org/v1/species/match',
+            params={'name': scientific_name, 'verbose': 'true', 'kingdom': config.get('kingdom') or 'Plantae'},
+            timeout=8,
+        )
+        response.raise_for_status()
+    except requests.RequestException:
+        return None
+
+    payload = response.json() if response.content else {}
+    usage_key = payload.get('usageKey')
+    if not usage_key:
+        return None
+
+    prefer_statuses = config.get('prefer_statuses') or {'ACCEPTED'}
+    status = (payload.get('status') or '').upper()
+    if prefer_statuses and status and status not in prefer_statuses:
+        accepted_key = payload.get('acceptedUsageKey')
+        if accepted_key:
+            return str(accepted_key)
+    return str(usage_key)
+
+
+def _resolve_taxonomy_id_for_catalog(catalog_key, scientific_name):
+    resolver = TAXONOMY_ID_RESOLVER_CONFIG.get(catalog_key) or {'mode': 'none'}
+    mode = resolver.get('mode')
+    if mode == 'gbif_species_match':
+        return _gbif_species_match_id(scientific_name, resolver)
+    return None
+
+
 @main_bp.route('/plants/<int:plant_id>/taxonomy-ids-suggest', methods=['POST'])
 @login_required
 def suggest_taxonomy_ids(plant_id):
@@ -980,14 +1024,21 @@ def suggest_taxonomy_ids(plant_id):
         return jsonify({'ok': False, 'error': 'Bitte zuerst einen wissenschaftlichen Namen eingeben.'}), 400
     catalogs = [catalog for catalog in get_or_create_database_catalogs() if catalog.enabled]
     suggested = {}
+    unavailable = []
     for catalog in catalogs:
-        synthetic_id = re.sub(r'[^a-zA-Z0-9]+', '-', scientific_name).strip('-').lower()
-        if not synthetic_id:
+        resolved_id = _resolve_taxonomy_id_for_catalog(catalog.key, scientific_name)
+        if not resolved_id:
+            unavailable.append(catalog.key)
             continue
-        if catalog.key == 'powo_ipni':
-            synthetic_id = f'urn:lsid:ipni.org:names:{synthetic_id}'
-        suggested[catalog.key] = synthetic_id
-    return jsonify({'ok': True, 'scientific_name': scientific_name, 'matches': suggested, 'confidence': 0.35, 'note': 'Automatische Vorschläge basieren auf Namensnormalisierung.'})
+        suggested[catalog.key] = resolved_id
+    return jsonify({
+        'ok': True,
+        'scientific_name': scientific_name,
+        'matches': suggested,
+        'unavailable_catalogs': unavailable,
+        'confidence': 0.9 if suggested else 0.0,
+        'note': 'IDs werden katalogspezifisch ermittelt. Ohne Resolver gibt es keinen Vorschlag.',
+    })
 
 @main_bp.route('/plants/<int:plant_id>/masterdata', methods=['POST'])
 @login_required
