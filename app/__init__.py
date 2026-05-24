@@ -5,7 +5,7 @@ from .auth import auth_bp, oauth
 from .views import main_bp
 import os
 from sqlalchemy import inspect
-from .models import LightNeed, Plant, SoilProperty, DatabaseCatalog, DatabaseIdentifier, plant_light_need, plant_soil_property, plant_database_identifier
+from .models import LightNeed, Plant, SoilProperty, DatabaseCatalog, PlantDatabaseIdentifier, plant_light_need, plant_soil_property
 
 
 _WEAK_SECRET_KEY_VALUES = {
@@ -174,10 +174,8 @@ def _ensure_plant_extended_schema(inspector):
     table_names = set(inspector.get_table_names())
     if 'database_catalog' not in table_names:
         DatabaseCatalog.__table__.create(bind=db.engine, checkfirst=True)
-    if 'database_identifier' not in table_names:
-        DatabaseIdentifier.__table__.create(bind=db.engine, checkfirst=True)
     if 'plant_database_identifier' not in table_names:
-        plant_database_identifier.create(bind=db.engine, checkfirst=True)
+        PlantDatabaseIdentifier.__table__.create(bind=db.engine, checkfirst=True)
 
     if 'plant' in table_names:
         columns = {col['name'] for col in inspector.get_columns('plant')}
