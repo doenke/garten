@@ -50,6 +50,11 @@
     .grid-auto-200{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.5rem}
     .hidden{display:none}
     .alert-danger{background:#ffe5e5;border:2px solid #e11;color:#900;padding:1rem;border-radius:8px;font-weight:700}
+    .flash-stack{display:grid;gap:.55rem;margin:0 0 1rem}
+    .flash-message{padding:.7rem .8rem;border-radius:10px;border:1px solid var(--border);font-weight:600}
+    .flash-success{background:#e8f7ec;border-color:#66b27a;color:#1f5f31}
+    .flash-warning{background:#fff6dd;border-color:#e0b54a;color:#7a5600}
+    .flash-error{background:#ffe5e5;border-color:#e48787;color:#7f1414}
     .icon-btn{margin:0;padding:.45rem .6rem;line-height:1}
     .thumb-60{width:60px;height:60px;object-fit:cover;border-radius:8px;display:block}
     .timeline-header{display:flex;align-items:center;gap:.5rem}.timeline-text{white-space:pre-line;margin:.4rem 0 .6rem}
@@ -114,6 +119,21 @@
   </div>
 </header>
 <main>
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <section class="flash-stack" aria-live="polite">
+    {% for category, message in messages %}
+    {% set flash_class = 'flash-warning' %}
+    {% if category == 'success' %}
+      {% set flash_class = 'flash-success' %}
+    {% elif category == 'error' %}
+      {% set flash_class = 'flash-error' %}
+    {% endif %}
+    <div class="flash-message {{ flash_class }}">{{ message }}</div>
+    {% endfor %}
+  </section>
+  {% endif %}
+{% endwith %}
 {% block content %}{% endblock %}
 </main>
 </div>
