@@ -30,11 +30,24 @@
   {% if plant.scientific_name %}<p><strong>Wissenschaftlicher Name:</strong> {{ plant.scientific_name }}</p>{% endif %}
   {% if plant.common_name %}<p><strong>Bürgerlicher Name:</strong> {{ plant.common_name }}</p>{% endif %}
   {% if database_links %}
-  <p><strong>Externe Datenbanken:</strong>
+  <div class="db-icon-links" aria-label="Externe Datenbanken">
     {% for item in database_links %}
-    <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.catalog_label }} ({{ item.identifier }})</a>{% if not loop.last %}, {% endif %}
+    <a
+      class="db-icon-link"
+      href="{{ item.url }}"
+      target="_blank"
+      rel="noopener noreferrer"
+      title="{{ item.catalog_label }} ({{ item.identifier }})"
+      aria-label="{{ item.catalog_label }} ({{ item.identifier }})"
+    >
+      {% if item.icon_url %}
+      <img src="{{ item.icon_url }}" alt="" loading="lazy" class="db-icon-image">
+      {% else %}
+      <span class="db-icon-fallback">{{ item.catalog_label[:2] | upper }}</span>
+      {% endif %}
+    </a>
     {% endfor %}
-  </p>
+  </div>
   {% endif %}
   {% if plant.source %}<p><strong>Quelle:</strong> {{ plant.source }}</p>{% endif %}
   {% if plant.light_needs %}<p><strong>Lichtbedarf:</strong> {% for light_need in plant.light_needs %}<span>{{ light_need_icon_by_key.get(light_need.key, '•') }} {{ light_need.label }}{% if not loop.last %}, {% endif %}</span>{% endfor %}</p>{% endif %}
@@ -308,6 +321,11 @@
 .plant-top-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,460px);gap:1rem;align-items:start}
 .plant-main-column{min-width:0}
 .plant-masterdata{min-width:0}
+.db-icon-links{display:flex;flex-wrap:wrap;gap:.45rem;margin:.15rem 0 .65rem}
+.db-icon-link{display:inline-flex;align-items:center;justify-content:center;width:2.1rem;height:2.1rem;border:1px solid var(--border);border-radius:999px;background:var(--surface-soft);overflow:hidden;text-decoration:none}
+.db-icon-link:hover,.db-icon-link:focus-visible{background:var(--accent-soft);outline:none}
+.db-icon-image{width:1.2rem;height:1.2rem;object-fit:contain;display:block}
+.db-icon-fallback{font-size:.68rem;font-weight:700;color:var(--muted)}
 .plant-title-entry-panel{margin-left:auto;max-width:min(420px,100%);display:flex;flex-direction:column;gap:.5rem;align-items:flex-end;text-align:right}
 .plant-title-entry-image-panel{grid-column:2;grid-row:1 / span 2;align-self:stretch;display:flex}
 .plant-title-entry-image-btn{display:block;padding:0;border:0;background:none;width:100%;height:100%;cursor:zoom-in}

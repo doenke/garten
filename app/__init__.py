@@ -211,3 +211,7 @@ def _ensure_plant_extended_schema(inspector):
             db.session.execute(db.text('ALTER TABLE plant ADD COLUMN cultivar VARCHAR(255)'))
         if 'scientific_name' not in columns:
             db.session.execute(db.text('ALTER TABLE plant ADD COLUMN scientific_name VARCHAR(255)'))
+    if 'database_catalog' in table_names:
+        catalog_columns = {col['name'] for col in inspector.get_columns('database_catalog')}
+        if 'icon_url' not in catalog_columns:
+            db.session.execute(db.text('ALTER TABLE database_catalog ADD COLUMN icon_url VARCHAR(1024)'))

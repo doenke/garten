@@ -61,24 +61,28 @@ DEFAULT_DATABASE_CATALOGS = [
         'label': 'WFO',
         'record_url_template': 'https://www.worldfloraonline.org/taxon/{id}',
         'search_url_template': 'https://www.worldfloraonline.org/search?query={q}',
+        'icon_url': 'https://www.worldfloraonline.org/favicon.ico',
     },
     {
         'key': 'powo_ipni',
         'label': 'POWO/IPNI-LSID',
         'record_url_template': 'https://powo.science.kew.org/taxon/{id}',
         'search_url_template': 'https://powo.science.kew.org/results?q={q}',
+        'icon_url': 'https://powo.science.kew.org/favicon.ico',
     },
     {
         'key': 'gbif',
         'label': 'GBIF',
         'record_url_template': 'https://www.gbif.org/species/{id}',
         'search_url_template': 'https://www.gbif.org/species/search?q={q}',
+        'icon_url': 'https://www.gbif.org/favicon.ico',
     },
     {
         'key': 'floraweb',
         'label': 'FloraWeb',
         'record_url_template': 'https://www.floraweb.de/taxon/{id}',
         'search_url_template': 'https://www.floraweb.de/suche?suchbegriff={q}',
+        'icon_url': 'https://www.floraweb.de/favicon.ico',
     },
 ]
 
@@ -238,6 +242,7 @@ def _build_database_links_for_plant(plant):
             'catalog_label': item.catalog.label,
             'identifier': identifier,
             'url': url,
+            'icon_url': (item.catalog.icon_url or '').strip(),
         })
     return sorted(links, key=lambda link: ((link['catalog_label'] or '').lower(), link['identifier'].lower()))
 
@@ -521,10 +526,12 @@ def update_catalogs():
         catalog.enabled = request.form.get(f'enabled_{catalog.id}') == 'on'
         catalog.record_url_template = (request.form.get(f'record_url_template_{catalog.id}') or catalog.record_url_template).strip()
         catalog.search_url_template = (request.form.get(f'search_url_template_{catalog.id}') or '').strip() or None
+        catalog.icon_url = (request.form.get(f'icon_url_{catalog.id}') or '').strip() or None
     new_catalog_key = (request.form.get('new_catalog_key') or '').strip().lower()
     new_catalog_label = (request.form.get('new_catalog_label') or '').strip()
     new_record_url_template = (request.form.get('new_record_url_template') or '').strip()
     new_search_url_template = (request.form.get('new_search_url_template') or '').strip() or None
+    new_icon_url = (request.form.get('new_icon_url') or '').strip() or None
     if new_catalog_key and new_catalog_label and new_record_url_template:
         normalized_key = re.sub(r'[^a-z0-9_]+', '_', new_catalog_key).strip('_')
         if normalized_key and not DatabaseCatalog.query.filter_by(key=normalized_key).first():
@@ -534,6 +541,7 @@ def update_catalogs():
                 enabled=True,
                 record_url_template=new_record_url_template,
                 search_url_template=new_search_url_template,
+                icon_url=new_icon_url,
             ))
     db.session.commit()
     return redirect(url_for('main.config'))
