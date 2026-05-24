@@ -62,7 +62,13 @@
 
 <form method="post" action="/locations/{{location.id}}/plants/new" id="plant-form" class="grid hidden mb-1">
 <input name="name" placeholder="Name" required>
+<input name="cultivar" placeholder="Sorte/Kultivar">
+<input name="scientific_name" placeholder="Wissenschaftlicher Name">
 <input name="common_name" placeholder="Umgangssprachlicher Name">
+<input name="wfo_id" placeholder="WFO-ID">
+<input name="powo_ipni_lsid" placeholder="POWO/IPNI-LSID">
+<input name="gbif_id" placeholder="GBIF-ID">
+<input name="floraweb_id" placeholder="FloraWeb-ID">
 <input name="source" placeholder="gekauft bei / bekommen von">
 <fieldset class="light-need-group"><legend>Lichtbedarf</legend>{% for option in light_need_options %}<label class="light-need-option"><input type="checkbox" name="light_need" value="{{ option.key }}"> <span>{{ option.icon }} {{ option.label }}</span></label>{% endfor %}</fieldset>
 <label>Blütezeit von <select name="bloom_start_month"><option value="">Monat</option>{% set month_names = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'] %}{% for m in range(1,13) %}<option value="{{ m }}">{{ month_names[m-1] }}</option>{% endfor %}</select> bis <select name="bloom_end_month"><option value="">Monat</option>{% for m in range(1,13) %}<option value="{{ m }}">{{ month_names[m-1] }}</option>{% endfor %}</select></label>

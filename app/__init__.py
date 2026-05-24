@@ -5,7 +5,7 @@ from .auth import auth_bp, oauth
 from .views import main_bp
 import os
 from sqlalchemy import inspect
-from .models import LightNeed, Plant, SoilProperty, plant_light_need, plant_soil_property
+from .models import LightNeed, Plant, SoilProperty, DatabaseCatalog, DatabaseIdentifier, plant_light_need, plant_soil_property, plant_database_identifier
 
 
 _WEAK_SECRET_KEY_VALUES = {
@@ -114,6 +114,7 @@ def _run_schema_upgrades():
     _ensure_light_need_schema(inspector)
     _ensure_soil_property_schema(inspector)
     _ensure_timeline_title_entry_uniqueness(inspector)
+    _ensure_plant_extended_schema(inspector)
     db.session.commit()
 
 
@@ -167,3 +168,20 @@ def _ensure_soil_property_schema(inspector):
         SoilProperty.__table__.create(bind=db.engine, checkfirst=True)
     if 'plant_soil_property' not in table_names:
         plant_soil_property.create(bind=db.engine, checkfirst=True)
+
+
+def _ensure_plant_extended_schema(inspector):
+    table_names = set(inspector.get_table_names())
+    if 'database_catalog' not in table_names:
+        DatabaseCatalog.__table__.create(bind=db.engine, checkfirst=True)
+    if 'database_identifier' not in table_names:
+        DatabaseIdentifier.__table__.create(bind=db.engine, checkfirst=True)
+    if 'plant_database_identifier' not in table_names:
+        plant_database_identifier.create(bind=db.engine, checkfirst=True)
+
+    if 'plant' in table_names:
+        columns = {col['name'] for col in inspector.get_columns('plant')}
+        if 'cultivar' not in columns:
+            db.session.execute(db.text('ALTER TABLE plant ADD COLUMN cultivar VARCHAR(255)'))
+        if 'scientific_name' not in columns:
+            db.session.execute(db.text('ALTER TABLE plant ADD COLUMN scientific_name VARCHAR(255)'))

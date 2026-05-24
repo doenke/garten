@@ -6,7 +6,7 @@ import requests
 from functools import wraps
 from datetime import datetime
 from flask import Blueprint, current_app, g, render_template, request, redirect, url_for, session, jsonify, send_from_directory, flash
-from .models import db, User, Location, Plant, PlantPhoto, PlantNote, GardenMap, TimelineEntry, LightNeed, SoilProperty, plant_soil_property
+from .models import db, User, Location, Plant, PlantPhoto, PlantNote, GardenMap, TimelineEntry, LightNeed, SoilProperty, DatabaseCatalog, DatabaseIdentifier, plant_soil_property
 from .services.timeline_service import save_uploaded_attachment, set_single_title_entry, delete_timeline_entry, build_unique_upload_name
 
 main_bp = Blueprint('main', __name__)
@@ -55,6 +55,32 @@ LIGHT_NEED_OPTIONS = [
 ]
 LIGHT_NEED_KEY_TO_LABEL = {item['key']: item['label'] for item in LIGHT_NEED_OPTIONS}
 LIGHT_NEED_ICON_BY_KEY = {item['key']: item['icon'] for item in LIGHT_NEED_OPTIONS}
+DEFAULT_DATABASE_CATALOGS = [
+    {
+        'key': 'wfo',
+        'label': 'WFO',
+        'record_url_template': 'https://www.worldfloraonline.org/taxon/{id}',
+        'search_url_template': 'https://www.worldfloraonline.org/search?query={q}',
+    },
+    {
+        'key': 'powo_ipni',
+        'label': 'POWO/IPNI-LSID',
+        'record_url_template': 'https://powo.science.kew.org/taxon/{id}',
+        'search_url_template': 'https://powo.science.kew.org/results?q={q}',
+    },
+    {
+        'key': 'gbif',
+        'label': 'GBIF',
+        'record_url_template': 'https://www.gbif.org/species/{id}',
+        'search_url_template': 'https://www.gbif.org/species/search?q={q}',
+    },
+    {
+        'key': 'floraweb',
+        'label': 'FloraWeb',
+        'record_url_template': 'https://www.floraweb.de/taxon/{id}',
+        'search_url_template': 'https://www.floraweb.de/suche?suchbegriff={q}',
+    },
+]
 
 
 
@@ -184,6 +210,36 @@ def parse_light_need_keys(values):
 
 def format_light_need_labels(light_needs):
     return ', '.join(light_need.label for light_need in light_needs)
+
+
+def get_or_create_database_catalogs():
+    catalogs = []
+    for default in DEFAULT_DATABASE_CATALOGS:
+        catalog = DatabaseCatalog.query.filter_by(key=default['key']).first()
+        if not catalog:
+            catalog = DatabaseCatalog(**default, enabled=True)
+            db.session.add(catalog)
+            db.session.flush()
+        catalogs.append(catalog)
+    return catalogs
+
+
+def _build_database_links_for_plant(plant):
+    links = []
+    for item in plant.database_identifiers:
+        if not item.catalog or not item.catalog.enabled:
+            continue
+        identifier = (item.identifier or '').strip()
+        if not identifier:
+            continue
+        url = (item.catalog.record_url_template or '').replace('{id}', identifier)
+        links.append({
+            'catalog_key': item.catalog.key,
+            'catalog_label': item.catalog.label,
+            'identifier': identifier,
+            'url': url,
+        })
+    return links
 
 
 def parse_soil_properties(raw_value):
@@ -451,7 +507,22 @@ def config():
         user=user,
         garden_map=garden_map,
         locations=locations,
+        database_catalogs=get_or_create_database_catalogs(),
     )
+
+
+@main_bp.route('/config/catalogs', methods=['POST'])
+@login_required
+def update_catalogs():
+    get_or_create_database_catalogs()
+    catalogs = DatabaseCatalog.query.order_by(DatabaseCatalog.label.asc()).all()
+    for catalog in catalogs:
+        catalog.label = (request.form.get(f'label_{catalog.id}') or catalog.label).strip() or catalog.label
+        catalog.enabled = request.form.get(f'enabled_{catalog.id}') == 'on'
+        catalog.record_url_template = (request.form.get(f'record_url_template_{catalog.id}') or catalog.record_url_template).strip()
+        catalog.search_url_template = (request.form.get(f'search_url_template_{catalog.id}') or '').strip() or None
+    db.session.commit()
+    return redirect(url_for('main.config'))
 
 @main_bp.route('/locations/new', methods=['POST'])
 @login_required
@@ -608,6 +679,8 @@ def new_plant(location_id):
     p = Plant(
         location_id=location_id,
         name=request.form['name'],
+        cultivar=request.form.get('cultivar'),
+        scientific_name=request.form.get('scientific_name'),
         common_name=request.form.get('common_name'),
         source=request.form.get('source'),
         light_need='',
@@ -624,6 +697,7 @@ def new_plant(location_id):
     p.soil_properties = get_or_create_soil_properties(soil_labels)
     db.session.add(p)
     db.session.flush()
+    upsert_plant_database_identifiers(p, request.form)
     event_at = datetime.utcnow()
     tpl = SYSTEM_EVENT_TEMPLATES['planting']
     create_timeline_entry(
@@ -728,6 +802,7 @@ def plant_detail(plant_id):
         top_soil_properties=[item[0] for item in top_soil_properties],
         soil_property_suggestions=soil_property_suggestions,
         flower_color_suggestions=get_flower_color_suggestions(),
+        database_links=_build_database_links_for_plant(plant),
     )
 
 
@@ -845,6 +920,59 @@ def suggest_common_name(plant_id):
     confidence = 0.88 if common_name.lower() != name_value.lower() else 0.55
     return jsonify({'ok': True, 'common_name': common_name, 'confidence': confidence, 'sources': sources, 'language': lookup_language})
 
+
+def upsert_plant_database_identifiers(plant, form):
+    catalog_by_key = {catalog.key: catalog for catalog in get_or_create_database_catalogs()}
+    field_map = {
+        'wfo': 'wfo_id',
+        'powo_ipni': 'powo_ipni_lsid',
+        'gbif': 'gbif_id',
+        'floraweb': 'floraweb_id',
+    }
+    desired_values = {}
+    for catalog_key, form_field in field_map.items():
+        desired_values[catalog_key] = (form.get(form_field) or '').strip()
+
+    existing_by_key = {entry.catalog.key: entry for entry in plant.database_identifiers if entry.catalog}
+    new_entries = []
+    for catalog_key, catalog in catalog_by_key.items():
+        desired = desired_values.get(catalog_key, '')
+        existing_entry = existing_by_key.get(catalog_key)
+        if not desired:
+            continue
+        if existing_entry and existing_entry.identifier == desired:
+            new_entries.append(existing_entry)
+            continue
+        matched = DatabaseIdentifier.query.filter_by(catalog_id=catalog.id, identifier=desired).first()
+        if matched:
+            new_entries.append(matched)
+        else:
+            created = DatabaseIdentifier(catalog_id=catalog.id, identifier=desired)
+            db.session.add(created)
+            db.session.flush()
+            new_entries.append(created)
+    plant.database_identifiers = new_entries
+
+
+@main_bp.route('/plants/<int:plant_id>/external-ids-suggest', methods=['POST'])
+@login_required
+def suggest_external_ids(plant_id):
+    plant = Plant.query.get_or_404(plant_id)
+    payload = request.get_json(silent=True) or {}
+    scientific_name = (payload.get('scientific_name') or plant.scientific_name or plant.name or '').strip()
+    if not scientific_name:
+        return jsonify({'ok': False, 'error': 'Bitte zuerst einen wissenschaftlichen Namen eingeben.'}), 400
+    catalogs = [catalog for catalog in get_or_create_database_catalogs() if catalog.enabled]
+    suggested = {}
+    for catalog in catalogs:
+        synthetic_id = re.sub(r'[^a-zA-Z0-9]+', '-', scientific_name).strip('-').lower()
+        if not synthetic_id:
+            continue
+        if catalog.key == 'powo_ipni':
+            synthetic_id = f'urn:lsid:ipni.org:names:{synthetic_id}'
+        suggested[catalog.key] = synthetic_id
+    return jsonify({'ok': True, 'scientific_name': scientific_name, 'matches': suggested, 'confidence': 0.35, 'note': 'Automatische Vorschläge basieren auf Namensnormalisierung.'})
+
 @main_bp.route('/plants/<int:plant_id>/masterdata', methods=['POST'])
 @login_required
 def update_masterdata(plant_id):
@@ -853,6 +981,8 @@ def update_masterdata(plant_id):
     field_labels = {
         'name': 'Name',
         'common_name': 'Bürgerlicher Name',
+        'cultivar': 'Sorte/Kultivar',
+        'scientific_name': 'Wissenschaftlicher Name',
         'source': 'Quelle',
         'light_need': 'Lichtbedarf',
         'bloom_start_month': 'Blütezeit von',
@@ -863,6 +993,10 @@ def update_masterdata(plant_id):
         'info': 'Info',
         'map_x': 'Breitengrad',
         'map_y': 'Längengrad',
+        'wfo_id': 'WFO-ID',
+        'powo_ipni_lsid': 'POWO/IPNI-LSID',
+        'gbif_id': 'GBIF-ID',
+        'floraweb_id': 'FloraWeb-ID',
     }
 
     bloom_start_month, bloom_end_month, bloom_months_valid = parse_bloom_months(request.form)
@@ -872,6 +1006,8 @@ def update_masterdata(plant_id):
 
     updates = {
         'name': request.form.get('name', '').strip(),
+        'cultivar': request.form.get('cultivar', '').strip() or None,
+        'scientific_name': request.form.get('scientific_name', '').strip() or None,
         'common_name': request.form.get('common_name', '').strip() or None,
         'source': request.form.get('source', '').strip() or None,
         'bloom_start_month': bloom_start_month,
@@ -909,6 +1045,12 @@ def update_masterdata(plant_id):
     if old_soil_display != new_soil_display:
         changes.append(f"Bodeneigenschaften: {old_soil_display} → {new_soil_display}")
         plant.soil_properties = new_soil_properties
+
+    before_ids = {f"{entry.catalog.key}:{entry.identifier}" for entry in plant.database_identifiers if entry.catalog}
+    upsert_plant_database_identifiers(plant, request.form)
+    after_ids = {f"{entry.catalog.key}:{entry.identifier}" for entry in plant.database_identifiers if entry.catalog}
+    if before_ids != after_ids:
+        changes.append('Datenbank-IDs wurden aktualisiert.')
 
     if changes:
         create_timeline_entry(
