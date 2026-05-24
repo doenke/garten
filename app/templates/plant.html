@@ -76,13 +76,13 @@
         </div>
         <small id="magic-common-name-status" class="muted"></small>
         <label>Datenbank-IDs</label>
-        <div class="magic-field-row">
-          <div class="grid">
-            {% for catalog in database_catalogs %}
+        <div class="grid">
+          {% for catalog in database_catalogs %}
+          <div class="magic-field-row">
             <input id="plant-db-{{ catalog.key }}" name="database_id_{{ catalog.key }}" value="{{ (plant.database_identifiers | selectattr('catalog.key', 'equalto', catalog.key) | map(attribute='external_id') | list | first) or '' }}" placeholder="{{ catalog.label }}-ID">
-            {% endfor %}
+            <button type="button" class="btn secondary magic-db-id" data-catalog-key="{{ catalog.key }}" title="{{ catalog.label }}-ID suchen">🪄</button>
           </div>
-          <button type="button" id="magic-external-ids" class="btn secondary" title="IDs in Datenbanken suchen">🪄</button>
+          {% endfor %}
         </div>
         <small id="magic-external-ids-status" class="muted"></small>
         <label for="plant-source">Quelle</label>
@@ -482,38 +482,41 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
       }
     });
   }
-  const magicIdsButton = document.getElementById('magic-external-ids');
+  const magicIdButtons = Array.from(document.querySelectorAll('.magic-db-id'));
   const scientificNameInput = document.getElementById('plant-scientific-name');
   const idsStatus = document.getElementById('magic-external-ids-status');
-  const databaseCatalogKeys = {{ database_catalogs | map(attribute='key') | list | tojson }};
-  if (magicIdsButton && scientificNameInput) {
-    magicIdsButton.addEventListener('click', async () => {
-      const sourceName = (scientificNameInput.value || nameInput.value || '').trim();
-      if (!sourceName) return;
-      magicIdsButton.disabled = true;
-      const oldText = magicIdsButton.textContent;
-      magicIdsButton.textContent = '…';
-      try {
-        const response = await fetch('/plants/{{ plant.id }}/external-ids-suggest', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({scientific_name: sourceName}),
-        });
-        const data = await response.json();
-        if (!response.ok || !data.ok) throw new Error(data.error || 'Kein Vorschlag gefunden');
-        if (data.matches) {
-          databaseCatalogKeys.forEach((catalogKey) => {
-            const input = document.getElementById(`plant-db-${catalogKey}`);
-            if (input && data.matches[catalogKey]) input.value = data.matches[catalogKey];
+  if (magicIdButtons.length && scientificNameInput) {
+    magicIdButtons.forEach((magicIdsButton) => {
+      magicIdsButton.addEventListener('click', async () => {
+        const sourceName = (scientificNameInput.value || nameInput.value || '').trim();
+        const catalogKey = magicIdsButton.dataset.catalogKey;
+        if (!sourceName || !catalogKey) return;
+        magicIdsButton.disabled = true;
+        const oldText = magicIdsButton.textContent;
+        magicIdsButton.textContent = '…';
+        try {
+          const response = await fetch('/plants/{{ plant.id }}/external-ids-suggest', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({scientific_name: sourceName}),
           });
+          const data = await response.json();
+          if (!response.ok || !data.ok) throw new Error(data.error || 'Kein Vorschlag gefunden');
+          const input = document.getElementById(`plant-db-${catalogKey}`);
+          const suggestedId = data.matches?.[catalogKey];
+          if (input && suggestedId) {
+            input.value = suggestedId;
+            if (idsStatus) idsStatus.textContent = `${catalogKey.toUpperCase()}-Vorschlag übernommen.`;
+          } else if (idsStatus) {
+            idsStatus.textContent = `Kein Vorschlag für ${catalogKey.toUpperCase()} gefunden.`;
+          }
+        } catch (error) {
+          if (idsStatus) idsStatus.textContent = error.message || 'Automatisches Ausfüllen fehlgeschlagen.';
+        } finally {
+          magicIdsButton.disabled = false;
+          magicIdsButton.textContent = oldText;
         }
-        if (idsStatus) idsStatus.textContent = 'ID-Vorschläge übernommen.';
-      } catch (error) {
-        if (idsStatus) idsStatus.textContent = error.message || 'Automatisches Ausfüllen fehlgeschlagen.';
-      } finally {
-        magicIdsButton.disabled = false;
-        magicIdsButton.textContent = oldText;
-      }
+      });
     });
   }
 
