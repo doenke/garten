@@ -173,6 +173,7 @@ def _ensure_soil_property_schema(inspector):
 
 
 def _migrate_plant_database_identifier_add_surrogate_id_sqlite(source_column='external_id'):
+    db.session.execute(db.text('DROP TABLE IF EXISTS plant_database_identifier_old'))
     db.session.execute(db.text('ALTER TABLE plant_database_identifier RENAME TO plant_database_identifier_old'))
     db.session.execute(db.text(
         'CREATE TABLE plant_database_identifier ('
@@ -207,6 +208,7 @@ def _ensure_plant_extended_schema(inspector):
                 source_column = 'taxonomy_id' if 'taxonomy_id' in identifier_columns else 'external_id'
                 _migrate_plant_database_identifier_add_surrogate_id_sqlite(source_column=source_column)
             elif 'taxonomy_id' not in identifier_columns and 'external_id' in identifier_columns:
+                db.session.execute(db.text('DROP TABLE IF EXISTS plant_database_identifier_old'))
                 db.session.execute(db.text('ALTER TABLE plant_database_identifier RENAME TO plant_database_identifier_old'))
                 db.session.execute(db.text(
                     'CREATE TABLE plant_database_identifier ('
