@@ -72,6 +72,7 @@ docker compose up --build
 - `AVATAR_FOLDER` – Verzeichnis für lokal gespeicherte Benutzer-Avatare
 - `MAP_FOLDER` – Verzeichnis für Karten-/Lageplan-Dateien
 - `WIDGET_API_KEY` – API-Key für den Statistik-Webservice `/api/stats`
+- `HEADER_LOGO_URL` – URL eines optionalen Header-Logos (wenn leer oder nicht gesetzt, wird kein Logo angezeigt)
 
 ### OIDC (Pflicht für Login)
 

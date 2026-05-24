@@ -95,7 +95,7 @@
 <div class="page-wrap">
 <header class="site-header">
   <div class="header-main">
-    <a href="/" class="brand"><img src="https://assets.kanonenwiese.de/US_KanonenwieseLogo.svg"><h1>GardenGlow</h1></a>
+    <a href="/" class="brand">{% if config.HEADER_LOGO_URL %}<img src="{{ config.HEADER_LOGO_URL }}" alt="Logo">{% endif %}<h1>GardenGlow</h1></a>
     {% block header_breadcrumb %}{% endblock %}
   </div>
   <div class="header-actions">
