@@ -239,7 +239,7 @@ def _build_database_links_for_plant(plant):
             'identifier': identifier,
             'url': url,
         })
-    return links
+    return sorted(links, key=lambda link: ((link['catalog_label'] or '').lower(), link['identifier'].lower()))
 
 
 def parse_soil_properties(raw_value):
