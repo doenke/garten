@@ -92,12 +92,12 @@
         <div class="grid">
           {% for catalog in database_catalogs %}
           <div class="magic-field-row">
-            <input id="plant-db-{{ catalog.key }}" name="database_id_{{ catalog.key }}" value="{{ (plant.database_identifiers | selectattr('catalog.key', 'equalto', catalog.key) | map(attribute='external_id') | list | first) or '' }}" placeholder="{{ catalog.label }}-ID">
+            <input id="plant-db-{{ catalog.key }}" name="database_id_{{ catalog.key }}" value="{{ (plant.database_identifiers | selectattr('catalog.key', 'equalto', catalog.key) | map(attribute='taxonomy_id') | list | first) or '' }}" placeholder="{{ catalog.label }}-ID">
             <button type="button" class="btn secondary magic-db-id" data-catalog-key="{{ catalog.key }}" title="{{ catalog.label }}-ID suchen">🪄</button>
           </div>
           {% endfor %}
         </div>
-        <small id="magic-external-ids-status" class="muted"></small>
+        <small id="magic-taxonomy-ids-status" class="muted"></small>
         <label for="plant-source">Quelle</label>
         <input id="plant-source" name="source" value="{{ plant.source or '' }}" placeholder="z. B. Gärtnerei Musterhof">
       </fieldset>
@@ -502,7 +502,7 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
   }
   const magicIdButtons = Array.from(document.querySelectorAll('.magic-db-id'));
   const scientificNameInput = document.getElementById('plant-scientific-name');
-  const idsStatus = document.getElementById('magic-external-ids-status');
+  const idsStatus = document.getElementById('magic-taxonomy-ids-status');
   if (magicIdButtons.length && scientificNameInput) {
     magicIdButtons.forEach((magicIdsButton) => {
       magicIdsButton.addEventListener('click', async () => {
@@ -513,7 +513,7 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
         const oldText = magicIdsButton.textContent;
         magicIdsButton.textContent = '…';
         try {
-          const response = await fetch('/plants/{{ plant.id }}/external-ids-suggest', {
+          const response = await fetch('/plants/{{ plant.id }}/taxonomy-ids-suggest', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({scientific_name: sourceName}),

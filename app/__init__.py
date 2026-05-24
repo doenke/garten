@@ -172,22 +172,22 @@ def _ensure_soil_property_schema(inspector):
 
 
 
-def _migrate_plant_database_identifier_add_surrogate_id_sqlite():
+def _migrate_plant_database_identifier_add_surrogate_id_sqlite(source_column='external_id'):
     db.session.execute(db.text('ALTER TABLE plant_database_identifier RENAME TO plant_database_identifier_old'))
     db.session.execute(db.text(
         'CREATE TABLE plant_database_identifier ('
         'id INTEGER NOT NULL PRIMARY KEY, '
         'plant_id INTEGER NOT NULL, '
         'catalog_id INTEGER NOT NULL, '
-        'external_id VARCHAR(255) NOT NULL, '
+        'taxonomy_id VARCHAR(255) NOT NULL, '
         'CONSTRAINT ux_plant_database_identifier_plant_catalog UNIQUE (plant_id, catalog_id), '
         'FOREIGN KEY(plant_id) REFERENCES plant (id), '
         'FOREIGN KEY(catalog_id) REFERENCES database_catalog (id)'
         ')'
     ))
     db.session.execute(db.text(
-        'INSERT INTO plant_database_identifier (plant_id, catalog_id, external_id) '
-        'SELECT plant_id, catalog_id, external_id FROM plant_database_identifier_old'
+        'INSERT INTO plant_database_identifier (plant_id, catalog_id, taxonomy_id) '
+        f'SELECT plant_id, catalog_id, {source_column} FROM plant_database_identifier_old'
     ))
     db.session.execute(db.text('DROP TABLE plant_database_identifier_old'))
     db.session.execute(db.text('CREATE INDEX IF NOT EXISTS ix_plant_database_identifier_plant_id ON plant_database_identifier (plant_id)'))
@@ -202,8 +202,30 @@ def _ensure_plant_extended_schema(inspector):
         PlantDatabaseIdentifier.__table__.create(bind=db.engine, checkfirst=True)
     else:
         identifier_columns = {col['name'] for col in inspector.get_columns('plant_database_identifier')}
-        if 'id' not in identifier_columns and db.engine.dialect.name == 'sqlite':
-            _migrate_plant_database_identifier_add_surrogate_id_sqlite()
+        if db.engine.dialect.name == 'sqlite':
+            if 'id' not in identifier_columns:
+                source_column = 'taxonomy_id' if 'taxonomy_id' in identifier_columns else 'external_id'
+                _migrate_plant_database_identifier_add_surrogate_id_sqlite(source_column=source_column)
+            elif 'taxonomy_id' not in identifier_columns and 'external_id' in identifier_columns:
+                db.session.execute(db.text('ALTER TABLE plant_database_identifier RENAME TO plant_database_identifier_old'))
+                db.session.execute(db.text(
+                    'CREATE TABLE plant_database_identifier ('
+                    'id INTEGER NOT NULL PRIMARY KEY, '
+                    'plant_id INTEGER NOT NULL, '
+                    'catalog_id INTEGER NOT NULL, '
+                    'taxonomy_id VARCHAR(255) NOT NULL, '
+                    'CONSTRAINT ux_plant_database_identifier_plant_catalog UNIQUE (plant_id, catalog_id), '
+                    'FOREIGN KEY(plant_id) REFERENCES plant (id), '
+                    'FOREIGN KEY(catalog_id) REFERENCES database_catalog (id)'
+                    ')'
+                ))
+                db.session.execute(db.text(
+                    'INSERT INTO plant_database_identifier (id, plant_id, catalog_id, taxonomy_id) '
+                    'SELECT id, plant_id, catalog_id, external_id FROM plant_database_identifier_old'
+                ))
+                db.session.execute(db.text('DROP TABLE plant_database_identifier_old'))
+                db.session.execute(db.text('CREATE INDEX IF NOT EXISTS ix_plant_database_identifier_plant_id ON plant_database_identifier (plant_id)'))
+                db.session.execute(db.text('CREATE INDEX IF NOT EXISTS ix_plant_database_identifier_catalog_id ON plant_database_identifier (catalog_id)'))
 
     if 'plant' in table_names:
         columns = {col['name'] for col in inspector.get_columns('plant')}

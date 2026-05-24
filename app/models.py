@@ -116,7 +116,7 @@ class PlantDatabaseIdentifier(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     plant_id = db.Column(db.Integer, db.ForeignKey('plant.id'), nullable=False, index=True)
     catalog_id = db.Column(db.Integer, db.ForeignKey('database_catalog.id'), nullable=False, index=True)
-    external_id = db.Column(db.String(255), nullable=False)
+    taxonomy_id = db.Column(db.String(255), nullable=False)
     plant = db.relationship('Plant', back_populates='database_identifiers')
     catalog = db.relationship('DatabaseCatalog')
 
