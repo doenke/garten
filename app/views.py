@@ -414,15 +414,20 @@ def new_location_timeline_entry(location_id):
         ALLOWED_ATTACHMENT_MIME_TYPES,
         current_app.config.get('MAX_ATTACHMENT_SIZE_BYTES'),
     )
-    if not description or not unique:
+    attachment_kind = None
+    if unique:
+        ext = unique.rsplit('.', 1)[1].lower()
+        attachment_kind = 'image' if ext in IMAGE_TYPES else 'pdf'
+
+    if not description and not unique:
         return redirect(url_for('main.location_detail', location_id=location.id))
 
     create_timeline_entry(
         scope_type='location',
         scope_id=location.id,
-        description=description,
+        description=description or None,
         attachment_filename=unique,
-        attachment_kind='image',
+        attachment_kind=attachment_kind,
         creator_id=current_user().id,
     )
     db.session.commit()

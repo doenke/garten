@@ -77,9 +77,10 @@
 
 <h3>Timeline</h3>
 <form method="post" action="/locations/{{ location.id }}/timeline/new" enctype="multipart/form-data" class="grid mb-1">
-  <textarea name="description" placeholder="Beschreibung" required></textarea>
-  <input type="file" name="attachment" accept="image/*,application/pdf" required>
-  <button>Eintrag mit Anhang hinzufügen</button>
+  <textarea name="description" placeholder="Beschreibung"></textarea>
+  <input type="file" name="attachment" accept="image/*,application/pdf">
+  <small class="text-muted">Text, Bild oder beides möglich.</small>
+  <button>Eintrag hinzufügen</button>
 </form>
 {% for entry in timeline_entries %}
 {% set header_html = None %}
@@ -88,7 +89,7 @@
 {% set entry_text = entry.description %}
 {% set image_url = '/uploads/' ~ entry.attachment_filename if entry.attachment_filename and entry.attachment_kind == 'image' else None %}
 {% set image_alt = 'Timeline-Foto' %}
-{% set image_button = entry.attachment_filename and entry.attachment_kind == 'image' %}
+{% set image_button = image_url is not none %}
 {% set pdf_url = '/uploads/' ~ entry.attachment_filename if entry.attachment_filename and entry.attachment_kind == 'pdf' else None %}
 {% set delete_action = '/locations/' ~ location.id ~ '/timeline/' ~ entry.id ~ '/delete' %}
 {% set title_action = '/locations/' ~ location.id ~ '/timeline/' ~ entry.id ~ '/set-title' %}
