@@ -332,6 +332,18 @@ def get_flower_color_suggestions():
     )
     return [color[0].strip() for color in colors if color[0] and color[0].strip()]
 
+
+def get_source_suggestions(limit=30):
+    sources = (
+        db.session.query(Plant.source, db.func.count(Plant.id).label('usage_count'))
+        .filter(Plant.source.isnot(None), Plant.source != '')
+        .group_by(Plant.source)
+        .order_by(db.desc('usage_count'), Plant.source.asc())
+        .limit(limit)
+        .all()
+    )
+    return [source for source, _ in sources]
+
 def create_system_event(plant_id, key, creator_id, event_at=None, description=None):
     tpl = SYSTEM_EVENT_TEMPLATES[key]
     create_timeline_entry(
@@ -628,6 +640,7 @@ def location_detail(location_id):
         garden_map=garden_map,
         light_need_options=LIGHT_NEED_OPTIONS,
         flower_color_suggestions=get_flower_color_suggestions(),
+        source_suggestions=get_source_suggestions(),
         other_location_polygons=[
             {
                 'id': other_loc.id,
@@ -849,6 +862,7 @@ def plant_detail(plant_id):
         top_soil_properties=[item[0] for item in top_soil_properties],
         soil_property_suggestions=soil_property_suggestions,
         flower_color_suggestions=get_flower_color_suggestions(),
+        source_suggestions=get_source_suggestions(),
         database_links=_build_database_links_for_plant(plant),
         database_catalogs=DatabaseCatalog.query.order_by(DatabaseCatalog.label.asc()).all(),
     )
