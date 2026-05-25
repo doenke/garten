@@ -93,6 +93,13 @@ DEFAULT_DATABASE_CATALOGS = [
         'search_url_template': 'https://www.naturadb.de/suche?query={q}',
         'icon_url': 'https://www.naturadb.de/favicon.ico',
     },
+    {
+        'key': 'botanikus',
+        'label': 'Botanikus',
+        'record_url_template': 'https://botanikus.de/suche?searchword={id}',
+        'search_url_template': 'https://botanikus.de/suche?searchword={q}',
+        'icon_url': 'https://botanikus.de/favicon.ico',
+    },
 ]
 
 TAXONOMY_ID_RESOLVER_CONFIG = {
@@ -116,6 +123,8 @@ TAXONOMY_ID_RESOLVER_CONFIG = {
         'search_url': 'https://www.floraweb.de/suche',
         'query_param': 'suchbegriff',
     },
+    'botanikus': {
+        'mode': 'search_query_passthrough',
     'naturadb': {
         'mode': 'naturadb_search',
         'search_url': 'https://www.naturadb.de/suche',
@@ -1229,6 +1238,8 @@ def _resolve_taxonomy_id_for_catalog(catalog_key, scientific_name):
         return _wfo_taxonomy_id(scientific_name, resolver)
     if mode == 'floraweb_search':
         return _floraweb_taxonomy_id(scientific_name, resolver)
+    if mode == 'search_query_passthrough':
+        return (scientific_name or '').strip() or None
     if mode == 'naturadb_search':
         return _naturadb_taxonomy_id(scientific_name, resolver)
     return None
@@ -1250,6 +1261,8 @@ def _external_resolver_debug_call(catalog_key, scientific_name):
         query_param = resolver.get('query_param') or 'q'
         endpoint = resolver.get('search_url')
         return {'endpoint': endpoint, 'query': {query_param: scientific_name}}
+    if mode == 'search_query_passthrough':
+        return {'endpoint': None, 'query': {'q': scientific_name}}
     return None
 def _external_resolver_endpoint(catalog_key):
     resolver = TAXONOMY_ID_RESOLVER_CONFIG.get(catalog_key) or {'mode': 'none'}
@@ -1287,11 +1300,13 @@ def suggest_taxonomy_ids(plant_id):
         debug_call = _external_resolver_debug_call(catalog.key, scientific_name)
         if debug_call:
             query = debug_call.get('query') or {}
+            endpoint = debug_call.get('endpoint')
+            request_url = f"{endpoint}?{urlencode(query)}" if endpoint and query else endpoint
             external_calls.append({
                 'catalog': catalog.key,
-                'url': debug_call.get('endpoint'),
+                'url': endpoint,
                 'query': query,
-                'request_url': f"{debug_call.get('endpoint')}?{urlencode(query)}" if query else debug_call.get('endpoint'),
+                'request_url': request_url,
             })
         resolved_id = _resolve_taxonomy_id_for_catalog(catalog.key, scientific_name)
         if resolved_id:
