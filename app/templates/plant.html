@@ -498,12 +498,21 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
       if (magicStatus) magicStatus.textContent = 'Suche läuft …';
 
       try {
-        const response = await fetch('/plants/{{ plant.id }}/common-name-suggest', {
+        const requestUrl = '/plants/{{ plant.id }}/common-name-suggest';
+        const response = await fetch(requestUrl, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({name: sourceName}),
         });
-        const data = await response.json();
+        const rawResponse = await response.text();
+        let data;
+        try {
+          data = rawResponse ? JSON.parse(rawResponse) : {};
+        } catch (parseError) {
+          throw new Error('Antwort konnte nicht als JSON gelesen werden.');
+        }
+        pushMagicDebugLog('Common Name', `Request: ${requestUrl}`);
+        pushMagicDebugLog('Common Name', `Response: ${rawResponse || '(leer)'}`);
         if (!response.ok || !data.ok) throw new Error(data.error || 'Kein Vorschlag gefunden');
         commonNameInput.value = data.common_name || '';
         const confidenceText = typeof data.confidence === 'number' ? ` (Confidence: ${Math.round(data.confidence * 100)}%)` : '';
@@ -538,12 +547,21 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
         const oldText = magicIdsButton.textContent;
         magicIdsButton.textContent = '…';
         try {
-          const response = await fetch('/plants/{{ plant.id }}/taxonomy-ids-suggest', {
+          const requestUrl = '/plants/{{ plant.id }}/taxonomy-ids-suggest';
+          const response = await fetch(requestUrl, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({scientific_name: sourceName}),
           });
-          const data = await response.json();
+          const rawResponse = await response.text();
+          let data;
+          try {
+            data = rawResponse ? JSON.parse(rawResponse) : {};
+          } catch (parseError) {
+            throw new Error('Antwort konnte nicht als JSON gelesen werden.');
+          }
+          pushMagicDebugLog('Taxonomy', `Request: ${requestUrl}`);
+          pushMagicDebugLog('Taxonomy', `Response: ${rawResponse || '(leer)'}`);
           if (!response.ok || !data.ok) throw new Error(data.error || 'Kein Vorschlag gefunden');
           const input = document.getElementById(`plant-db-${catalogKey}`);
           const suggestedId = data.matches?.[catalogKey];
