@@ -93,13 +93,6 @@ DEFAULT_DATABASE_CATALOGS = [
         'search_url_template': 'https://www.naturadb.de/suche?query={q}',
         'icon_url': 'https://www.naturadb.de/favicon.ico',
     },
-    {
-        'key': 'botanikus',
-        'label': 'Botanikus',
-        'record_url_template': 'https://botanikus.de/suche?searchword={id}',
-        'search_url_template': 'https://botanikus.de/suche?searchword={q}',
-        'icon_url': 'https://botanikus.de/favicon.ico',
-    },
 ]
 
 TAXONOMY_ID_RESOLVER_CONFIG = {
@@ -589,7 +582,16 @@ def config():
 def update_catalogs():
     get_or_create_database_catalogs()
     catalogs = DatabaseCatalog.query.order_by(DatabaseCatalog.label.asc()).all()
+    delete_catalog_ids = {
+        int(raw_id)
+        for raw_id in request.form.getlist('delete_catalog_ids')
+        if raw_id and raw_id.isdigit()
+    }
     for catalog in catalogs:
+        if catalog.id in delete_catalog_ids:
+            PlantDatabaseIdentifier.query.filter_by(catalog_id=catalog.id).delete(synchronize_session=False)
+            db.session.delete(catalog)
+            continue
         catalog.label = (request.form.get(f'label_{catalog.id}') or catalog.label).strip() or catalog.label
         catalog.enabled = request.form.get(f'enabled_{catalog.id}') == 'on'
         catalog.record_url_template = (request.form.get(f'record_url_template_{catalog.id}') or catalog.record_url_template).strip()

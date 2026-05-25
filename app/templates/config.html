@@ -75,6 +75,9 @@
       <label>Icon-URL (optional)
         <input name="icon_url_{{ catalog.id }}" value="{{ catalog.icon_url or '' }}" placeholder="https://example.org/favicon.ico">
       </label>
+      <label>
+        <input type="checkbox" name="delete_catalog_ids" value="{{ catalog.id }}"> Katalog löschen
+      </label>
     </fieldset>
     {% endfor %}
     <fieldset class="form-section">
