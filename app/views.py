@@ -93,7 +93,11 @@ TAXONOMY_ID_RESOLVER_CONFIG = {
         'kingdom': 'Plantae',
     },
     'wfo': {'mode': 'none'},
-    'powo_ipni': {'mode': 'none'},
+    'powo_ipni': {
+        'mode': 'powo_search',
+        'accepted_only': True,
+        'per_page': 5,
+    },
     'floraweb': {'mode': 'none'},
 }
 
@@ -1006,11 +1010,58 @@ def _gbif_species_match_id(scientific_name, config):
     return str(usage_key)
 
 
+
+
+def _powo_taxonomy_id(scientific_name, config):
+    params = {
+        'q': scientific_name,
+        'perPage': config.get('per_page') or 5,
+    }
+    if config.get('accepted_only', True):
+        params['f'] = 'accepted:true'
+
+    try:
+        response = requests.get(
+            'https://powo.science.kew.org/api/2/search',
+            params=params,
+            timeout=8,
+        )
+        response.raise_for_status()
+    except requests.RequestException:
+        return None
+
+    payload = response.json() if response.content else {}
+    results = payload.get('results') if isinstance(payload, dict) else None
+    if not results:
+        return None
+
+    normalized_name = (scientific_name or '').strip().lower()
+    for item in results:
+        if not isinstance(item, dict):
+            continue
+        resolved_name = str(item.get('name') or item.get('accepted_name') or '').strip().lower()
+        if resolved_name and resolved_name != normalized_name:
+            continue
+
+        raw_id = item.get('fqId') or item.get('id') or item.get('url') or ''
+        if not raw_id:
+            continue
+        raw_id = str(raw_id).strip()
+
+        if 'urn:lsid:ipni.org:names:' in raw_id:
+            return raw_id.rsplit(':', 1)[-1]
+        if '/taxon/' in raw_id:
+            return raw_id.rsplit('/taxon/', 1)[-1].strip('/')
+        return raw_id
+
+    return None
 def _resolve_taxonomy_id_for_catalog(catalog_key, scientific_name):
     resolver = TAXONOMY_ID_RESOLVER_CONFIG.get(catalog_key) or {'mode': 'none'}
     mode = resolver.get('mode')
     if mode == 'gbif_species_match':
         return _gbif_species_match_id(scientific_name, resolver)
+    if mode == 'powo_search':
+        return _powo_taxonomy_id(scientific_name, resolver)
     return None
 
 
