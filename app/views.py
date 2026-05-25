@@ -1,3 +1,4 @@
+import html
 import json
 import time
 import re
@@ -1148,14 +1149,23 @@ def _search_page_taxonomy_id(scientific_name, config, patterns):
     except requests.RequestException:
         return None
 
-    html = response.text or ''
-    for pattern in patterns:
-        match = re.search(pattern, html, flags=re.IGNORECASE)
-        if not match:
-            continue
-        taxonomy_id = (match.group(1) or '').strip().strip('/').strip()
-        if taxonomy_id:
-            return taxonomy_id
+    page_html = response.text or ''
+    candidates = [page_html]
+    decoded_once = html.unescape(page_html)
+    if decoded_once != page_html:
+        candidates.append(decoded_once)
+    decoded_twice = html.unescape(decoded_once)
+    if decoded_twice not in candidates:
+        candidates.append(decoded_twice)
+
+    for candidate_html in candidates:
+        for pattern in patterns:
+            match = re.search(pattern, candidate_html, flags=re.IGNORECASE)
+            if not match:
+                continue
+            taxonomy_id = (match.group(1) or '').strip().strip('/').strip()
+            if taxonomy_id:
+                return taxonomy_id
     return None
 
 
@@ -1177,6 +1187,8 @@ def _floraweb_taxonomy_id(scientific_name, config):
         patterns=[
             r'/taxon/([A-Za-z0-9\-]+)',
             r'/pflanze/([A-Za-z0-9\-]+)',
+            r'[?&]taxnr=([0-9]+)',
+            r'/taxonomiedetail[s]?/[A-Za-z0-9\-]*([0-9]{3,})',
         ],
     )
 def _resolve_taxonomy_id_for_catalog(catalog_key, scientific_name):
