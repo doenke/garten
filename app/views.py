@@ -86,6 +86,13 @@ DEFAULT_DATABASE_CATALOGS = [
         'search_url_template': 'https://www.floraweb.de/suche?suchbegriff={q}',
         'icon_url': 'https://www.floraweb.de/favicon.ico',
     },
+    {
+        'key': 'naturadb',
+        'label': 'NaturaDB',
+        'record_url_template': 'https://www.naturadb.de/pflanzen/{id}',
+        'search_url_template': 'https://www.naturadb.de/suche?query={q}',
+        'icon_url': 'https://www.naturadb.de/favicon.ico',
+    },
 ]
 
 TAXONOMY_ID_RESOLVER_CONFIG = {
@@ -1305,6 +1312,7 @@ def update_masterdata(plant_id):
         'powo_ipni_lsid': 'POWO/IPNI-LSID',
         'gbif_id': 'GBIF-ID',
         'floraweb_id': 'FloraWeb-ID',
+        'naturadb_id': 'NaturaDB-ID',
     }
 
     bloom_start_month, bloom_end_month, bloom_months_valid = parse_bloom_months(request.form)
