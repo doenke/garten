@@ -105,7 +105,8 @@
           <ul id="magic-debug-log" class="muted" style="margin:.35rem 0 0 1.1rem;padding:0;display:grid;gap:.2rem;"></ul>
         </details>
         <label for="plant-source">Quelle</label>
-        <input id="plant-source" name="source" value="{{ plant.source or '' }}" placeholder="z. B. Gärtnerei Musterhof">
+        <input id="plant-source" name="source" value="{{ plant.source or '' }}" placeholder="z. B. Gärtnerei Musterhof" list="source-suggestions">
+        <datalist id="source-suggestions">{% for source in source_suggestions %}<option value="{{ source }}">{% endfor %}</datalist>
       </fieldset>
       <fieldset class="form-section">
         <legend>Standort &amp; Boden</legend>
