@@ -945,18 +945,25 @@ def save_plant_position(plant_id):
 @login_required
 def suggest_common_name(plant_id):
     plant = Plant.query.get_or_404(plant_id)
+    started_at = time.perf_counter()
     payload = request.get_json(silent=True) or {}
     name_value = (payload.get('name') or plant.name or '').strip()
+    trace_id = f"magic-common-{plant_id}-{int(time.time() * 1000)}"
     if not name_value:
-        return jsonify({'ok': False, 'error': 'Bitte zuerst einen Namen eingeben.'}), 400
+        current_app.logger.info('[%s] common-name lookup aborted: missing source name', trace_id)
+        return jsonify({'ok': False, 'error': 'Bitte zuerst einen Namen eingeben.', 'debug': {'trace_id': trace_id}}), 400
 
     lookup_language = current_app.config.get('COMMON_NAME_LOOKUP_LANG', 'de')
     common_name, sources = _lookup_common_name_from_web(name_value, language_code=lookup_language)
     if not common_name:
-        return jsonify({'ok': False, 'error': 'Kein Vorschlag gefunden.'}), 404
+        duration_ms = round((time.perf_counter() - started_at) * 1000, 1)
+        current_app.logger.info('[%s] common-name lookup failed for "%s" (%sms, sources=%s)', trace_id, name_value, duration_ms, len(sources or []))
+        return jsonify({'ok': False, 'error': 'Kein Vorschlag gefunden.', 'debug': {'trace_id': trace_id, 'duration_ms': duration_ms}}), 404
 
     confidence = 0.88 if common_name.lower() != name_value.lower() else 0.55
-    return jsonify({'ok': True, 'common_name': common_name, 'confidence': confidence, 'sources': sources, 'language': lookup_language})
+    duration_ms = round((time.perf_counter() - started_at) * 1000, 1)
+    current_app.logger.info('[%s] common-name lookup success for "%s" -> "%s" (%sms, sources=%s)', trace_id, name_value, common_name, duration_ms, len(sources or []))
+    return jsonify({'ok': True, 'common_name': common_name, 'confidence': confidence, 'sources': sources, 'language': lookup_language, 'debug': {'trace_id': trace_id, 'duration_ms': duration_ms}})
 
 
 def upsert_plant_database_identifiers(plant, form):
@@ -1087,10 +1094,13 @@ def _resolve_taxonomy_id_for_catalog(catalog_key, scientific_name):
 @login_required
 def suggest_taxonomy_ids(plant_id):
     plant = Plant.query.get_or_404(plant_id)
+    started_at = time.perf_counter()
     payload = request.get_json(silent=True) or {}
     scientific_name = (payload.get('scientific_name') or plant.scientific_name or plant.name or '').strip()
+    trace_id = f"magic-taxonomy-{plant_id}-{int(time.time() * 1000)}"
     if not scientific_name:
-        return jsonify({'ok': False, 'error': 'Bitte zuerst einen wissenschaftlichen Namen eingeben.'}), 400
+        current_app.logger.info('[%s] taxonomy lookup aborted: missing scientific name', trace_id)
+        return jsonify({'ok': False, 'error': 'Bitte zuerst einen wissenschaftlichen Namen eingeben.', 'debug': {'trace_id': trace_id}}), 400
     catalogs = [catalog for catalog in get_or_create_database_catalogs() if catalog.enabled]
     suggested = {}
     unavailable = []
@@ -1100,6 +1110,8 @@ def suggest_taxonomy_ids(plant_id):
             unavailable.append(catalog.key)
             continue
         suggested[catalog.key] = resolved_id
+    duration_ms = round((time.perf_counter() - started_at) * 1000, 1)
+    current_app.logger.info('[%s] taxonomy lookup for "%s" (%sms): %s hits, unavailable=%s', trace_id, scientific_name, duration_ms, len(suggested), ','.join(unavailable) or '-')
     return jsonify({
         'ok': True,
         'scientific_name': scientific_name,
@@ -1107,6 +1119,7 @@ def suggest_taxonomy_ids(plant_id):
         'unavailable_catalogs': unavailable,
         'confidence': 0.9 if suggested else 0.0,
         'note': 'IDs werden katalogspezifisch ermittelt. Ohne Resolver gibt es keinen Vorschlag.',
+        'debug': {'trace_id': trace_id, 'duration_ms': duration_ms},
     })
 
 @main_bp.route('/plants/<int:plant_id>/masterdata', methods=['POST'])
