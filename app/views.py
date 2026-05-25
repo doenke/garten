@@ -1058,7 +1058,7 @@ def _powo_taxonomy_id(scientific_name, config):
         if not raw_id:
             return None
         if 'urn:lsid:ipni.org:names:' in raw_id:
-            return raw_id.rsplit(':', 1)[-1]
+            return raw_id
         if '/taxon/' in raw_id:
             return raw_id.rsplit('/taxon/', 1)[-1].strip('/')
         return raw_id
