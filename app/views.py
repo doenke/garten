@@ -257,24 +257,7 @@ def format_light_need_labels(light_needs):
 
 
 def get_or_create_database_catalogs():
-    catalogs = []
-    for default in DEFAULT_DATABASE_CATALOGS:
-        catalog = DatabaseCatalog.query.filter_by(key=default['key']).first()
-        if not catalog:
-            catalog = DatabaseCatalog(**default, enabled=True)
-            db.session.add(catalog)
-            db.session.flush()
-        else:
-            # Keep manually customized values, but backfill defaults for legacy rows
-            # created before schema additions such as icon_url/search_url_template.
-            if not (catalog.record_url_template or '').strip():
-                catalog.record_url_template = default['record_url_template']
-            if not (catalog.search_url_template or '').strip():
-                catalog.search_url_template = default.get('search_url_template')
-            if not (catalog.icon_url or '').strip():
-                catalog.icon_url = default.get('icon_url')
-        catalogs.append(catalog)
-    return catalogs
+    return DatabaseCatalog.query.order_by(DatabaseCatalog.label.asc()).all()
 
 
 def _build_database_links_for_plant(plant):
