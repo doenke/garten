@@ -1166,6 +1166,8 @@ def _wfo_taxonomy_id(scientific_name, config):
         patterns=[
             r'/taxon/(wfo-[A-Za-z0-9\-]+)',
             r'worldfloraonline\.org/taxon/(wfo-[A-Za-z0-9\-]+)',
+            r'/taxon/([A-Za-z0-9\-]+)',
+            r'worldfloraonline\.org/taxon/([A-Za-z0-9\-]+)',
         ],
     )
 
