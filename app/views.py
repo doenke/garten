@@ -93,13 +93,21 @@ TAXONOMY_ID_RESOLVER_CONFIG = {
         'prefer_statuses': {'ACCEPTED'},
         'kingdom': 'Plantae',
     },
-    'wfo': {'mode': 'none'},
+    'wfo': {
+        'mode': 'wfo_search',
+        'search_url': 'https://www.worldfloraonline.org/search',
+        'query_param': 'query',
+    },
     'powo_ipni': {
         'mode': 'powo_search',
         'accepted_only': True,
         'per_page': 5,
     },
-    'floraweb': {'mode': 'none'},
+    'floraweb': {
+        'mode': 'floraweb_search',
+        'search_url': 'https://www.floraweb.de/suche',
+        'query_param': 'suchbegriff',
+    },
 }
 
 
@@ -1121,6 +1129,56 @@ def _powo_taxonomy_id(scientific_name, config):
                 return taxonomy_id
 
     return fallback_id
+
+
+def _search_page_taxonomy_id(scientific_name, config, patterns):
+    search_url = (config.get('search_url') or '').strip()
+    query_param = (config.get('query_param') or 'q').strip()
+    if not search_url:
+        return None
+
+    try:
+        response = requests.get(
+            search_url,
+            params={query_param: scientific_name},
+            headers={'Accept': 'text/html,application/xhtml+xml', 'User-Agent': 'garten-taxonomy-resolver/1.0'},
+            timeout=8,
+        )
+        response.raise_for_status()
+    except requests.RequestException:
+        return None
+
+    html = response.text or ''
+    for pattern in patterns:
+        match = re.search(pattern, html, flags=re.IGNORECASE)
+        if not match:
+            continue
+        taxonomy_id = (match.group(1) or '').strip().strip('/').strip()
+        if taxonomy_id:
+            return taxonomy_id
+    return None
+
+
+def _wfo_taxonomy_id(scientific_name, config):
+    return _search_page_taxonomy_id(
+        scientific_name,
+        config,
+        patterns=[
+            r'/taxon/(wfo-[A-Za-z0-9\-]+)',
+            r'worldfloraonline\.org/taxon/(wfo-[A-Za-z0-9\-]+)',
+        ],
+    )
+
+
+def _floraweb_taxonomy_id(scientific_name, config):
+    return _search_page_taxonomy_id(
+        scientific_name,
+        config,
+        patterns=[
+            r'/taxon/([A-Za-z0-9\-]+)',
+            r'/pflanze/([A-Za-z0-9\-]+)',
+        ],
+    )
 def _resolve_taxonomy_id_for_catalog(catalog_key, scientific_name):
     resolver = TAXONOMY_ID_RESOLVER_CONFIG.get(catalog_key) or {'mode': 'none'}
     mode = resolver.get('mode')
@@ -1128,6 +1186,10 @@ def _resolve_taxonomy_id_for_catalog(catalog_key, scientific_name):
         return _gbif_species_match_id(scientific_name, resolver)
     if mode == 'powo_search':
         return _powo_taxonomy_id(scientific_name, resolver)
+    if mode == 'wfo_search':
+        return _wfo_taxonomy_id(scientific_name, resolver)
+    if mode == 'floraweb_search':
+        return _floraweb_taxonomy_id(scientific_name, resolver)
     return None
 
 
@@ -1143,6 +1205,10 @@ def _external_resolver_debug_call(catalog_key, scientific_name):
         if resolver.get('accepted_only', True):
             params['f'] = 'accepted:true'
         return {'endpoint': 'https://powo.science.kew.org/api/2/search', 'query': params}
+    if mode in {'wfo_search', 'floraweb_search'}:
+        query_param = resolver.get('query_param') or 'q'
+        endpoint = resolver.get('search_url')
+        return {'endpoint': endpoint, 'query': {query_param: scientific_name}}
     return None
 def _external_resolver_endpoint(catalog_key):
     resolver = TAXONOMY_ID_RESOLVER_CONFIG.get(catalog_key) or {'mode': 'none'}
@@ -1151,6 +1217,8 @@ def _external_resolver_endpoint(catalog_key):
         return 'https://api.gbif.org/v1/species/match'
     if mode == 'powo_search':
         return 'https://powo.science.kew.org/api/2/search'
+    if mode in {'wfo_search', 'floraweb_search'}:
+        return resolver.get('search_url')
     return None
 
 
