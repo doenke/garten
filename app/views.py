@@ -1016,18 +1016,32 @@ def upsert_plant_database_identifiers(plant, form):
     plant.database_identifiers = new_entries
 
 
+
+
+def _parse_json_response(response):
+    if not response.content:
+        return {}
+    try:
+        return response.json()
+    except ValueError:
+        current_app.logger.warning('taxonomy resolver non-json response from %s (status=%s)', response.url, response.status_code)
+        return None
+
 def _gbif_species_match_id(scientific_name, config):
     try:
         response = requests.get(
             'https://api.gbif.org/v1/species/match',
             params={'name': scientific_name, 'verbose': 'true', 'kingdom': config.get('kingdom') or 'Plantae'},
+            headers={'Accept': 'application/json', 'User-Agent': 'garten-taxonomy-resolver/1.0'},
             timeout=8,
         )
         response.raise_for_status()
     except requests.RequestException:
         return None
 
-    payload = response.json() if response.content else {}
+    payload = _parse_json_response(response)
+    if payload is None:
+        return None
     usage_key = payload.get('usageKey')
     if not usage_key:
         return None
@@ -1067,13 +1081,16 @@ def _powo_taxonomy_id(scientific_name, config):
         response = requests.get(
             'https://powo.science.kew.org/api/2/search',
             params=params,
+            headers={'Accept': 'application/json', 'User-Agent': 'garten-taxonomy-resolver/1.0'},
             timeout=8,
         )
         response.raise_for_status()
     except requests.RequestException:
         return None
 
-    payload = response.json() if response.content else {}
+    payload = _parse_json_response(response)
+    if payload is None:
+        return None
     results = payload.get('results') if isinstance(payload, dict) else None
     if not results:
         return None
