@@ -1,6 +1,7 @@
 import json
 import time
 import re
+from urllib.parse import urlencode
 
 import requests
 from functools import wraps
@@ -1098,6 +1099,20 @@ def _resolve_taxonomy_id_for_catalog(catalog_key, scientific_name):
         return _powo_taxonomy_id(scientific_name, resolver)
     return None
 
+
+
+def _external_resolver_debug_call(catalog_key, scientific_name):
+    resolver = TAXONOMY_ID_RESOLVER_CONFIG.get(catalog_key) or {'mode': 'none'}
+    mode = resolver.get('mode')
+    if mode == 'gbif_species_match':
+        params = {'name': scientific_name, 'verbose': 'true', 'kingdom': resolver.get('kingdom') or 'Plantae'}
+        return {'endpoint': 'https://api.gbif.org/v1/species/match', 'query': params}
+    if mode == 'powo_search':
+        params = {'q': scientific_name, 'perPage': resolver.get('per_page') or 5}
+        if resolver.get('accepted_only', True):
+            params['f'] = 'accepted:true'
+        return {'endpoint': 'https://powo.science.kew.org/api/2/search', 'query': params}
+    return None
 def _external_resolver_endpoint(catalog_key):
     resolver = TAXONOMY_ID_RESOLVER_CONFIG.get(catalog_key) or {'mode': 'none'}
     mode = resolver.get('mode')
@@ -1129,9 +1144,15 @@ def suggest_taxonomy_ids(plant_id):
             unavailable.append(catalog.key)
             continue
 
-        external_endpoint = _external_resolver_endpoint(catalog.key)
-        if external_endpoint:
-            external_calls.append({'catalog': catalog.key, 'url': external_endpoint})
+        debug_call = _external_resolver_debug_call(catalog.key, scientific_name)
+        if debug_call:
+            query = debug_call.get('query') or {}
+            external_calls.append({
+                'catalog': catalog.key,
+                'url': debug_call.get('endpoint'),
+                'query': query,
+                'request_url': f"{debug_call.get('endpoint')}?{urlencode(query)}" if query else debug_call.get('endpoint'),
+            })
         resolved_id = _resolve_taxonomy_id_for_catalog(catalog.key, scientific_name)
         if resolved_id:
             suggested[catalog.key] = resolved_id
