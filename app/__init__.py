@@ -112,6 +112,7 @@ def _run_schema_upgrades():
     """Apply lightweight, idempotent schema upgrades for existing databases."""
     inspector = inspect(db.engine)
     _ensure_light_need_schema(inspector)
+    _drop_legacy_plant_light_need_column(inspector)
     _ensure_soil_property_schema(inspector)
     _ensure_timeline_title_entry_uniqueness(inspector)
     _ensure_plant_extended_schema(inspector)
@@ -161,6 +162,23 @@ def _ensure_light_need_schema(inspector):
             db.session.add(LightNeed(key=key, label=label))
     db.session.flush()
 
+
+
+
+def _drop_legacy_plant_light_need_column(inspector):
+    table_names = set(inspector.get_table_names())
+    if 'plant' not in table_names:
+        return
+
+    columns = {col['name'] for col in inspector.get_columns('plant')}
+    if 'light_need' not in columns:
+        return
+
+    dialect = db.engine.dialect.name
+    if dialect == 'sqlite':
+        db.session.execute(db.text('ALTER TABLE plant DROP COLUMN light_need'))
+    elif dialect == 'postgresql':
+        db.session.execute(db.text('ALTER TABLE plant DROP COLUMN IF EXISTS light_need'))
 
 def _ensure_soil_property_schema(inspector):
     table_names = set(inspector.get_table_names())
