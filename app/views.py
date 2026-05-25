@@ -125,6 +125,7 @@ TAXONOMY_ID_RESOLVER_CONFIG = {
     },
     'botanikus': {
         'mode': 'search_query_passthrough',
+    },
     'naturadb': {
         'mode': 'naturadb_search',
         'search_url': 'https://www.naturadb.de/suche',
