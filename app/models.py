@@ -62,7 +62,6 @@ class Plant(db.Model):
     scientific_name = db.Column(db.String(255), index=True)
     common_name = db.Column(db.String(255))
     source = db.Column(db.String(255))
-    light_need = db.Column(db.String(128), nullable=False)
     light_needs = db.relationship('LightNeed', secondary=plant_light_need, lazy='select', order_by='LightNeed.id')
     bloom_start_month = db.Column(db.Integer)
     bloom_end_month = db.Column(db.Integer)

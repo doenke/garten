@@ -774,7 +774,6 @@ def new_plant(location_id):
         scientific_name=request.form.get('scientific_name'),
         common_name=request.form.get('common_name'),
         source=request.form.get('source'),
-        light_need='',
         bloom_start_month=bloom_start_month,
         bloom_end_month=bloom_end_month,
         flower_color=request.form.get('flower_color'),
@@ -1398,7 +1397,6 @@ def update_masterdata(plant_id):
     if old_light_need_display != new_light_need_display:
         changes.append(f"Lichtbedarf: {old_light_need_display} → {new_light_need_display}")
         plant.light_needs = new_light_needs
-        plant.light_need = ''
 
     new_soil_labels = parse_soil_properties(request.form.get('soil_properties'))
     new_soil_properties = get_or_create_soil_properties(new_soil_labels)
