@@ -1348,11 +1348,6 @@ def update_masterdata(plant_id):
         'info': 'Info',
         'map_x': 'Breitengrad',
         'map_y': 'Längengrad',
-        'wfo_id': 'WFO-ID',
-        'powo_ipni_lsid': 'POWO/IPNI-LSID',
-        'gbif_id': 'GBIF-ID',
-        'floraweb_id': 'FloraWeb-ID',
-        'naturadb_id': 'NaturaDB-ID',
     }
 
     bloom_start_month, bloom_end_month, bloom_months_valid = parse_bloom_months(request.form)

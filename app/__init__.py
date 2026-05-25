@@ -116,6 +116,7 @@ def _run_schema_upgrades():
     _ensure_soil_property_schema(inspector)
     _ensure_timeline_title_entry_uniqueness(inspector)
     _ensure_plant_extended_schema(inspector)
+    _drop_legacy_plant_database_id_columns(inspector)
     db.session.commit()
 
 
@@ -179,6 +180,33 @@ def _drop_legacy_plant_light_need_column(inspector):
         db.session.execute(db.text('ALTER TABLE plant DROP COLUMN light_need'))
     elif dialect == 'postgresql':
         db.session.execute(db.text('ALTER TABLE plant DROP COLUMN IF EXISTS light_need'))
+
+
+
+def _drop_legacy_plant_database_id_columns(inspector):
+    table_names = set(inspector.get_table_names())
+    if 'plant' not in table_names:
+        return
+
+    legacy_columns = [
+        'wfo_id',
+        'powo_ipni_lsid',
+        'gbif_id',
+        'floraweb_id',
+        'naturadb_id',
+    ]
+    columns = {col['name'] for col in inspector.get_columns('plant')}
+    present_legacy = [column for column in legacy_columns if column in columns]
+    if not present_legacy:
+        return
+
+    dialect = db.engine.dialect.name
+    if dialect == 'sqlite':
+        for column in present_legacy:
+            db.session.execute(db.text(f'ALTER TABLE plant DROP COLUMN {column}'))
+    elif dialect == 'postgresql':
+        for column in present_legacy:
+            db.session.execute(db.text(f'ALTER TABLE plant DROP COLUMN IF EXISTS {column}'))
 
 def _ensure_soil_property_schema(inspector):
     table_names = set(inspector.get_table_names())
