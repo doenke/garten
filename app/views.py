@@ -1181,13 +1181,17 @@ def _search_page_taxonomy_id(scientific_name, config, patterns):
         candidates.append(decoded_twice)
 
     for candidate_html in candidates:
+        first_match = None
         for pattern in patterns:
-            match = re.search(pattern, candidate_html, flags=re.IGNORECASE)
-            if not match:
-                continue
-            taxonomy_id = (match.group(1) or '').strip().strip('/').strip()
-            if taxonomy_id:
-                return taxonomy_id
+            for match in re.finditer(pattern, candidate_html, flags=re.IGNORECASE):
+                if first_match is None or match.start() < first_match.start():
+                    first_match = match
+                break
+        if not first_match:
+            continue
+        taxonomy_id = (first_match.group(1) or '').strip().strip('/').strip()
+        if taxonomy_id:
+            return taxonomy_id
     return None
 
 
@@ -1198,8 +1202,14 @@ def _wfo_taxonomy_id(scientific_name, config):
         patterns=[
             r'/taxon/(wfo-[A-Za-z0-9\-]+)',
             r'worldfloraonline\.org/taxon/(wfo-[A-Za-z0-9\-]+)',
+            r'\\/taxon\\/(wfo-[A-Za-z0-9\-]+)',
+            r'worldfloraonline\\.org\\/taxon\\/(wfo-[A-Za-z0-9\-]+)',
+            r'%2Ftaxon%2F(wfo-[A-Za-z0-9\-]+)',
             r'/taxon/([A-Za-z0-9\-]+)',
             r'worldfloraonline\.org/taxon/([A-Za-z0-9\-]+)',
+            r'\\/taxon\\/([A-Za-z0-9\-]+)',
+            r'worldfloraonline\\.org\\/taxon\\/([A-Za-z0-9\-]+)',
+            r'%2Ftaxon%2F([A-Za-z0-9\-]+)',
         ],
     )
 
