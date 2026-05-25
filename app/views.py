@@ -69,7 +69,7 @@ DEFAULT_DATABASE_CATALOGS = [
         'label': 'POWO/IPNI-LSID',
         'record_url_template': 'https://powo.science.kew.org/taxon/{id}',
         'search_url_template': 'https://powo.science.kew.org/results?q={q}',
-        'icon_url': 'https://powo.science.kew.org/favicon.ico',
+        'icon_url': 'https://powo.science.kew.org/img/powo-favicon.ico',
     },
     {
         'key': 'gbif',
