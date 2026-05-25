@@ -499,10 +499,12 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
 
       try {
         const requestUrl = '/plants/{{ plant.id }}/common-name-suggest';
+        const requestPayload = {name: sourceName};
+        pushMagicDebugLog('Common Name', `API-Call: POST ${requestUrl} body=${JSON.stringify(requestPayload)}`);
         const response = await fetch(requestUrl, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({name: sourceName}),
+          body: JSON.stringify(requestPayload),
         });
         const rawResponse = await response.text();
         let data;
@@ -548,10 +550,12 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
         magicIdsButton.textContent = '…';
         try {
           const requestUrl = '/plants/{{ plant.id }}/taxonomy-ids-suggest';
+          const requestPayload = {scientific_name: sourceName};
+          pushMagicDebugLog('Taxonomy', `API-Call: POST ${requestUrl} body=${JSON.stringify(requestPayload)}`);
           const response = await fetch(requestUrl, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({scientific_name: sourceName}),
+            body: JSON.stringify(requestPayload),
           });
           const rawResponse = await response.text();
           let data;
