@@ -1098,6 +1098,15 @@ def _resolve_taxonomy_id_for_catalog(catalog_key, scientific_name):
         return _powo_taxonomy_id(scientific_name, resolver)
     return None
 
+def _external_resolver_endpoint(catalog_key):
+    resolver = TAXONOMY_ID_RESOLVER_CONFIG.get(catalog_key) or {'mode': 'none'}
+    mode = resolver.get('mode')
+    if mode == 'gbif_species_match':
+        return 'https://api.gbif.org/v1/species/match'
+    if mode == 'powo_search':
+        return 'https://powo.science.kew.org/api/2/search'
+    return None
+
 
 @main_bp.route('/plants/<int:plant_id>/taxonomy-ids-suggest', methods=['POST'])
 @login_required
@@ -1113,12 +1122,16 @@ def suggest_taxonomy_ids(plant_id):
     catalogs = [catalog for catalog in get_or_create_database_catalogs() if catalog.enabled]
     suggested = {}
     unavailable = []
+    external_calls = []
     for catalog in catalogs:
         resolver = TAXONOMY_ID_RESOLVER_CONFIG.get(catalog.key) or {'mode': 'none'}
         if resolver.get('mode') == 'none':
             unavailable.append(catalog.key)
             continue
 
+        external_endpoint = _external_resolver_endpoint(catalog.key)
+        if external_endpoint:
+            external_calls.append({'catalog': catalog.key, 'url': external_endpoint})
         resolved_id = _resolve_taxonomy_id_for_catalog(catalog.key, scientific_name)
         if resolved_id:
             suggested[catalog.key] = resolved_id
@@ -1131,7 +1144,7 @@ def suggest_taxonomy_ids(plant_id):
         'unavailable_catalogs': unavailable,
         'confidence': 0.9 if suggested else 0.0,
         'note': 'IDs werden katalogspezifisch ermittelt. Ohne Resolver gibt es keinen Vorschlag.',
-        'debug': {'trace_id': trace_id, 'duration_ms': duration_ms},
+        'debug': {'trace_id': trace_id, 'duration_ms': duration_ms, 'external_calls': external_calls},
     })
 
 @main_bp.route('/plants/<int:plant_id>/masterdata', methods=['POST'])
