@@ -474,10 +474,21 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
   const commonNameDebug = document.getElementById('magic-debug-last-common-name');
   const taxonomyDebug = document.getElementById('magic-debug-last-taxonomy');
   const magicDebugLog = document.getElementById('magic-debug-log');
-  const pushMagicDebugLog = (scope, message) => {
+  const pushMagicDebugLog = (scope, message, linkUrl = null) => {
     if (!magicDebugLog) return;
     const line = document.createElement('li');
-    line.textContent = `[${new Date().toLocaleTimeString()}] ${scope}: ${message}`;
+    const prefix = document.createTextNode(`[${new Date().toLocaleTimeString()}] ${scope}: ${message}`);
+    line.appendChild(prefix);
+    if (linkUrl) {
+      const spacer = document.createTextNode(' ');
+      const anchor = document.createElement('a');
+      anchor.href = linkUrl;
+      anchor.target = '_blank';
+      anchor.rel = 'noopener noreferrer';
+      anchor.textContent = 'Debug-Link';
+      line.appendChild(spacer);
+      line.appendChild(anchor);
+    }
     magicDebugLog.prepend(line);
     while (magicDebugLog.children.length > 12) magicDebugLog.removeChild(magicDebugLog.lastChild);
   };
@@ -571,7 +582,12 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
           const externalCalls = Array.isArray(data?.debug?.external_calls) ? data.debug.external_calls : [];
           const matchingExternalCalls = externalCalls.filter((entry) => entry?.catalog === catalogKey);
           if (matchingExternalCalls.length) {
-            matchingExternalCalls.forEach((entry) => pushMagicDebugLog('Taxonomy', `Externer Call (${catalogKey.toUpperCase()}): ${entry.url}`));
+            matchingExternalCalls.forEach((entry) => {
+              const endpoint = entry?.url || '-';
+              const query = entry?.query ? JSON.stringify(entry.query) : '-';
+              const requestLink = entry?.request_url || endpoint;
+              pushMagicDebugLog('Taxonomy', `Externer Call (${catalogKey.toUpperCase()}): ${endpoint} | Query: ${query}`, requestLink);
+            });
           }
           pushMagicDebugLog('Taxonomy', `Response: ${rawResponse || '(leer)'}`);
           if (!response.ok || !data.ok) throw new Error(data.error || 'Kein Vorschlag gefunden');
