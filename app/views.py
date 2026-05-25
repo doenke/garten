@@ -2,7 +2,7 @@ import html
 import json
 import time
 import re
-from urllib.parse import urlencode
+from urllib.parse import urlencode, unquote
 
 import requests
 from functools import wraps
@@ -1227,14 +1227,24 @@ def _floraweb_taxonomy_id(scientific_name, config):
 
 
 def _naturadb_taxonomy_id(scientific_name, config):
-    return _search_page_taxonomy_id(
+    raw_id = _search_page_taxonomy_id(
         scientific_name,
         config,
         patterns=[
-            r'https?://(?:www\.)?naturadb\.de/pflanzen/([a-z0-9\-]+)',
-            r'/pflanzen/([a-z0-9\-]+)',
+            r'https?://(?:www\.)?naturadb\.de/pflanzen/([^"\'\s\?#/&]+)',
+            r'/pflanzen/([^"\'\s\?#/&]+)',
+            r'\/pflanzen\/([^\"\s\?#/&]+)',
+            r'%2Fpflanzen%2F([^%\s\?#/&]+)',
         ],
     )
+    if not raw_id:
+        return None
+
+    slug = unquote(raw_id)
+    slug = slug.strip().strip('/').lower()
+    slug = re.sub(r'[^a-z0-9\-]+', '-', slug)
+    slug = re.sub(r'-{2,}', '-', slug).strip('-')
+    return slug or None
 
 
 def _resolve_taxonomy_id_for_catalog(catalog_key, scientific_name):
