@@ -1114,11 +1114,14 @@ def suggest_taxonomy_ids(plant_id):
     suggested = {}
     unavailable = []
     for catalog in catalogs:
-        resolved_id = _resolve_taxonomy_id_for_catalog(catalog.key, scientific_name)
-        if not resolved_id:
+        resolver = TAXONOMY_ID_RESOLVER_CONFIG.get(catalog.key) or {'mode': 'none'}
+        if resolver.get('mode') == 'none':
             unavailable.append(catalog.key)
             continue
-        suggested[catalog.key] = resolved_id
+
+        resolved_id = _resolve_taxonomy_id_for_catalog(catalog.key, scientific_name)
+        if resolved_id:
+            suggested[catalog.key] = resolved_id
     duration_ms = round((time.perf_counter() - started_at) * 1000, 1)
     current_app.logger.info('[%s] taxonomy lookup for "%s" (%sms): %s hits, unavailable=%s', trace_id, scientific_name, duration_ms, len(suggested), ','.join(unavailable) or '-')
     return jsonify({
