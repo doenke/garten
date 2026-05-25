@@ -88,6 +88,7 @@
           <button type="button" id="magic-common-name" class="btn secondary" title="Bürgerlichen Namen automatisch suchen">🪄</button>
         </div>
         <small id="magic-common-name-status" class="muted"></small>
+        <small id="magic-debug-last-common-name" class="muted"></small>
         <label>Datenbank-IDs</label>
         <div class="grid">
           {% for catalog in database_catalogs %}
@@ -98,6 +99,11 @@
           {% endfor %}
         </div>
         <small id="magic-taxonomy-ids-status" class="muted"></small>
+        <small id="magic-debug-last-taxonomy" class="muted"></small>
+        <details class="mt-1">
+          <summary>Magic-Debuglog</summary>
+          <ul id="magic-debug-log" class="muted" style="margin:.35rem 0 0 1.1rem;padding:0;display:grid;gap:.2rem;"></ul>
+        </details>
         <label for="plant-source">Quelle</label>
         <input id="plant-source" name="source" value="{{ plant.source or '' }}" placeholder="z. B. Gärtnerei Musterhof">
       </fieldset>
@@ -465,12 +471,23 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
   const commonNameInput = document.getElementById('plant-common-name');
   const nameInput = document.getElementById('plant-name');
   const magicStatus = document.getElementById('magic-common-name-status');
+  const commonNameDebug = document.getElementById('magic-debug-last-common-name');
+  const taxonomyDebug = document.getElementById('magic-debug-last-taxonomy');
+  const magicDebugLog = document.getElementById('magic-debug-log');
+  const pushMagicDebugLog = (scope, message) => {
+    if (!magicDebugLog) return;
+    const line = document.createElement('li');
+    line.textContent = `[${new Date().toLocaleTimeString()}] ${scope}: ${message}`;
+    magicDebugLog.prepend(line);
+    while (magicDebugLog.children.length > 12) magicDebugLog.removeChild(magicDebugLog.lastChild);
+  };
 
   if (magicButton && commonNameInput && nameInput) {
     magicButton.addEventListener('click', async () => {
       const sourceName = (nameInput.value || '').trim();
       if (!sourceName) {
         if (magicStatus) magicStatus.textContent = 'Bitte zuerst einen Namen eintragen.';
+        pushMagicDebugLog('Common Name', 'Abbruch: leeres Eingabefeld.');
         nameInput.focus();
         return;
       }
@@ -492,8 +509,13 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
         const confidenceText = typeof data.confidence === 'number' ? ` (Confidence: ${Math.round(data.confidence * 100)}%)` : '';
         const sourceCount = Array.isArray(data.sources) ? data.sources.length : 0;
         if (magicStatus) magicStatus.textContent = `Vorschlag übernommen${confidenceText}. Quellen: ${sourceCount}.`;
+        const traceId = data?.debug?.trace_id || '-';
+        const duration = data?.debug?.duration_ms;
+        if (commonNameDebug) commonNameDebug.textContent = `Letzter Lauf: ${traceId}${typeof duration === 'number' ? `, ${duration} ms` : ''}`;
+        pushMagicDebugLog('Common Name', `OK (${traceId})${typeof duration === 'number' ? ` in ${duration} ms` : ''}, Quellen: ${sourceCount}.`);
       } catch (error) {
         if (magicStatus) magicStatus.textContent = error.message || 'Automatisches Ausfüllen fehlgeschlagen.';
+        pushMagicDebugLog('Common Name', `Fehler: ${error.message || 'Unbekannt'}`);
       } finally {
         magicButton.disabled = false;
         magicButton.textContent = oldText;
@@ -508,7 +530,10 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
       magicIdsButton.addEventListener('click', async () => {
         const sourceName = (scientificNameInput.value || nameInput.value || '').trim();
         const catalogKey = magicIdsButton.dataset.catalogKey;
-        if (!sourceName || !catalogKey) return;
+        if (!sourceName || !catalogKey) {
+          pushMagicDebugLog('Taxonomy', `Abbruch: Eingabe/Katalog fehlt (${catalogKey || 'kein key'}).`);
+          return;
+        }
         magicIdsButton.disabled = true;
         const oldText = magicIdsButton.textContent;
         magicIdsButton.textContent = '…';
@@ -528,8 +553,14 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
           } else if (idsStatus) {
             idsStatus.textContent = `Kein Vorschlag für ${catalogKey.toUpperCase()} gefunden.`;
           }
+          const traceId = data?.debug?.trace_id || '-';
+          const duration = data?.debug?.duration_ms;
+          const unavailable = Array.isArray(data?.unavailable_catalogs) ? data.unavailable_catalogs.join(', ') : '';
+          if (taxonomyDebug) taxonomyDebug.textContent = `Letzter Lauf: ${traceId}${typeof duration === 'number' ? `, ${duration} ms` : ''}`;
+          pushMagicDebugLog('Taxonomy', `${catalogKey.toUpperCase()}: ${suggestedId ? `Treffer ${suggestedId}` : 'kein Treffer'} (${traceId})${unavailable ? `, ohne Resolver: ${unavailable}` : ''}`);
         } catch (error) {
           if (idsStatus) idsStatus.textContent = error.message || 'Automatisches Ausfüllen fehlgeschlagen.';
+          pushMagicDebugLog('Taxonomy', `Fehler: ${error.message || 'Unbekannt'}`);
         } finally {
           magicIdsButton.disabled = false;
           magicIdsButton.textContent = oldText;
