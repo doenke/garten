@@ -116,6 +116,11 @@ TAXONOMY_ID_RESOLVER_CONFIG = {
         'search_url': 'https://www.floraweb.de/suche',
         'query_param': 'suchbegriff',
     },
+    'naturadb': {
+        'mode': 'naturadb_search',
+        'search_url': 'https://www.naturadb.de/suche',
+        'query_param': 'query',
+    },
 }
 
 
@@ -1200,6 +1205,19 @@ def _floraweb_taxonomy_id(scientific_name, config):
             r'/taxonomiedetail[s]?/[A-Za-z0-9\-]*([0-9]{3,})',
         ],
     )
+
+
+def _naturadb_taxonomy_id(scientific_name, config):
+    return _search_page_taxonomy_id(
+        scientific_name,
+        config,
+        patterns=[
+            r'https?://(?:www\.)?naturadb\.de/pflanzen/([a-z0-9\-]+)',
+            r'/pflanzen/([a-z0-9\-]+)',
+        ],
+    )
+
+
 def _resolve_taxonomy_id_for_catalog(catalog_key, scientific_name):
     resolver = TAXONOMY_ID_RESOLVER_CONFIG.get(catalog_key) or {'mode': 'none'}
     mode = resolver.get('mode')
@@ -1211,6 +1229,8 @@ def _resolve_taxonomy_id_for_catalog(catalog_key, scientific_name):
         return _wfo_taxonomy_id(scientific_name, resolver)
     if mode == 'floraweb_search':
         return _floraweb_taxonomy_id(scientific_name, resolver)
+    if mode == 'naturadb_search':
+        return _naturadb_taxonomy_id(scientific_name, resolver)
     return None
 
 
@@ -1226,7 +1246,7 @@ def _external_resolver_debug_call(catalog_key, scientific_name):
         if resolver.get('accepted_only', True):
             params['f'] = 'accepted:true'
         return {'endpoint': 'https://powo.science.kew.org/api/2/search', 'query': params}
-    if mode in {'wfo_search', 'floraweb_search'}:
+    if mode in {'wfo_search', 'floraweb_search', 'naturadb_search'}:
         query_param = resolver.get('query_param') or 'q'
         endpoint = resolver.get('search_url')
         return {'endpoint': endpoint, 'query': {query_param: scientific_name}}
@@ -1238,7 +1258,7 @@ def _external_resolver_endpoint(catalog_key):
         return 'https://api.gbif.org/v1/species/match'
     if mode == 'powo_search':
         return 'https://powo.science.kew.org/api/2/search'
-    if mode in {'wfo_search', 'floraweb_search'}:
+    if mode in {'wfo_search', 'floraweb_search', 'naturadb_search'}:
         return resolver.get('search_url')
     return None
 
