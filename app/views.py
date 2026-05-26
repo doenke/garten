@@ -1233,7 +1233,7 @@ def _naturadb_taxonomy_id(scientific_name, config):
         return None
 
     slug = unquote(raw_id)
-    slug = slug.strip().strip('/').lower()
+    slug = slug.replace('\\', '/').strip().strip('/').lower()
     slug = re.sub(r'[^a-z0-9\-]+', '-', slug)
     slug = re.sub(r'-{2,}', '-', slug).strip('-')
     if requested_slug and slug == requested_slug:
@@ -1242,12 +1242,12 @@ def _naturadb_taxonomy_id(scientific_name, config):
     # Suche auf Ergebnislisten bevorzugt nach exakt passendem wissenschaftlichen Namen.
     if requested_slug:
         exact_link_patterns = [
-            r'href="/pflanzen/([^"\'\s\?#/&]+)"[^>]*>\s*([^<]+)\s*</a>',
-            r'<a[^>]*href="/pflanzen/([^"\'\s\?#/&]+)"[^>]*>\s*([^<]+)\s*</a>',
+            r'href="/pflanzen/([^"\'\s\?#/&]+)(?:/)?"[^>]*>\s*([^<]+)\s*</a>',
+            r'<a[^>]*href="/pflanzen/([^"\'\s\?#/&]+)(?:/)?"[^>]*>\s*([^<]+)\s*</a>',
         ]
         for link_pattern in exact_link_patterns:
             for match in re.finditer(link_pattern, page_html, flags=re.IGNORECASE):
-                candidate_slug = (match.group(1) or '').strip().strip('/').lower()
+                candidate_slug = (match.group(1) or '').replace('\\', '/').strip().strip('/').lower()
                 candidate_slug = re.sub(r'[^a-z0-9\-]+', '-', unquote(candidate_slug))
                 candidate_slug = re.sub(r'-{2,}', '-', candidate_slug).strip('-')
                 candidate_text = (match.group(2) or '').strip()
