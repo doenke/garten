@@ -2,7 +2,7 @@ import html
 import json
 import time
 import re
-from urllib.parse import urlencode, unquote
+from urllib.parse import urlencode, unquote, urlsplit, urlunsplit, parse_qsl
 
 import requests
 from functools import wraps
@@ -1329,8 +1329,34 @@ def _mein_schoener_garten_taxonomy_id(scientific_name, config):
     return slug or None
 
 
-def _resolve_taxonomy_id_for_catalog(catalog_key, scientific_name):
-    resolver = TAXONOMY_ID_RESOLVER_CONFIG.get(catalog_key) or {'mode': 'none'}
+
+
+def _resolver_config_for_catalog(catalog):
+    resolver = dict(TAXONOMY_ID_RESOLVER_CONFIG.get(catalog.key) or {'mode': 'none'})
+    if resolver.get('mode') not in {'wfo_search', 'floraweb_search', 'naturadb_search', 'mein_schoener_garten_search'}:
+        return resolver
+
+    template = (catalog.search_url_template or '').strip()
+    if not template:
+        return resolver
+
+    parsed = urlsplit(template)
+    if not parsed.scheme or not parsed.netloc:
+        return resolver
+
+    query_param = None
+    for key, value in parse_qsl(parsed.query, keep_blank_values=True):
+        if value == '{q}':
+            query_param = key
+            break
+
+    if query_param:
+        resolver['query_param'] = query_param
+    resolver['search_url'] = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, '', ''))
+    return resolver
+
+def _resolve_taxonomy_id_for_catalog(catalog_key, scientific_name, resolver=None):
+    resolver = resolver or dict(TAXONOMY_ID_RESOLVER_CONFIG.get(catalog_key) or {'mode': 'none'})
     mode = resolver.get('mode')
     if mode == 'gbif_species_match':
         return _gbif_species_match_id(scientific_name, resolver)
@@ -1350,8 +1376,8 @@ def _resolve_taxonomy_id_for_catalog(catalog_key, scientific_name):
 
 
 
-def _external_resolver_debug_call(catalog_key, scientific_name):
-    resolver = TAXONOMY_ID_RESOLVER_CONFIG.get(catalog_key) or {'mode': 'none'}
+def _external_resolver_debug_call(catalog_key, scientific_name, resolver=None):
+    resolver = resolver or dict(TAXONOMY_ID_RESOLVER_CONFIG.get(catalog_key) or {'mode': 'none'})
     mode = resolver.get('mode')
     if mode == 'gbif_species_match':
         params = {'name': scientific_name, 'verbose': 'true', 'kingdom': resolver.get('kingdom') or 'Plantae'}
@@ -1369,7 +1395,7 @@ def _external_resolver_debug_call(catalog_key, scientific_name):
         return {'endpoint': None, 'query': {'q': scientific_name}}
     return None
 def _external_resolver_endpoint(catalog_key):
-    resolver = TAXONOMY_ID_RESOLVER_CONFIG.get(catalog_key) or {'mode': 'none'}
+    resolver = dict(TAXONOMY_ID_RESOLVER_CONFIG.get(catalog_key) or {'mode': 'none'})
     mode = resolver.get('mode')
     if mode == 'gbif_species_match':
         return 'https://api.gbif.org/v1/species/match'
@@ -1396,12 +1422,12 @@ def suggest_taxonomy_ids(plant_id):
     unavailable = []
     external_calls = []
     for catalog in catalogs:
-        resolver = TAXONOMY_ID_RESOLVER_CONFIG.get(catalog.key) or {'mode': 'none'}
+        resolver = _resolver_config_for_catalog(catalog)
         if resolver.get('mode') == 'none':
             unavailable.append(catalog.key)
             continue
 
-        debug_call = _external_resolver_debug_call(catalog.key, scientific_name)
+        debug_call = _external_resolver_debug_call(catalog.key, scientific_name, resolver)
         if debug_call:
             query = debug_call.get('query') or {}
             endpoint = debug_call.get('endpoint')
@@ -1412,7 +1438,7 @@ def suggest_taxonomy_ids(plant_id):
                 'query': query,
                 'request_url': request_url,
             })
-        resolved_id = _resolve_taxonomy_id_for_catalog(catalog.key, scientific_name)
+        resolved_id = _resolve_taxonomy_id_for_catalog(catalog.key, scientific_name, resolver)
         if resolved_id:
             suggested[catalog.key] = resolved_id
     duration_ms = round((time.perf_counter() - started_at) * 1000, 1)
