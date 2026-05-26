@@ -1245,6 +1245,28 @@ def _naturadb_taxonomy_id(scientific_name, config):
     if not page_html:
         return None
 
+    # Bevorzugt den ersten Treffer im naturaDB-Kartenlayout:
+    # <a class="card__title no-link" href="/pflanzen/<slug>/">…</a>
+    for anchor_match in re.finditer(r'<a\b[^>]*>', page_html, flags=re.IGNORECASE):
+        anchor_tag = anchor_match.group(0)
+        class_match = re.search(r'class\s*=\s*["\']([^"\']+)["\']', anchor_tag, flags=re.IGNORECASE)
+        if not class_match:
+            continue
+        class_names = set((class_match.group(1) or '').lower().split())
+        if 'card__title' not in class_names or 'no-link' not in class_names:
+            continue
+        href_match = re.search(r'href\s*=\s*["\'](/pflanzen/([^"\']+)?)["\']', anchor_tag, flags=re.IGNORECASE)
+        if not href_match:
+            continue
+        href_value = (href_match.group(1) or '').strip()
+        if not href_value.startswith('/pflanzen/'):
+            continue
+        candidate_slug = href_value[len('/pflanzen/'):].strip('/')
+        candidate_slug = re.sub(r'[^a-z0-9\-]+', '-', unquote(candidate_slug).lower())
+        candidate_slug = re.sub(r'-{2,}', '-', candidate_slug).strip('-')
+        if candidate_slug:
+            return candidate_slug
+
     requested_slug = re.sub(r'[^a-z0-9\-]+', '-', _normalize_scientific_name_for_lookup(scientific_name) or '')
     requested_slug = re.sub(r'-{2,}', '-', requested_slug).strip('-')
 
