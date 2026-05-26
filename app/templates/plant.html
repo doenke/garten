@@ -24,30 +24,30 @@
             title="Bei DuckDuckGo suchen"
           >🔍</a>
         </div>
+        {% if database_links %}
+        <div class="db-icon-links" aria-label="Externe Datenbanken">
+          {% for item in database_links %}
+          <a
+            class="db-icon-link"
+            href="{{ item.url }}"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="{{ item.catalog_label }} ({{ item.identifier }})"
+            aria-label="{{ item.catalog_label }} ({{ item.identifier }})"
+          >
+            {% if item.icon_url %}
+            <img src="{{ item.icon_url }}" alt="" loading="lazy" class="db-icon-image">
+            {% else %}
+            <span class="db-icon-fallback">{{ item.catalog_label[:2] | upper }}</span>
+            {% endif %}
+          </a>
+          {% endfor %}
+        </div>
+        {% endif %}
         <div class="plant-masterdata">
   {% if plant.cultivar %}<p><strong>Sorte/Kultivar:</strong> {{ plant.cultivar }}</p>{% endif %}
   {% if plant.scientific_name %}<p><strong>Wissenschaftlicher Name:</strong> {{ plant.scientific_name }}</p>{% endif %}
   {% if plant.common_name %}<p><strong>Bürgerlicher Name:</strong> {{ plant.common_name }}</p>{% endif %}
-  {% if database_links %}
-  <div class="db-icon-links" aria-label="Externe Datenbanken">
-    {% for item in database_links %}
-    <a
-      class="db-icon-link"
-      href="{{ item.url }}"
-      target="_blank"
-      rel="noopener noreferrer"
-      title="{{ item.catalog_label }} ({{ item.identifier }})"
-      aria-label="{{ item.catalog_label }} ({{ item.identifier }})"
-    >
-      {% if item.icon_url %}
-      <img src="{{ item.icon_url }}" alt="" loading="lazy" class="db-icon-image">
-      {% else %}
-      <span class="db-icon-fallback">{{ item.catalog_label[:2] | upper }}</span>
-      {% endif %}
-    </a>
-    {% endfor %}
-  </div>
-  {% endif %}
   {% if plant.source %}<p><strong>Quelle:</strong> {{ plant.source }}</p>{% endif %}
   {% if plant.light_needs %}<p><strong>Lichtbedarf:</strong> {% for light_need in plant.light_needs %}<span>{{ light_need_icon_by_key.get(light_need.key, '•') }} {{ light_need.label }}{% if not loop.last %}, {% endif %}</span>{% endfor %}</p>{% endif %}
   {% if plant.flower_color %}<p><strong>Blütenfarbe:</strong> {{ plant.flower_color }}</p>{% endif %}
