@@ -93,6 +93,13 @@ DEFAULT_DATABASE_CATALOGS = [
         'search_url_template': 'https://www.naturadb.de/suche?query={q}',
         'icon_url': 'https://www.naturadb.de/favicon.ico',
     },
+    {
+        'key': 'mein_schoener_garten',
+        'label': 'Mein schöner Garten',
+        'record_url_template': 'https://www.mein-schoener-garten.de/pflanzen/{id}',
+        'search_url_template': 'https://www.mein-schoener-garten.de/suche?search_api_fulltext={q}',
+        'icon_url': 'https://www.mein-schoener-garten.de/favicon.ico',
+    },
 ]
 
 TAXONOMY_ID_RESOLVER_CONFIG = {
@@ -123,6 +130,11 @@ TAXONOMY_ID_RESOLVER_CONFIG = {
         'mode': 'naturadb_search',
         'search_url': 'https://www.naturadb.de/suche',
         'query_param': 'query',
+    },
+    'mein_schoener_garten': {
+        'mode': 'mein_schoener_garten_search',
+        'search_url': 'https://www.mein-schoener-garten.de/suche',
+        'query_param': 'search_api_fulltext',
     },
 }
 
@@ -1178,6 +1190,23 @@ def _search_page_taxonomy_id(scientific_name, config, patterns):
             return taxonomy_id
     return None
 
+def _search_page_html(scientific_name, config):
+    search_url = (config.get('search_url') or '').strip()
+    query_param = (config.get('query_param') or 'q').strip()
+    if not search_url:
+        return None
+    try:
+        response = requests.get(
+            search_url,
+            params={query_param: scientific_name},
+            headers={'Accept': 'text/html,application/xhtml+xml', 'User-Agent': 'garten-taxonomy-resolver/1.0'},
+            timeout=8,
+        )
+        response.raise_for_status()
+    except requests.RequestException:
+        return None
+    return response.text or ''
+
 
 def _wfo_taxonomy_id(scientific_name, config):
     return _search_page_taxonomy_id(
@@ -1259,6 +1288,24 @@ def _naturadb_taxonomy_id(scientific_name, config):
 
     return slug or None
 
+def _mein_schoener_garten_taxonomy_id(scientific_name, config):
+    raw_slug = _search_page_taxonomy_id(
+        scientific_name,
+        config,
+        patterns=[
+            r'https?://(?:www\.)?mein-schoener-garten\.de/pflanzen/([^"\'\s\?#/&]+)',
+            r'/pflanzen/([^"\'\s\?#/&]+)',
+            r'\/pflanzen\/([^\"\s\?#/&]+)',
+            r'%2Fpflanzen%2F([^%\s\?#/&]+)',
+        ],
+    )
+    if not raw_slug:
+        return None
+    slug = unquote(raw_slug).strip().strip('/').lower()
+    slug = re.sub(r'[^a-z0-9\-]+', '-', slug)
+    slug = re.sub(r'-{2,}', '-', slug).strip('-')
+    return slug or None
+
 
 def _resolve_taxonomy_id_for_catalog(catalog_key, scientific_name):
     resolver = TAXONOMY_ID_RESOLVER_CONFIG.get(catalog_key) or {'mode': 'none'}
@@ -1275,6 +1322,8 @@ def _resolve_taxonomy_id_for_catalog(catalog_key, scientific_name):
         return (scientific_name or '').strip() or None
     if mode == 'naturadb_search':
         return _naturadb_taxonomy_id(scientific_name, resolver)
+    if mode == 'mein_schoener_garten_search':
+        return _mein_schoener_garten_taxonomy_id(scientific_name, resolver)
     return None
 
 
@@ -1290,7 +1339,7 @@ def _external_resolver_debug_call(catalog_key, scientific_name):
         if resolver.get('accepted_only', True):
             params['f'] = 'accepted:true'
         return {'endpoint': 'https://powo.science.kew.org/api/2/search', 'query': params}
-    if mode in {'wfo_search', 'floraweb_search', 'naturadb_search'}:
+    if mode in {'wfo_search', 'floraweb_search', 'naturadb_search', 'mein_schoener_garten_search'}:
         query_param = resolver.get('query_param') or 'q'
         endpoint = resolver.get('search_url')
         return {'endpoint': endpoint, 'query': {query_param: scientific_name}}
@@ -1304,7 +1353,7 @@ def _external_resolver_endpoint(catalog_key):
         return 'https://api.gbif.org/v1/species/match'
     if mode == 'powo_search':
         return 'https://powo.science.kew.org/api/2/search'
-    if mode in {'wfo_search', 'floraweb_search', 'naturadb_search'}:
+    if mode in {'wfo_search', 'floraweb_search', 'naturadb_search', 'mein_schoener_garten_search'}:
         return resolver.get('search_url')
     return None
 
