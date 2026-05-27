@@ -90,7 +90,7 @@ DEFAULT_DATABASE_CATALOGS = [
         'key': 'naturadb',
         'label': 'NaturaDB',
         'record_url_template': 'https://www.naturadb.de/pflanzen/{id}',
-        'search_url_template': 'https://www.naturadb.de/suche?query={q}',
+        'search_url_template': 'https://www.naturadb.de/suche?q={q}',
         'icon_url': 'https://www.naturadb.de/favicon.ico',
     },
     {
