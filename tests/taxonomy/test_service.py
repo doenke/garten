@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-from app.models import DatabaseCatalog
+from app.taxonomy.catalogs import DatabaseCatalogConfig
 from app.taxonomy import registry
 from app.taxonomy import service as taxonomy_service
 from app.taxonomy.resolvers.base import ExternalCall, ResolverRequest, ResolverResult, TaxonomyResolver
@@ -32,13 +32,13 @@ class StubResolver(TaxonomyResolver):
 class TaxonomyServiceTest(unittest.TestCase):
     def test_suggest_for_all_enabled_aggregates_multiple_enabled_database_catalogs(self):
         catalogs = [
-            DatabaseCatalog(
+            DatabaseCatalogConfig(
                 key='gbif',
                 label='GBIF',
                 enabled=True,
                 record_url_template='https://gbif.example/{id}',
             ),
-            DatabaseCatalog(
+            DatabaseCatalogConfig(
                 key='wfo',
                 label='WFO',
                 enabled=True,
@@ -62,7 +62,7 @@ class TaxonomyServiceTest(unittest.TestCase):
         self.assertEqual([call.catalog for call in suggestion.external_calls], ['gbif', 'wfo'])
 
     def test_suggest_for_catalog_resolves_only_one_catalog(self):
-        catalog = DatabaseCatalog(
+        catalog = DatabaseCatalogConfig(
             key='gbif',
             label='GBIF',
             enabled=True,
@@ -81,7 +81,7 @@ class TaxonomyServiceTest(unittest.TestCase):
         get_resolver_for_catalog.assert_called_once_with(catalog)
 
     def test_suggest_for_all_enabled_marks_catalogs_without_resolver_as_unavailable(self):
-        catalog = DatabaseCatalog(
+        catalog = DatabaseCatalogConfig(
             key='unknown_catalog',
             label='Unknown Catalog',
             enabled=True,

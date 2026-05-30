@@ -1,6 +1,6 @@
 import unittest
 
-from app.models import DatabaseCatalog
+from app.taxonomy.catalogs import DatabaseCatalogConfig
 from app.taxonomy import registry
 from app.taxonomy import resolvers  # noqa: F401 - import triggers static resolver registration
 from app.taxonomy.resolvers.floraweb import FlorawebResolver
@@ -26,7 +26,7 @@ class TaxonomyRegistryTest(unittest.TestCase):
 
         for catalog_key, expected_resolver_class in expected_resolvers.items():
             with self.subTest(catalog_key=catalog_key):
-                catalog = DatabaseCatalog(
+                catalog = DatabaseCatalogConfig(
                     key=catalog_key,
                     label=catalog_key,
                     enabled=True,
@@ -40,7 +40,7 @@ class TaxonomyRegistryTest(unittest.TestCase):
 
 class TaxonomyResolverConfigTest(unittest.TestCase):
     def test_html_resolver_build_config_uses_catalog_search_template_query_param(self):
-        catalog = DatabaseCatalog(
+        catalog = DatabaseCatalogConfig(
             key='floraweb',
             label='FloraWeb',
             enabled=True,
@@ -57,7 +57,7 @@ class TaxonomyResolverConfigTest(unittest.TestCase):
         self.assertEqual(config['search_url_template'], catalog.search_url_template)
 
     def test_api_resolver_build_config_keeps_defaults_and_search_template(self):
-        catalog = DatabaseCatalog(
+        catalog = DatabaseCatalogConfig(
             key='gbif',
             label='GBIF',
             enabled=True,
