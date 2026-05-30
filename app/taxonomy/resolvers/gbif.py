@@ -8,14 +8,6 @@ class GbifResolver(TaxonomyResolver):
     mode = 'gbif_species_match'
     endpoint = 'https://api.gbif.org/v1/species/match'
 
-    def build_config(self, catalog):
-        return {
-            'catalog_key': catalog.key,
-            'mode': self.mode,
-            'prefer_statuses': {'ACCEPTED'},
-            'kingdom': 'Plantae',
-        }
-
     def resolve(self, scientific_name: str, config: dict):
         request = ResolverRequest(config.get('catalog_key') or self.key, scientific_name, config)
         return ResolverResult(

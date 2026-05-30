@@ -44,13 +44,6 @@ class WfoResolver(HtmlSearchResolver):
     key = 'wfo'
     mode = 'wfo_search'
 
-    def default_config(self):
-        return {
-            'mode': self.mode,
-            'search_url': 'https://www.worldfloraonline.org/search',
-            'query_param': 'query',
-        }
-
     def suggest_id(self, request):
         page_html = search_page_html(request.scientific_name, request.config)
         if page_html is None:

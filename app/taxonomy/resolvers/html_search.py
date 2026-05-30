@@ -76,14 +76,6 @@ class HtmlSearchResolver(TaxonomyResolver):
     mode = None
     patterns = []
 
-    def build_config(self, catalog):
-        from ..registry import build_html_search_config
-
-        return build_html_search_config(catalog, self.default_config())
-
-    def default_config(self):
-        return {'mode': self.mode}
-
     def external_call(self, request: ResolverRequest):
         query_param = request.config.get('query_param') or 'q'
         return ExternalCall(

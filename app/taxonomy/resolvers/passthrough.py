@@ -5,9 +5,6 @@ class SearchQueryPassthroughResolver(TaxonomyResolver):
     key = 'botanikus'
     mode = 'search_query_passthrough'
 
-    def build_config(self, catalog):
-        return {'catalog_key': catalog.key, 'mode': self.mode}
-
     def debug_call(self, scientific_name: str, config: dict):
         return ExternalCall(catalog=config.get('catalog_key') or self.key, url=None, query={'q': scientific_name})
 

@@ -5,13 +5,6 @@ class FlorawebResolver(HtmlSearchResolver):
     key = 'floraweb'
     mode = 'floraweb_search'
 
-    def default_config(self):
-        return {
-            'mode': self.mode,
-            'search_url': 'https://www.floraweb.de/php/taxoquery.php',
-            'query_param': 'taxname',
-        }
-
     patterns = [
         r'/taxon/([A-Za-z0-9\-]+)',
         r'/pflanze/([A-Za-z0-9\-]+)',
