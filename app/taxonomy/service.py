@@ -3,7 +3,7 @@ from typing import Mapping
 
 from . import registry
 from . import resolvers  # noqa: F401 - import triggers static resolver registration
-from .resolvers.base import ExternalCall, ResolverResult
+from .resolvers.base import ResolverRequest, ResolverResult
 
 
 @dataclass(frozen=True)
@@ -11,7 +11,7 @@ class TaxonomySuggestion:
     scientific_name: str
     matches: Mapping[str, str] = field(default_factory=dict)
     unavailable_catalogs: list[str] = field(default_factory=list)
-    external_calls: list[ExternalCall] = field(default_factory=list)
+    resolver_results: list[ResolverResult] = field(default_factory=list)
 
     @property
     def confidence(self):
@@ -20,6 +20,10 @@ class TaxonomySuggestion:
     @property
     def note(self):
         return 'IDs werden katalogspezifisch ermittelt. Ohne Resolver gibt es keinen Vorschlag.'
+
+    @property
+    def external_calls(self):
+        return [call for result in self.resolver_results for call in result.external_calls]
 
     def to_response(self, *, trace_id, duration_ms):
         return {
@@ -63,7 +67,7 @@ def resolve_taxonomy_id_for_catalog(catalog_key, scientific_name, resolver=None)
 def resolve_for_catalog(catalog, scientific_name):
     taxonomy_resolver = registry.get_resolver_for_catalog(catalog)
     if not taxonomy_resolver:
-        return ResolverResult(catalog.key, unavailable=True)
+        return ResolverResult(taxonomy_id=None, error='unavailable')
 
     resolver_config = taxonomy_resolver.build_config(catalog)
     return taxonomy_resolver.resolve(scientific_name, resolver_config)
@@ -72,15 +76,14 @@ def resolve_for_catalog(catalog, scientific_name):
 def suggest_ids(scientific_name, catalogs):
     matches: dict[str, str] = {}
     unavailable: list[str] = []
-    external_calls: list[ExternalCall] = []
+    resolver_results: list[ResolverResult] = []
 
     for catalog in catalogs:
         result = resolve_for_catalog(catalog, scientific_name)
+        resolver_results.append(result)
         if result.unavailable:
             unavailable.append(catalog.key)
             continue
-        if result.external_call:
-            external_calls.append(result.external_call)
         if result.taxonomy_id:
             matches[catalog.key] = result.taxonomy_id
 
@@ -88,7 +91,7 @@ def suggest_ids(scientific_name, catalogs):
         scientific_name=scientific_name,
         matches=matches,
         unavailable_catalogs=unavailable,
-        external_calls=external_calls,
+        resolver_results=resolver_results,
     )
 
 
@@ -101,5 +104,5 @@ def external_resolver_endpoint(catalog_key):
     else:
         config = {'mode': getattr(taxonomy_resolver, 'mode', taxonomy_resolver.key)}
     config['catalog_key'] = catalog_key
-    call = taxonomy_resolver.debug_call('', config)
+    call = taxonomy_resolver.external_call(ResolverRequest(catalog_key, '', config))
     return call.url if call else None

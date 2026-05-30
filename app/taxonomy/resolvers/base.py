@@ -9,17 +9,17 @@ from ..url_templates import config_from_search_url_template
 USER_AGENT = 'garten-taxonomy-resolver/1.0'
 
 
-@dataclass(frozen=True)
+@dataclass
 class ExternalCall:
     catalog: str
-    url: Optional[str]
-    query: Mapping[str, Any] = field(default_factory=dict)
+    url: str | None
+    query: dict[str, str] = field(default_factory=dict)
+    request_url: str | None = None
 
-    @property
-    def request_url(self):
-        if self.url and self.query:
-            return f"{self.url}?{urlencode(self.query)}"
-        return self.url
+    def __post_init__(self):
+        self.query = {str(key): str(value) for key, value in dict(self.query or {}).items()}
+        if self.request_url is None and self.url:
+            self.request_url = f"{self.url}?{urlencode(self.query)}" if self.query else self.url
 
     def to_dict(self):
         return {
@@ -37,12 +37,20 @@ class ResolverRequest:
     config: Mapping[str, Any] = field(default_factory=dict)
 
 
-@dataclass(frozen=True)
+@dataclass
 class ResolverResult:
-    catalog_key: str
-    taxonomy_id: Optional[str] = None
-    external_call: Optional[ExternalCall] = None
-    unavailable: bool = False
+    taxonomy_id: str | None
+    confidence: float | None = None
+    external_calls: list[ExternalCall] = field(default_factory=list)
+    error: str | None = None
+
+    @property
+    def external_call(self) -> ExternalCall | None:
+        return self.external_calls[0] if self.external_calls else None
+
+    @property
+    def unavailable(self) -> bool:
+        return self.error == 'unavailable'
 
 
 class TaxonomyResolver:
@@ -73,10 +81,10 @@ class TaxonomyResolver:
     def resolve(self, scientific_name: str, config: dict) -> ResolverResult:
         catalog_key = config.get('catalog_key') or self.key
         request = ResolverRequest(catalog_key, scientific_name, config)
+        call = self.external_call(request)
         return ResolverResult(
-            catalog_key,
             taxonomy_id=self.suggest_id(request),
-            external_call=self.debug_call(scientific_name, config),
+            external_calls=[call] if call else [],
         )
 
     def suggest_id(self, request: ResolverRequest) -> Optional[str]:

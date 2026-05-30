@@ -1,20 +1,12 @@
 import requests
 
-from .base import ExternalCall, ResolverRequest, ResolverResult, TaxonomyResolver, USER_AGENT, parse_json_response
+from .base import ExternalCall, ResolverRequest, TaxonomyResolver, USER_AGENT, parse_json_response
 
 
 class GbifResolver(TaxonomyResolver):
     key = 'gbif'
     mode = 'gbif_species_match'
     endpoint = 'https://api.gbif.org/v1/species/match'
-
-    def resolve(self, scientific_name: str, config: dict):
-        request = ResolverRequest(config.get('catalog_key') or self.key, scientific_name, config)
-        return ResolverResult(
-            request.catalog_key,
-            taxonomy_id=self.suggest_id(request),
-            external_call=self.debug_call(scientific_name, config),
-        )
 
     def external_call(self, request: ResolverRequest):
         return ExternalCall(
