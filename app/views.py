@@ -1170,13 +1170,25 @@ def _powo_taxonomy_id(scientific_name, config):
 
 
 def _html_decode_candidates(page_html):
-    candidates = [page_html or '']
-    decoded_once = html.unescape(candidates[0])
-    if decoded_once not in candidates:
-        candidates.append(decoded_once)
-    decoded_twice = html.unescape(decoded_once)
-    if decoded_twice not in candidates:
-        candidates.append(decoded_twice)
+    candidates = []
+
+    def _append_candidate(candidate):
+        if candidate is None:
+            return
+        candidate = str(candidate)
+        if candidate not in candidates:
+            candidates.append(candidate)
+
+    _append_candidate(page_html or '')
+    for candidate in list(candidates):
+        _append_candidate(html.unescape(candidate))
+    for candidate in list(candidates):
+        _append_candidate(unquote(candidate))
+    for candidate in list(candidates):
+        _append_candidate(candidate.replace('\\/', '/').replace('\\"', '"').replace("\\'", "'"))
+    for candidate in list(candidates):
+        _append_candidate(html.unescape(candidate))
+        _append_candidate(unquote(candidate))
     return candidates
 
 
@@ -1229,17 +1241,32 @@ WFO_TAXON_PATTERNS = [
     r'%2[fF]taxon%2[fF](wfo-[A-Za-z0-9\-]+)',
 ]
 
+WFO_RESULT_TAXON_PATTERNS = [
+    r'<a\b(?=[^>]*\bclass=["\\\']?[^>"\\\']*\bresult\b)(?=[^>]*\bhref=["\\\']?(?:https?://(?:www\.)?worldfloraonline\.org)?/taxon/(wfo-[A-Za-z0-9\-]+))[^>]*>',
+    r'<a\b(?=[^>]*\bhref=["\\\']?(?:https?://(?:www\.)?worldfloraonline\.org)?/taxon/(wfo-[A-Za-z0-9\-]+))(?=[^>]*\bclass=["\\\']?[^>"\\\']*\bresult\b)[^>]*>',
+]
+
+
+def _first_wfo_pattern_match(candidate_html, patterns):
+    first_match = None
+    for pattern in patterns:
+        for match in re.finditer(pattern, candidate_html, flags=re.IGNORECASE):
+            if first_match is None or match.start() < first_match.start():
+                first_match = match
+            break
+    return first_match.group(1) if first_match else None
+
 
 def _extract_wfo_taxon_slug(page_html):
-    for candidate_html in _html_decode_candidates(page_html):
-        first_match = None
-        for pattern in WFO_TAXON_PATTERNS:
-            for match in re.finditer(pattern, candidate_html):
-                if first_match is None or match.start() < first_match.start():
-                    first_match = match
-                break
-        if first_match:
-            return first_match.group(1)
+    candidates = _html_decode_candidates(page_html)
+    for candidate_html in candidates:
+        result_slug = _first_wfo_pattern_match(candidate_html, WFO_RESULT_TAXON_PATTERNS)
+        if result_slug:
+            return result_slug
+    for candidate_html in candidates:
+        fallback_slug = _first_wfo_pattern_match(candidate_html, WFO_TAXON_PATTERNS)
+        if fallback_slug:
+            return fallback_slug
     return None
 
 
