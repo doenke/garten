@@ -380,10 +380,10 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
 .field-pair{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
 .field-pair-item{display:grid;gap:.35rem}
 .magic-field-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.45rem;align-items:center}
-.database-id-row{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem 0;min-width:0}
-.database-id-label{flex:0 1 auto;font-weight:600;color:var(--muted);margin:0;padding-right:.5rem;white-space:normal;overflow-wrap:anywhere}
-.database-id-row input{flex:1 1 18rem;min-width:min(100%,14rem);border-top-right-radius:0;border-bottom-right-radius:0}
-.database-id-actions{display:inline-flex;flex:0 0 auto;margin-left:auto}
+.database-id-row{display:grid;grid-template-columns:minmax(8rem,max-content) minmax(0,1fr) auto;align-items:center;min-width:0}
+.database-id-label{font-weight:600;color:var(--muted);margin:0;padding-right:.5rem;white-space:normal;overflow-wrap:anywhere}
+.database-id-row input{min-width:0;width:100%;border-top-right-radius:0;border-bottom-right-radius:0}
+.database-id-actions{display:inline-flex;min-width:max-content}
 .database-id-row .btn{border-radius:0;margin-left:-1px;min-height:100%}
 .database-id-row .btn:last-child{border-top-right-radius:10px;border-bottom-right-radius:10px}
 .database-search-link{display:inline-flex;align-items:center;justify-content:center;min-width:2.25rem;padding:.45rem .5rem;text-decoration:none}
@@ -405,6 +405,8 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
 .image-modal-close{position:absolute;top:-.5rem;right:-.5rem;font-size:1.4rem;line-height:1;padding:.45rem .6rem;min-width:44px;min-height:44px;border-radius:999px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.32);text-shadow:none}
 @media (max-width: 640px){
   .field-pair{grid-template-columns:1fr}
+  .database-id-row{grid-template-columns:minmax(0,1fr) auto}
+  .database-id-label{grid-column:1 / -1;padding-right:0}
   .timeline-form-row{grid-template-columns:1fr}
   .image-modal{padding:0;background:#000;overscroll-behavior:none}
   .image-modal-inner{width:100vw;height:100dvh;max-width:none;max-height:none;display:grid;grid-template-columns:1fr;grid-template-rows:1fr}
