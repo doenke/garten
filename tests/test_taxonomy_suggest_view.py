@@ -6,7 +6,7 @@ from unittest.mock import patch
 os.environ.setdefault('SECRET_KEY', 'x' * 40)
 
 from app import create_app
-from app.models import DatabaseCatalog, Location, Plant, User, db
+from app.models import Location, Plant, User, db
 from app.taxonomy.service import TaxonomySuggestion
 
 
@@ -37,26 +37,6 @@ class TaxonomySuggestViewTest(unittest.TestCase):
                 creator_id=self.user.id,
             )
             db.session.add(self.plant)
-            db.session.add_all([
-                DatabaseCatalog(
-                    key='gbif',
-                    label='GBIF',
-                    enabled=True,
-                    record_url_template='https://gbif.example/{id}',
-                ),
-                DatabaseCatalog(
-                    key='wfo',
-                    label='WFO',
-                    enabled=True,
-                    record_url_template='https://wfo.example/{id}',
-                ),
-                DatabaseCatalog(
-                    key='disabled',
-                    label='Disabled Catalog',
-                    enabled=False,
-                    record_url_template='https://disabled.example/{id}',
-                ),
-            ])
             db.session.commit()
             self.user_id = self.user.id
             self.plant_id = self.plant.id
@@ -70,6 +50,13 @@ class TaxonomySuggestViewTest(unittest.TestCase):
             db.drop_all()
         os.unlink(self.db_path)
         os.environ.pop('DATABASE_URL', None)
+
+
+    def test_database_catalog_table_is_not_created(self):
+        with self.app.app_context():
+            table_names = set(db.inspect(db.engine).get_table_names())
+
+        self.assertNotIn('database_catalog', table_names)
 
     def test_catalog_key_uses_single_enabled_catalog(self):
         captured = {}
@@ -108,7 +95,10 @@ class TaxonomySuggestViewTest(unittest.TestCase):
             )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(captured, {'scientific_name': 'Phlox paniculata', 'catalog_keys': ['gbif', 'wfo']})
+        self.assertEqual(captured, {
+            'scientific_name': 'Phlox paniculata',
+            'catalog_keys': ['wfo', 'powo_ipni', 'gbif', 'floraweb', 'naturadb', 'mein_schoener_garten'],
+        })
         suggest_for_all_enabled.assert_called_once()
         suggest_for_catalog.assert_not_called()
 
@@ -123,16 +113,6 @@ class TaxonomySuggestViewTest(unittest.TestCase):
         self.assertIn('existiert nicht', response.get_json()['error'])
         suggest_for_catalog.assert_not_called()
 
-    def test_disabled_catalog_key_returns_400(self):
-        with patch('app.views.taxonomy_service.suggest_for_catalog') as suggest_for_catalog:
-            response = self.client.post(
-                f'/plants/{self.plant_id}/taxonomy-ids-suggest',
-                json={'scientific_name': 'Phlox paniculata', 'catalog_key': 'disabled'},
-            )
-
-        self.assertEqual(response.status_code, 400)
-        self.assertIn('deaktiviert', response.get_json()['error'])
-        suggest_for_catalog.assert_not_called()
 
 
 if __name__ == '__main__':

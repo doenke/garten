@@ -7,9 +7,10 @@ import requests
 from functools import wraps
 from datetime import datetime
 from flask import Blueprint, current_app, g, render_template, request, redirect, url_for, session, jsonify, send_from_directory, flash
-from .models import db, User, Location, Plant, PlantPhoto, PlantNote, GardenMap, TimelineEntry, LightNeed, SoilProperty, DatabaseCatalog, PlantDatabaseIdentifier, plant_soil_property
+from .models import db, User, Location, Plant, PlantPhoto, PlantNote, GardenMap, TimelineEntry, LightNeed, SoilProperty, PlantDatabaseIdentifier, plant_soil_property
 from .services.timeline_service import save_uploaded_attachment, set_single_title_entry, delete_timeline_entry, build_unique_upload_name
 from .taxonomy import service as taxonomy_service
+from .taxonomy.catalogs import get_database_catalogs
 from .taxonomy.resolvers.base import normalize_scientific_name_for_lookup
 from .taxonomy.resolvers.wfo import WfoResolver, extract_wfo_taxon_slug
 from .taxonomy.resolvers.html_search import search_page_html
@@ -60,52 +61,6 @@ LIGHT_NEED_OPTIONS = [
 ]
 LIGHT_NEED_KEY_TO_LABEL = {item['key']: item['label'] for item in LIGHT_NEED_OPTIONS}
 LIGHT_NEED_ICON_BY_KEY = {item['key']: item['icon'] for item in LIGHT_NEED_OPTIONS}
-DEFAULT_DATABASE_CATALOGS = [
-    {
-        'key': 'wfo',
-        'label': 'WFO',
-        'record_url_template': 'https://www.worldfloraonline.org/taxon/{id}',
-        'search_url_template': 'https://www.worldfloraonline.org/search?query={q}',
-        'icon_url': 'https://www.worldfloraonline.org/favicon.ico',
-    },
-    {
-        'key': 'powo_ipni',
-        'label': 'POWO/IPNI-LSID',
-        'record_url_template': 'https://powo.science.kew.org/taxon/{id}',
-        'search_url_template': 'https://powo.science.kew.org/results?q={q}',
-        'icon_url': 'https://powo.science.kew.org/img/powo-favicon.ico',
-    },
-    {
-        'key': 'gbif',
-        'label': 'GBIF',
-        'record_url_template': 'https://www.gbif.org/species/{id}',
-        'search_url_template': 'https://www.gbif.org/species/search?q={q}',
-        'icon_url': 'https://www.gbif.org/favicon.ico',
-    },
-    {
-        'key': 'floraweb',
-        'label': 'FloraWeb',
-        'record_url_template': 'https://www.floraweb.de/taxon/{id}',
-        'search_url_template': 'https://www.floraweb.de/php/taxoquery.php?taxname={q}',
-        'icon_url': 'https://www.floraweb.de/favicon.ico',
-    },
-    {
-        'key': 'naturadb',
-        'label': 'NaturaDB',
-        'record_url_template': 'https://www.naturadb.de/pflanzen/{id}',
-        'search_url_template': 'https://www.naturadb.de/suche?q={q}',
-        'icon_url': 'https://www.naturadb.de/favicon.ico',
-    },
-    {
-        'key': 'mein_schoener_garten',
-        'label': 'Mein schöner Garten',
-        'record_url_template': 'https://www.mein-schoener-garten.de/pflanzen/{id}',
-        'search_url_template': 'https://www.mein-schoener-garten.de/suche?search_api_fulltext={q}',
-        'icon_url': 'https://www.mein-schoener-garten.de/favicon.ico',
-    },
-]
-
-
 
 
 def _resolver_config_for_catalog(catalog):
@@ -234,8 +189,8 @@ def format_light_need_labels(light_needs):
     return ', '.join(light_need.label for light_need in light_needs)
 
 
-def get_or_create_database_catalogs():
-    return DatabaseCatalog.query.order_by(DatabaseCatalog.label.asc()).all()
+def get_catalog_configs():
+    return get_database_catalogs()
 
 
 def _build_database_links_for_plant(plant):
@@ -549,48 +504,7 @@ def config():
         user=user,
         garden_map=garden_map,
         locations=locations,
-        database_catalogs=get_or_create_database_catalogs(),
     )
-
-
-@main_bp.route('/config/catalogs', methods=['POST'])
-@login_required
-def update_catalogs():
-    get_or_create_database_catalogs()
-    catalogs = DatabaseCatalog.query.order_by(DatabaseCatalog.label.asc()).all()
-    delete_catalog_ids = {
-        int(raw_id)
-        for raw_id in request.form.getlist('delete_catalog_ids')
-        if raw_id and raw_id.isdigit()
-    }
-    for catalog in catalogs:
-        if catalog.id in delete_catalog_ids:
-            PlantDatabaseIdentifier.query.filter_by(catalog_id=catalog.id).delete(synchronize_session=False)
-            db.session.delete(catalog)
-            continue
-        catalog.label = (request.form.get(f'label_{catalog.id}') or catalog.label).strip() or catalog.label
-        catalog.enabled = request.form.get(f'enabled_{catalog.id}') == 'on'
-        catalog.record_url_template = (request.form.get(f'record_url_template_{catalog.id}') or catalog.record_url_template).strip()
-        catalog.search_url_template = (request.form.get(f'search_url_template_{catalog.id}') or '').strip() or None
-        catalog.icon_url = (request.form.get(f'icon_url_{catalog.id}') or '').strip() or None
-    new_catalog_key = (request.form.get('new_catalog_key') or '').strip().lower()
-    new_catalog_label = (request.form.get('new_catalog_label') or '').strip()
-    new_record_url_template = (request.form.get('new_record_url_template') or '').strip()
-    new_search_url_template = (request.form.get('new_search_url_template') or '').strip() or None
-    new_icon_url = (request.form.get('new_icon_url') or '').strip() or None
-    if new_catalog_key and new_catalog_label and new_record_url_template:
-        normalized_key = re.sub(r'[^a-z0-9_]+', '_', new_catalog_key).strip('_')
-        if normalized_key and not DatabaseCatalog.query.filter_by(key=normalized_key).first():
-            db.session.add(DatabaseCatalog(
-                key=normalized_key,
-                label=new_catalog_label,
-                enabled=True,
-                record_url_template=new_record_url_template,
-                search_url_template=new_search_url_template,
-                icon_url=new_icon_url,
-            ))
-    db.session.commit()
-    return redirect(url_for('main.config'))
 
 @main_bp.route('/locations/new', methods=['POST'])
 @login_required
@@ -849,7 +763,7 @@ def plant_detail(plant_id):
         )
         top_soil_properties += [(item.label, 0) for item in fallback_soil_properties]
     soil_property_suggestions = SoilProperty.query.order_by(SoilProperty.label.asc()).all()
-    database_catalogs = DatabaseCatalog.query.order_by(DatabaseCatalog.label.asc()).all()
+    database_catalogs = get_catalog_configs()
     database_search_query = plant.scientific_name or plant.name
     return render_template(
         'plant.html',
@@ -1003,7 +917,7 @@ def suggest_common_name(plant_id):
 
 
 def upsert_plant_database_identifiers(plant, form):
-    catalog_by_key = {catalog.key: catalog for catalog in get_or_create_database_catalogs()}
+    catalog_by_key = {catalog.key: catalog for catalog in get_catalog_configs()}
     desired_values = {catalog_key: (form.get(f'database_id_{catalog_key}') or '').strip() for catalog_key in catalog_by_key.keys()}
 
     existing_by_key = {entry.catalog.key: entry for entry in plant.database_identifiers if entry.catalog}
@@ -1016,12 +930,12 @@ def upsert_plant_database_identifiers(plant, form):
         if existing_entry and existing_entry.taxonomy_id == desired:
             new_entries.append(existing_entry)
             continue
-        matched = PlantDatabaseIdentifier.query.filter_by(plant_id=plant.id, catalog_id=catalog.id).first()
+        matched = PlantDatabaseIdentifier.query.filter_by(plant_id=plant.id, catalog_key=catalog.key).first()
         if matched:
             matched.taxonomy_id = desired
             new_entries.append(matched)
         else:
-            created = PlantDatabaseIdentifier(plant_id=plant.id, catalog_id=catalog.id, taxonomy_id=desired)
+            created = PlantDatabaseIdentifier(plant_id=plant.id, catalog_key=catalog.key, taxonomy_id=desired)
             db.session.add(created)
             db.session.flush()
             new_entries.append(created)
@@ -1043,7 +957,7 @@ def suggest_taxonomy_ids(plant_id):
         return jsonify({'ok': False, 'error': 'Bitte zuerst einen wissenschaftlichen Namen eingeben.', 'debug': {'trace_id': trace_id}}), 400
 
     catalog_key = (payload.get('catalog_key') or '').strip()
-    catalogs = get_or_create_database_catalogs()
+    catalogs = get_catalog_configs()
     if catalog_key:
         catalog = next((item for item in catalogs if item.key == catalog_key), None)
         if catalog is None:
