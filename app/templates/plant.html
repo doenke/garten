@@ -604,7 +604,7 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
         magicIdsButton.textContent = '…';
         try {
           const requestUrl = '/plants/{{ plant.id }}/taxonomy-ids-suggest';
-          const requestPayload = {scientific_name: sourceName};
+          const requestPayload = {scientific_name: sourceName, catalog_key: catalogKey};
           pushMagicDebugLog('Taxonomy', `Suche gestartet für: "${sourceName}" (${catalogKey.toUpperCase()})`);
           const response = await fetch(requestUrl, {
             method: 'POST',
