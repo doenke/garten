@@ -69,11 +69,27 @@
   </div>
   {% endif %}
   {% if plant.info %}<p><strong>Info:</strong> {{ plant.info }}</p>{% endif %}
+        </div>
+      </div>
+      {% if title_event and title_event.description %}
+      <aside class="plant-title-entry-panel">
+        <p class="plant-title-entry-text">{{ title_event.description }}</p>
+      </aside>
+      {% endif %}
+      {% if title_event and title_event.attachment_kind == 'image' and title_event.attachment_filename %}
+      <aside class="plant-title-entry-image-panel">
+        <button type="button" class="timeline-image-btn plant-title-entry-image-btn" data-image-src="/uploads/{{ title_event.attachment_filename }}" aria-label="Titelbild groß anzeigen">
+          <img src="/uploads/{{ title_event.attachment_filename }}" alt="Titelbeitrag von {{ plant.name }}" class="plant-title-entry-image">
+        </button>
+      </aside>
+      {% endif %}
+    </div>
+    <div class="plant-masterdata-edit-box">
 
-  <details>
-    <summary>Pflanzendaten ändern</summary>
-    <form method="post" action="/plants/{{ plant.id }}/masterdata" class="grid mt-75">
-      <fieldset class="form-section">
+      <details>
+        <summary>Pflanzendaten ändern</summary>
+        <form method="post" action="/plants/{{ plant.id }}/masterdata" class="grid mt-75">
+          <fieldset class="form-section">
         <legend>Basisdaten</legend>
         <label for="plant-name">Name</label>
         <input id="plant-name" name="name" value="{{ plant.name }}" required>
@@ -92,7 +108,7 @@
         <input id="plant-source" name="source" value="{{ plant.source or '' }}" placeholder="z. B. Gärtnerei Musterhof" list="source-suggestions">
         <datalist id="source-suggestions">{% for source in source_suggestions %}<option value="{{ source }}">{% endfor %}</datalist>
       </fieldset>
-      <fieldset class="form-section">
+          <fieldset class="form-section">
         <legend>Standort &amp; Boden</legend>
         <fieldset class="light-need-group">
           <legend>Lichtbedarf</legend>
@@ -120,7 +136,7 @@
           </div>
         </div>
       </fieldset>
-      <fieldset class="form-section">
+          <fieldset class="form-section">
         <legend>Blüte &amp; Wuchs</legend>
         <div class="field-pair">
           <div class="field-pair-item">
@@ -156,12 +172,12 @@
           </div>
         </div>
       </fieldset>
-      <fieldset class="form-section">
+          <fieldset class="form-section">
         <legend>Notizen</legend>
         <label for="plant-info">Info</label>
         <textarea id="plant-info" name="info" placeholder="z. B. Besonderheiten zum Standort">{{ plant.info or '' }}</textarea>
       </fieldset>
-      <fieldset class="form-section">
+          <fieldset class="form-section">
         <legend>Position</legend>
         <div class="field-pair">
           <div class="field-pair-item">
@@ -174,7 +190,7 @@
           </div>
         </div>
       </fieldset>
-      <fieldset class="form-section database-id-section">
+          <fieldset class="form-section database-id-section">
         <legend>Datenbank-IDs/-Slugs</legend>
         <div class="database-id-grid">
           {% for catalog in database_catalogs %}
@@ -198,23 +214,9 @@
           <ul id="magic-debug-log" class="muted" style="margin:.35rem 0 0 1.1rem;padding:0;display:grid;gap:.2rem;"></ul>
         </details>
       </fieldset>
-      <button type="submit">Pflanzendaten speichern</button>
-    </form>
-  </details>
-        </div>
-      </div>
-      {% if title_event and title_event.description %}
-      <aside class="plant-title-entry-panel">
-        <p class="plant-title-entry-text">{{ title_event.description }}</p>
-      </aside>
-      {% endif %}
-      {% if title_event and title_event.attachment_kind == 'image' and title_event.attachment_filename %}
-      <aside class="plant-title-entry-image-panel">
-        <button type="button" class="timeline-image-btn plant-title-entry-image-btn" data-image-src="/uploads/{{ title_event.attachment_filename }}" aria-label="Titelbild groß anzeigen">
-          <img src="/uploads/{{ title_event.attachment_filename }}" alt="Titelbeitrag von {{ plant.name }}" class="plant-title-entry-image">
-        </button>
-      </aside>
-      {% endif %}
+          <button type="submit">Pflanzendaten speichern</button>
+        </form>
+      </details>
     </div>
     {% if garden_map and garden_map.filename and location %}
     <div class="plant-map-panel">
@@ -232,8 +234,8 @@
         </div>
       </form>
     </div>
+    {% endif %}
   </div>
-  {% endif %}
 </section>
 
 
@@ -336,6 +338,10 @@
 .plant-top-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,460px);gap:1rem;align-items:start}
 .plant-main-column{min-width:0}
 .plant-masterdata{min-width:0}
+.plant-masterdata-edit-box{margin-top:1rem;padding:.9rem;border:1px solid var(--border);border-radius:12px;background:var(--surface-soft)}
+.plant-masterdata-edit-box details{width:100%}
+.plant-masterdata-edit-box summary{font-weight:700}
+.plant-masterdata-edit-box form{width:100%}
 .db-icon-links{display:flex;flex-wrap:wrap;gap:.45rem;margin:.15rem 0 .65rem}
 .db-icon-link{display:inline-flex;align-items:center;justify-content:center;width:2.1rem;height:2.1rem;border:1px solid var(--border);border-radius:999px;background:var(--surface-soft);overflow:hidden;text-decoration:none}
 .db-icon-link:hover,.db-icon-link:focus-visible{background:var(--accent-soft);outline:none}
