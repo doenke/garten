@@ -92,30 +92,6 @@
         <input id="plant-source" name="source" value="{{ plant.source or '' }}" placeholder="z. B. Gärtnerei Musterhof" list="source-suggestions">
         <datalist id="source-suggestions">{% for source in source_suggestions %}<option value="{{ source }}">{% endfor %}</datalist>
       </fieldset>
-      <fieldset class="form-section database-id-section">
-        <legend>Datenbank-IDs/-Slugs</legend>
-        <div class="database-id-grid">
-          {% for catalog in database_catalogs %}
-          {% set catalog_search_url = database_search_urls.get(catalog.key) %}
-          <div class="database-id-row">
-            <label class="database-id-label" for="plant-db-{{ catalog.key }}">{{ catalog.label }}</label>
-            <input id="plant-db-{{ catalog.key }}" name="database_id_{{ catalog.key }}" value="{{ (plant.database_identifiers | selectattr('catalog.key', 'equalto', catalog.key) | map(attribute='taxonomy_id') | list | first) or '' }}" placeholder="ID/Slug">
-            {% if catalog_search_url %}
-            <a class="btn secondary database-search-link" href="{{ catalog_search_url }}" target="_blank" rel="noopener noreferrer" data-search-url-template="{{ catalog.search_url_template or '' }}" title="{{ catalog.label }} nach {{ database_search_query }} suchen" aria-label="{{ catalog.label }} nach {{ database_search_query }} suchen">🔎</a>
-            {% else %}
-            <span class="btn secondary database-search-link disabled" title="Kein Suchlink für {{ catalog.label }} konfiguriert" aria-hidden="true">🔎</span>
-            {% endif %}
-            <button type="button" class="btn secondary magic-db-id" data-catalog-key="{{ catalog.key }}" title="{{ catalog.label }}-ID/Slug suchen">🪄</button>
-          </div>
-          {% endfor %}
-        </div>
-        <small id="magic-taxonomy-ids-status" class="muted"></small>
-        <small id="magic-debug-last-taxonomy" class="muted"></small>
-        <details class="mt-1">
-          <summary>Magic-Debuglog</summary>
-          <ul id="magic-debug-log" class="muted" style="margin:.35rem 0 0 1.1rem;padding:0;display:grid;gap:.2rem;"></ul>
-        </details>
-      </fieldset>
       <fieldset class="form-section">
         <legend>Standort &amp; Boden</legend>
         <fieldset class="light-need-group">
@@ -197,6 +173,30 @@
             <input id="plant-map-y-input" type="number" step="any" min="-180" max="180" name="map_y" value="{{ plant.map_y if plant.map_y is not none else '' }}" placeholder="z. B. 13.4050">
           </div>
         </div>
+      </fieldset>
+      <fieldset class="form-section database-id-section">
+        <legend>Datenbank-IDs/-Slugs</legend>
+        <div class="database-id-grid">
+          {% for catalog in database_catalogs %}
+          {% set catalog_search_url = database_search_urls.get(catalog.key) %}
+          <div class="database-id-row">
+            <label class="database-id-label" for="plant-db-{{ catalog.key }}">{{ catalog.label }}</label>
+            <input id="plant-db-{{ catalog.key }}" name="database_id_{{ catalog.key }}" value="{{ (plant.database_identifiers | selectattr('catalog.key', 'equalto', catalog.key) | map(attribute='taxonomy_id') | list | first) or '' }}" placeholder="ID/Slug">
+            {% if catalog_search_url %}
+            <a class="btn secondary database-search-link" href="{{ catalog_search_url }}" target="_blank" rel="noopener noreferrer" data-search-url-template="{{ catalog.search_url_template or '' }}" title="{{ catalog.label }} nach {{ database_search_query }} suchen" aria-label="{{ catalog.label }} nach {{ database_search_query }} suchen">🔎</a>
+            {% else %}
+            <span class="btn secondary database-search-link disabled" title="Kein Suchlink für {{ catalog.label }} konfiguriert" aria-hidden="true">🔎</span>
+            {% endif %}
+            <button type="button" class="btn secondary magic-db-id" data-catalog-key="{{ catalog.key }}" title="{{ catalog.label }}-ID/Slug suchen">🪄</button>
+          </div>
+          {% endfor %}
+        </div>
+        <small id="magic-taxonomy-ids-status" class="muted"></small>
+        <small id="magic-debug-last-taxonomy" class="muted"></small>
+        <details class="mt-1">
+          <summary>Magic-Debuglog</summary>
+          <ul id="magic-debug-log" class="muted" style="margin:.35rem 0 0 1.1rem;padding:0;display:grid;gap:.2rem;"></ul>
+        </details>
       </fieldset>
       <button type="submit">Pflanzendaten speichern</button>
     </form>
@@ -372,8 +372,8 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
 .field-pair{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
 .field-pair-item{display:grid;gap:.35rem}
 .magic-field-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.45rem;align-items:center}
-.database-id-row{display:grid;grid-template-columns:max-content minmax(12rem,1fr) auto auto;gap:0;align-items:center}
-.database-id-label{font-weight:600;color:var(--muted);margin:0;padding-right:.35rem;white-space:nowrap}
+.database-id-row{display:grid;grid-template-columns:minmax(5.5rem,8rem) minmax(0,1fr) auto auto;gap:0;align-items:center;min-width:0}
+.database-id-label{font-weight:600;color:var(--muted);margin:0;padding-right:.35rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .database-id-row input{min-width:0;border-top-right-radius:0;border-bottom-right-radius:0}
 .database-id-row .btn{border-radius:0;margin-left:-1px;min-height:100%}
 .database-id-row .btn:last-child{border-top-right-radius:10px;border-bottom-right-radius:10px}
@@ -396,8 +396,6 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
 .image-modal-close{position:absolute;top:-.5rem;right:-.5rem;font-size:1.4rem;line-height:1;padding:.45rem .6rem;min-width:44px;min-height:44px;border-radius:999px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.32);text-shadow:none}
 @media (max-width: 640px){
   .field-pair{grid-template-columns:1fr}
-  .database-id-row{grid-template-columns:minmax(0,1fr) auto auto}
-  .database-id-label{grid-column:1 / -1}
   .timeline-form-row{grid-template-columns:1fr}
   .image-modal{padding:0;background:#000;overscroll-behavior:none}
   .image-modal-inner{width:100vw;height:100dvh;max-width:none;max-height:none;display:grid;grid-template-columns:1fr;grid-template-rows:1fr}
