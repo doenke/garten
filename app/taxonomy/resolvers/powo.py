@@ -7,6 +7,11 @@ class PowoResolver(TaxonomyResolver):
     key = 'powo_ipni'
     mode = 'powo_search'
     endpoint = 'https://powo.science.kew.org/api/2/search'
+    default_config_values = {
+        'mode': 'powo_search',
+        'accepted_only': True,
+        'per_page': 5,
+    }
 
     def external_call(self, request: ResolverRequest):
         params = {'q': request.scientific_name, 'perPage': request.config.get('per_page') or 5}

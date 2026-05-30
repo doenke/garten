@@ -7,6 +7,11 @@ from .html_search import HtmlSearchResolver, search_page_taxonomy_id
 class MeinSchoenerGartenResolver(HtmlSearchResolver):
     key = 'mein_schoener_garten'
     mode = 'mein_schoener_garten_search'
+    default_config_values = {
+        'mode': 'mein_schoener_garten_search',
+        'search_url': 'https://www.mein-schoener-garten.de/suche',
+        'query_param': 'search_api_fulltext',
+    }
 
     patterns = [
         r'https?://(?:www\.)?mein-schoener-garten\.de/pflanzen/([^"\'\s\?#/&]+)',

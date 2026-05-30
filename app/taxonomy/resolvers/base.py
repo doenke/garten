@@ -1,4 +1,5 @@
 import re
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Optional
 from urllib.parse import urlencode
@@ -56,14 +57,13 @@ class ResolverResult:
 class TaxonomyResolver:
     key: str
     mode: str = None
+    default_config_values: Mapping[str, Any] = {}
 
     def supports(self, catalog) -> bool:
         return getattr(catalog, 'key', None) == self.key
 
     def default_config(self) -> dict:
-        from ..defaults import resolver_defaults
-
-        defaults = resolver_defaults(self.key)
+        defaults = deepcopy(self.default_config_values)
         defaults.setdefault('mode', self.mode or self.key)
         return defaults
 
