@@ -2,7 +2,7 @@ import html
 import json
 import time
 import re
-from urllib.parse import urlencode, unquote, urlsplit, urlunsplit, parse_qsl
+from urllib.parse import urlencode, unquote, urlsplit, urlunsplit, parse_qsl, quote
 
 import requests
 from functools import wraps
@@ -289,6 +289,21 @@ def _build_database_links_for_plant(plant):
             'icon_url': (item.catalog.icon_url or '').strip(),
         })
     return sorted(links, key=lambda link: ((link['catalog_label'] or '').lower(), link['identifier'].lower()))
+
+
+def _build_database_search_urls(catalogs, search_query):
+    query = (search_query or '').strip()
+    urls = {}
+    if not query:
+        return urls
+
+    encoded_query = quote(query, safe='')
+    for catalog in catalogs:
+        template = (catalog.search_url_template or '').strip()
+        if not template or '{q}' not in template:
+            continue
+        urls[catalog.key] = template.replace('{q}', encoded_query)
+    return urls
 
 
 def parse_soil_properties(raw_value):
@@ -868,6 +883,8 @@ def plant_detail(plant_id):
         )
         top_soil_properties += [(item.label, 0) for item in fallback_soil_properties]
     soil_property_suggestions = SoilProperty.query.order_by(SoilProperty.label.asc()).all()
+    database_catalogs = DatabaseCatalog.query.order_by(DatabaseCatalog.label.asc()).all()
+    database_search_query = plant.scientific_name or plant.name
     return render_template(
         'plant.html',
         plant=plant,
@@ -891,7 +908,9 @@ def plant_detail(plant_id):
         flower_color_suggestions=get_flower_color_suggestions(),
         source_suggestions=get_source_suggestions(),
         database_links=_build_database_links_for_plant(plant),
-        database_catalogs=DatabaseCatalog.query.order_by(DatabaseCatalog.label.asc()).all(),
+        database_catalogs=database_catalogs,
+        database_search_query=database_search_query,
+        database_search_urls=_build_database_search_urls(database_catalogs, database_search_query),
     )
 
 
