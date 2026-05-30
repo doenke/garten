@@ -83,7 +83,7 @@ DEFAULT_DATABASE_CATALOGS = [
         'key': 'floraweb',
         'label': 'FloraWeb',
         'record_url_template': 'https://www.floraweb.de/taxon/{id}',
-        'search_url_template': 'https://www.floraweb.de/suche?suchbegriff={q}',
+        'search_url_template': 'https://www.floraweb.de/php/taxoquery.php?taxname={q}',
         'icon_url': 'https://www.floraweb.de/favicon.ico',
     },
     {
@@ -120,8 +120,8 @@ TAXONOMY_ID_RESOLVER_CONFIG = {
     },
     'floraweb': {
         'mode': 'floraweb_search',
-        'search_url': 'https://www.floraweb.de/suche',
-        'query_param': 'suchbegriff',
+        'search_url': 'https://www.floraweb.de/php/taxoquery.php',
+        'query_param': 'taxname',
     },
     'botanikus': {
         'mode': 'search_query_passthrough',
