@@ -1240,6 +1240,19 @@ def _floraweb_taxonomy_id(scientific_name, config):
     )
 
 
+def _normalize_naturadb_slug(raw_slug):
+    slug = unquote(raw_slug or '')
+    slug = re.split(r'[?#]', slug, maxsplit=1)[0]
+    slug = slug.replace('\\', '/').strip().strip('/').lower()
+    segments = []
+    for segment in slug.split('/'):
+        normalized_segment = re.sub(r'[^a-z0-9\-]+', '-', segment)
+        normalized_segment = re.sub(r'-{2,}', '-', normalized_segment).strip('-')
+        if normalized_segment:
+            segments.append(normalized_segment)
+    return '/'.join(segments) or None
+
+
 def _naturadb_taxonomy_id(scientific_name, config):
     page_html = _search_page_html(scientific_name, config)
     if not page_html:
@@ -1261,9 +1274,7 @@ def _naturadb_taxonomy_id(scientific_name, config):
         href_value = (href_match.group(1) or '').strip()
         if not href_value.startswith('/pflanzen/'):
             continue
-        candidate_slug = href_value[len('/pflanzen/'):].strip('/')
-        candidate_slug = re.sub(r'[^a-z0-9\-]+', '-', unquote(candidate_slug).lower())
-        candidate_slug = re.sub(r'-{2,}', '-', candidate_slug).strip('-')
+        candidate_slug = _normalize_naturadb_slug(href_value[len('/pflanzen/'):])
         if candidate_slug:
             return candidate_slug
 
@@ -1274,33 +1285,28 @@ def _naturadb_taxonomy_id(scientific_name, config):
         scientific_name,
         config,
         patterns=[
-            r'https?://(?:www\.)?naturadb\.de/pflanzen/([^"\'\s\?#/&]+)',
-            r'/pflanzen/([^"\'\s\?#/&]+)',
-            r'\/pflanzen\/([^\"\s\?#/&]+)',
-            r'%2Fpflanzen%2F([^%\s\?#/&]+)',
+            r'https?://(?:www\.)?naturadb\.de/pflanzen/([^"\'\s\?#]+)',
+            r'/pflanzen/([^"\'\s\?#]+)',
+            r'\/pflanzen\/([^\"\s\?#]+)',
+            r'%2Fpflanzen%2F([^\s\?#]+)',
         ],
     )
     if not raw_id:
         return None
 
-    slug = unquote(raw_id)
-    slug = slug.replace('\\', '/').strip().strip('/').lower()
-    slug = re.sub(r'[^a-z0-9\-]+', '-', slug)
-    slug = re.sub(r'-{2,}', '-', slug).strip('-')
+    slug = _normalize_naturadb_slug(raw_id)
     if requested_slug and slug == requested_slug:
         return slug
 
     # Suche auf Ergebnislisten bevorzugt nach exakt passendem wissenschaftlichen Namen.
     if requested_slug:
         exact_link_patterns = [
-            r'href="/pflanzen/([^"\'\s\?#/&]+)(?:/)?"[^>]*>\s*([^<]+)\s*</a>',
-            r'<a[^>]*href="/pflanzen/([^"\'\s\?#/&]+)(?:/)?"[^>]*>\s*([^<]+)\s*</a>',
+            r'href="/pflanzen/([^"\'\s\?#]+)"[^>]*>\s*([^<]+)\s*</a>',
+            r'<a[^>]*href="/pflanzen/([^"\'\s\?#]+)"[^>]*>\s*([^<]+)\s*</a>',
         ]
         for link_pattern in exact_link_patterns:
             for match in re.finditer(link_pattern, page_html, flags=re.IGNORECASE):
-                candidate_slug = (match.group(1) or '').replace('\\', '/').strip().strip('/').lower()
-                candidate_slug = re.sub(r'[^a-z0-9\-]+', '-', unquote(candidate_slug))
-                candidate_slug = re.sub(r'-{2,}', '-', candidate_slug).strip('-')
+                candidate_slug = _normalize_naturadb_slug(match.group(1))
                 candidate_text = (match.group(2) or '').strip()
                 normalized_candidate_text = (_normalize_scientific_name_for_lookup(candidate_text) or '').strip().lower()
                 if normalized_candidate_text == (requested_slug.replace('-', ' ').strip().lower()):
