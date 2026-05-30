@@ -238,11 +238,17 @@
     renderLocationPolygons();
   };
 
-  toggleButton.addEventListener('click', () => {
-    const isHidden = newLocationForm.style.display === 'none';
-    newLocationForm.style.display = isHidden ? 'block' : 'none';
-    toggleButton.textContent = isHidden ? 'Formular schließen' : 'Neues Beet anlegen';
-  });
+  if (toggleButton && newLocationForm) {
+    const syncNewLocationFormVisibility = (isVisible) => {
+      newLocationForm.classList.toggle('hidden', !isVisible);
+      toggleButton.textContent = isVisible ? 'Formular schließen' : 'Neues Beet anlegen';
+    };
+
+    syncNewLocationFormVisibility(false);
+    toggleButton.addEventListener('click', () => {
+      syncNewLocationFormVisibility(newLocationForm.classList.contains('hidden'));
+    });
+  }
 
   colorTriggers.forEach((trigger) => {
     trigger.addEventListener('click', () => {
