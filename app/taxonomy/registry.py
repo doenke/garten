@@ -1,4 +1,4 @@
-from urllib.parse import parse_qsl, urlsplit, urlunsplit
+from .url_templates import config_from_search_url_template
 
 
 _RESOLVERS = []
@@ -28,25 +28,11 @@ def iter_resolvers():
 
 
 def build_html_search_config(catalog, defaults):
-    config = dict(defaults or {})
-    template = (getattr(catalog, 'search_url_template', None) or '').strip()
-    if not template:
-        config['catalog_key'] = catalog.key
-        return config
+    """Compatibility wrapper for older callers.
 
-    parsed = urlsplit(template)
-    if not parsed.scheme or not parsed.netloc:
-        config['catalog_key'] = catalog.key
-        return config
-
-    query_param = None
-    for key, value in parse_qsl(parsed.query, keep_blank_values=True):
-        if value == '{q}':
-            query_param = key
-            break
-
-    if query_param:
-        config['query_param'] = query_param
-    config['search_url'] = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, '', ''))
+    New resolver code uses ``TaxonomyResolver.build_config`` and
+    ``config_from_search_url_template`` directly.
+    """
+    config = config_from_search_url_template(getattr(catalog, 'search_url_template', None), defaults)
     config['catalog_key'] = catalog.key
     return config

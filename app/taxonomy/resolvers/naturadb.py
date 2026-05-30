@@ -22,13 +22,6 @@ class NaturaDbResolver(HtmlSearchResolver):
     key = 'naturadb'
     mode = 'naturadb_search'
 
-    def default_config(self):
-        return {
-            'mode': self.mode,
-            'search_url': 'https://www.naturadb.de/suche',
-            'query_param': 'query',
-        }
-
     patterns = [
         r'https?://(?:www\.)?naturadb\.de/pflanzen/([^"\'\s\?#]+)',
         r'/pflanzen/([^"\'\s\?#]+)',

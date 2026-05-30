@@ -3,6 +3,8 @@ from dataclasses import dataclass, field
 from typing import Any, Mapping, Optional
 from urllib.parse import urlencode
 
+from ..url_templates import config_from_search_url_template
+
 
 USER_AGENT = 'garten-taxonomy-resolver/1.0'
 
@@ -45,12 +47,25 @@ class ResolverResult:
 
 class TaxonomyResolver:
     key: str
+    mode: str = None
 
     def supports(self, catalog) -> bool:
         return getattr(catalog, 'key', None) == self.key
 
+    def default_config(self) -> dict:
+        from ..defaults import resolver_defaults
+
+        defaults = resolver_defaults(self.key)
+        defaults.setdefault('mode', self.mode or self.key)
+        return defaults
+
     def build_config(self, catalog) -> dict:
-        return {'mode': self.key}
+        config = config_from_search_url_template(
+            getattr(catalog, 'search_url_template', None),
+            self.default_config(),
+        )
+        config['catalog_key'] = catalog.key
+        return config
 
     def debug_call(self, scientific_name: str, config: dict) -> Optional[ExternalCall]:
         return self.external_call(ResolverRequest(config.get('catalog_key') or self.key, scientific_name, config))

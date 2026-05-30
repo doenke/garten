@@ -8,13 +8,6 @@ class MeinSchoenerGartenResolver(HtmlSearchResolver):
     key = 'mein_schoener_garten'
     mode = 'mein_schoener_garten_search'
 
-    def default_config(self):
-        return {
-            'mode': self.mode,
-            'search_url': 'https://www.mein-schoener-garten.de/suche',
-            'query_param': 'search_api_fulltext',
-        }
-
     patterns = [
         r'https?://(?:www\.)?mein-schoener-garten\.de/pflanzen/([^"\'\s\?#/&]+)',
         r'/pflanzen/([^"\'\s\?#/&]+)',
