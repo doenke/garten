@@ -30,7 +30,7 @@ class StubResolver(TaxonomyResolver):
 
 
 class TaxonomyServiceTest(unittest.TestCase):
-    def test_suggest_ids_aggregates_multiple_enabled_database_catalogs(self):
+    def test_suggest_for_all_enabled_aggregates_multiple_enabled_database_catalogs(self):
         catalogs = [
             DatabaseCatalog(
                 key='gbif',
@@ -55,13 +55,32 @@ class TaxonomyServiceTest(unittest.TestCase):
             'get_resolver_for_catalog',
             side_effect=lambda catalog: resolvers_by_key[catalog.key],
         ):
-            suggestion = taxonomy_service.suggest_ids('Phlox paniculata', catalogs)
+            suggestion = taxonomy_service.suggest_for_all_enabled('Phlox paniculata', catalogs)
 
         self.assertEqual(suggestion.matches, {'gbif': '12345', 'wfo': 'wfo-4000029286'})
         self.assertEqual(suggestion.unavailable_catalogs, [])
         self.assertEqual([call.catalog for call in suggestion.external_calls], ['gbif', 'wfo'])
 
-    def test_suggest_ids_marks_catalogs_without_resolver_as_unavailable(self):
+    def test_suggest_for_catalog_resolves_only_one_catalog(self):
+        catalog = DatabaseCatalog(
+            key='gbif',
+            label='GBIF',
+            enabled=True,
+            record_url_template='https://gbif.example/{id}',
+        )
+
+        with patch.object(
+            registry,
+            'get_resolver_for_catalog',
+            side_effect=lambda catalog: StubResolver(catalog.key, '12345'),
+        ) as get_resolver_for_catalog:
+            suggestion = taxonomy_service.suggest_for_catalog('Phlox paniculata', catalog)
+
+        self.assertEqual(suggestion.matches, {'gbif': '12345'})
+        self.assertEqual([call.catalog for call in suggestion.external_calls], ['gbif'])
+        get_resolver_for_catalog.assert_called_once_with(catalog)
+
+    def test_suggest_for_all_enabled_marks_catalogs_without_resolver_as_unavailable(self):
         catalog = DatabaseCatalog(
             key='unknown_catalog',
             label='Unknown Catalog',
@@ -70,7 +89,7 @@ class TaxonomyServiceTest(unittest.TestCase):
         )
 
         with patch.object(registry, 'get_resolver_for_catalog', return_value=None):
-            suggestion = taxonomy_service.suggest_ids('Phlox paniculata', [catalog])
+            suggestion = taxonomy_service.suggest_for_all_enabled('Phlox paniculata', [catalog])
 
         self.assertEqual(suggestion.matches, {})
         self.assertEqual(suggestion.unavailable_catalogs, ['unknown_catalog'])

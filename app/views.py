@@ -1042,8 +1042,26 @@ def suggest_taxonomy_ids(plant_id):
         current_app.logger.info('[%s] taxonomy lookup aborted: missing scientific name', trace_id)
         return jsonify({'ok': False, 'error': 'Bitte zuerst einen wissenschaftlichen Namen eingeben.', 'debug': {'trace_id': trace_id}}), 400
 
-    catalogs = [catalog for catalog in get_or_create_database_catalogs() if catalog.enabled]
-    suggestion = taxonomy_service.suggest_ids(scientific_name, catalogs)
+    catalog_key = (payload.get('catalog_key') or '').strip()
+    catalogs = get_or_create_database_catalogs()
+    if catalog_key:
+        catalog = next((item for item in catalogs if item.key == catalog_key), None)
+        if catalog is None:
+            return jsonify({
+                'ok': False,
+                'error': f'Der Katalog "{catalog_key}" existiert nicht.',
+                'debug': {'trace_id': trace_id},
+            }), 404
+        if not catalog.enabled:
+            return jsonify({
+                'ok': False,
+                'error': f'Der Katalog "{catalog.label}" ist deaktiviert.',
+                'debug': {'trace_id': trace_id},
+            }), 400
+        suggestion = taxonomy_service.suggest_for_catalog(scientific_name, catalog)
+    else:
+        enabled_catalogs = [catalog for catalog in catalogs if catalog.enabled]
+        suggestion = taxonomy_service.suggest_for_all_enabled(scientific_name, enabled_catalogs)
     duration_ms = round((time.perf_counter() - started_at) * 1000, 1)
     current_app.logger.info(
         '[%s] taxonomy lookup for "%s" (%sms): %s hits, unavailable=%s',

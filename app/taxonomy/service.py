@@ -73,7 +73,11 @@ def resolve_for_catalog(catalog, scientific_name):
     return taxonomy_resolver.resolve(scientific_name, resolver_config)
 
 
-def suggest_ids(scientific_name, catalogs):
+def suggest_for_catalog(scientific_name, catalog):
+    return suggest_for_all_enabled(scientific_name, [catalog])
+
+
+def suggest_for_all_enabled(scientific_name, catalogs):
     matches: dict[str, str] = {}
     unavailable: list[str] = []
     resolver_results: list[ResolverResult] = []
@@ -93,6 +97,10 @@ def suggest_ids(scientific_name, catalogs):
         unavailable_catalogs=unavailable,
         resolver_results=resolver_results,
     )
+
+
+def suggest_ids(scientific_name, catalogs):
+    return suggest_for_all_enabled(scientific_name, catalogs)
 
 
 def external_resolver_endpoint(catalog_key):
