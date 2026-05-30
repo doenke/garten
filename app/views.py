@@ -1,8 +1,7 @@
-import html
-import json
+import os
 import time
 import re
-from urllib.parse import urlencode, unquote, urlsplit, urlunsplit, parse_qsl, quote
+from urllib.parse import quote
 
 import requests
 from functools import wraps
@@ -10,6 +9,8 @@ from datetime import datetime
 from flask import Blueprint, current_app, g, render_template, request, redirect, url_for, session, jsonify, send_from_directory, flash
 from .models import db, User, Location, Plant, PlantPhoto, PlantNote, GardenMap, TimelineEntry, LightNeed, SoilProperty, DatabaseCatalog, PlantDatabaseIdentifier, plant_soil_property
 from .services.timeline_service import save_uploaded_attachment, set_single_title_entry, delete_timeline_entry, build_unique_upload_name
+from .taxonomy import service as taxonomy_service
+from .taxonomy.resolvers.base import normalize_scientific_name_for_lookup
 
 main_bp = Blueprint('main', __name__)
 ALLOWED = {'png', 'jpg', 'jpeg', 'webp', 'gif', 'pdf'}
@@ -102,42 +103,6 @@ DEFAULT_DATABASE_CATALOGS = [
     },
 ]
 
-TAXONOMY_ID_RESOLVER_CONFIG = {
-    'gbif': {
-        'mode': 'gbif_species_match',
-        'prefer_statuses': {'ACCEPTED'},
-        'kingdom': 'Plantae',
-    },
-    'wfo': {
-        'mode': 'wfo_search',
-        'search_url': 'https://www.worldfloraonline.org/search',
-        'query_param': 'query',
-    },
-    'powo_ipni': {
-        'mode': 'powo_search',
-        'accepted_only': True,
-        'per_page': 5,
-    },
-    'floraweb': {
-        'mode': 'floraweb_search',
-        'search_url': 'https://www.floraweb.de/php/taxoquery.php',
-        'query_param': 'taxname',
-    },
-    'botanikus': {
-        'mode': 'search_query_passthrough',
-    },
-    'naturadb': {
-        'mode': 'naturadb_search',
-        'search_url': 'https://www.naturadb.de/suche',
-        'query_param': 'query',
-    },
-    'mein_schoener_garten': {
-        'mode': 'mein_schoener_garten_search',
-        'search_url': 'https://www.mein-schoener-garten.de/suche',
-        'query_param': 'search_api_fulltext',
-    },
-}
-
 
 
 
@@ -159,41 +124,10 @@ def _guess_common_name_from_text(scientific_name, text):
     return None
 
 
-def _normalize_scientific_name_for_lookup(scientific_name):
-    value = re.sub(r'\s+', ' ', (scientific_name or '').strip())
-    if not value:
-        return None
-
-    # remove cultivar designations and marketing names in quotes
-    value = re.sub(r'"[^"]+"', '', value)
-    value = re.sub(r"'[^']+'", '', value)
-    value = re.sub(r'\s+', ' ', value).strip(' ,;:-')
-
-    tokens = value.split()
-    if len(tokens) < 2:
-        return value or None
-
-    def _is_species_token(token):
-        return bool(re.fullmatch(r'[a-z][a-z\-]*', token))
-
-    selected = [tokens[0]]
-    for token in tokens[1:]:
-        cleaned = token.strip(' ,;()')
-        if not cleaned:
-            continue
-        if cleaned.lower() in {'x', '×'} or _is_species_token(cleaned):
-            selected.append(cleaned)
-            continue
-        break
-
-    if len(selected) < 2:
-        return ' '.join(tokens[:2])
-    return ' '.join(selected)
-
 
 def _lookup_common_name_from_web(scientific_name, language_code='de'):
     query = (scientific_name or '').strip()
-    normalized_query = _normalize_scientific_name_for_lookup(query)
+    normalized_query = normalize_scientific_name_for_lookup(query)
     language = (language_code or 'de').strip().lower()
     if not query:
         return None, []
@@ -252,7 +186,7 @@ def _lookup_common_name_from_web(scientific_name, language_code='de'):
 
     if not common_name and search_results:
         first_title = (search_results[0].get('title') or '').strip()
-        normalized_title = _normalize_scientific_name_for_lookup(first_title) or first_title
+        normalized_title = normalize_scientific_name_for_lookup(first_title) or first_title
         if first_title and normalized_title.lower() != (normalized_query or query).lower():
             common_name = first_title
 
@@ -1064,405 +998,6 @@ def upsert_plant_database_identifiers(plant, form):
 
 
 
-def _parse_json_response(response):
-    if not response.content:
-        return {}
-    try:
-        return response.json()
-    except ValueError:
-        current_app.logger.warning('taxonomy resolver non-json response from %s (status=%s)', response.url, response.status_code)
-        return None
-
-def _gbif_species_match_id(scientific_name, config):
-    try:
-        response = requests.get(
-            'https://api.gbif.org/v1/species/match',
-            params={'name': scientific_name, 'verbose': 'true', 'kingdom': config.get('kingdom') or 'Plantae'},
-            headers={'Accept': 'application/json', 'User-Agent': 'garten-taxonomy-resolver/1.0'},
-            timeout=8,
-        )
-        response.raise_for_status()
-    except requests.RequestException:
-        return None
-
-    payload = _parse_json_response(response)
-    if payload is None:
-        return None
-    usage_key = payload.get('usageKey')
-    if not usage_key:
-        return None
-
-    prefer_statuses = config.get('prefer_statuses') or {'ACCEPTED'}
-    status = (payload.get('status') or '').upper()
-    if prefer_statuses and status and status not in prefer_statuses:
-        accepted_key = payload.get('acceptedUsageKey')
-        if accepted_key:
-            return str(accepted_key)
-    return str(usage_key)
-
-
-
-
-def _powo_taxonomy_id(scientific_name, config):
-    params = {
-        'q': scientific_name,
-        'perPage': config.get('per_page') or 5,
-    }
-    if config.get('accepted_only', True):
-        params['f'] = 'accepted:true'
-
-    def _extract_taxonomy_id(raw_id):
-        if not raw_id:
-            return None
-        raw_id = str(raw_id).strip()
-        if not raw_id:
-            return None
-        if 'urn:lsid:ipni.org:names:' in raw_id:
-            return raw_id
-        if '/taxon/' in raw_id:
-            return raw_id.rsplit('/taxon/', 1)[-1].strip('/')
-        return raw_id
-
-    try:
-        response = requests.get(
-            'https://powo.science.kew.org/api/2/search',
-            params=params,
-            headers={'Accept': 'application/json', 'User-Agent': 'garten-taxonomy-resolver/1.0'},
-            timeout=8,
-        )
-        response.raise_for_status()
-    except requests.RequestException:
-        return None
-
-    payload = _parse_json_response(response)
-    if payload is None:
-        return None
-    results = payload.get('results') if isinstance(payload, dict) else None
-    if not results:
-        return None
-
-    requested_name = _normalize_scientific_name_for_lookup(scientific_name)
-    requested_name = (requested_name or scientific_name or '').strip().lower()
-
-    fallback_id = None
-    for item in results:
-        if not isinstance(item, dict):
-            continue
-
-        taxonomy_id = _extract_taxonomy_id(item.get('fqId') or item.get('id') or item.get('url'))
-        if not taxonomy_id:
-            continue
-        if not fallback_id:
-            fallback_id = taxonomy_id
-
-        candidates = [
-            item.get('name'),
-            item.get('accepted_name'),
-            item.get('species'),
-        ]
-        for candidate in candidates:
-            normalized_candidate = _normalize_scientific_name_for_lookup(candidate)
-            normalized_candidate = (normalized_candidate or candidate or '').strip().lower()
-            if normalized_candidate and normalized_candidate == requested_name:
-                return taxonomy_id
-
-    return fallback_id
-
-
-def _html_decode_candidates(page_html):
-    candidates = []
-
-    def _append_candidate(candidate):
-        if candidate is None:
-            return
-        candidate = str(candidate)
-        if candidate not in candidates:
-            candidates.append(candidate)
-
-    _append_candidate(page_html or '')
-    for candidate in list(candidates):
-        _append_candidate(html.unescape(candidate))
-    for candidate in list(candidates):
-        _append_candidate(unquote(candidate))
-    for candidate in list(candidates):
-        _append_candidate(candidate.replace('\\/', '/').replace('\\"', '"').replace("\\'", "'"))
-    for candidate in list(candidates):
-        _append_candidate(html.unescape(candidate))
-        _append_candidate(unquote(candidate))
-    return candidates
-
-
-def _extract_search_page_taxonomy_id(page_html, patterns):
-    for candidate_html in _html_decode_candidates(page_html):
-        first_match = None
-        for pattern in patterns:
-            for match in re.finditer(pattern, candidate_html, flags=re.IGNORECASE):
-                if first_match is None or match.start() < first_match.start():
-                    first_match = match
-                break
-        if not first_match:
-            continue
-        taxonomy_id = (first_match.group(1) or '').strip().strip('/').strip()
-        if taxonomy_id:
-            return taxonomy_id
-    return None
-
-
-def _search_page_taxonomy_id(scientific_name, config, patterns):
-    page_html = _search_page_html(scientific_name, config)
-    if page_html is None:
-        return None
-    return _extract_search_page_taxonomy_id(page_html, patterns)
-
-
-def _search_page_html(scientific_name, config):
-    search_url = (config.get('search_url') or '').strip()
-    query_param = (config.get('query_param') or 'q').strip()
-    if not search_url:
-        return None
-    try:
-        response = requests.get(
-            search_url,
-            params={query_param: scientific_name},
-            headers={'Accept': 'text/html,application/xhtml+xml', 'User-Agent': 'garten-taxonomy-resolver/1.0'},
-            timeout=8,
-        )
-        response.raise_for_status()
-    except requests.RequestException:
-        return None
-    return response.text or ''
-
-
-WFO_TAXON_PATTERNS = [
-    r'/taxon/(wfo-[A-Za-z0-9\-]+)',
-    r'worldfloraonline\.org/taxon/(wfo-[A-Za-z0-9\-]+)',
-    r'\\/taxon\\/(wfo-[A-Za-z0-9\-]+)',
-    r'worldfloraonline\\.org\\/taxon\\/(wfo-[A-Za-z0-9\-]+)',
-    r'%2[fF]taxon%2[fF](wfo-[A-Za-z0-9\-]+)',
-]
-
-WFO_RESULT_TAXON_PATTERNS = [
-    r'<a\b(?=[^>]*\bclass=["\\\']?[^>"\\\']*\bresult\b)(?=[^>]*\bhref=["\\\']?(?:https?://(?:www\.)?worldfloraonline\.org)?/taxon/(wfo-[A-Za-z0-9\-]+))[^>]*>',
-    r'<a\b(?=[^>]*\bhref=["\\\']?(?:https?://(?:www\.)?worldfloraonline\.org)?/taxon/(wfo-[A-Za-z0-9\-]+))(?=[^>]*\bclass=["\\\']?[^>"\\\']*\bresult\b)[^>]*>',
-]
-
-
-def _first_wfo_pattern_match(candidate_html, patterns):
-    first_match = None
-    for pattern in patterns:
-        for match in re.finditer(pattern, candidate_html, flags=re.IGNORECASE):
-            if first_match is None or match.start() < first_match.start():
-                first_match = match
-            break
-    return first_match.group(1) if first_match else None
-
-
-def _extract_wfo_taxon_slug(page_html):
-    candidates = _html_decode_candidates(page_html)
-    for candidate_html in candidates:
-        result_slug = _first_wfo_pattern_match(candidate_html, WFO_RESULT_TAXON_PATTERNS)
-        if result_slug:
-            return result_slug
-    for candidate_html in candidates:
-        fallback_slug = _first_wfo_pattern_match(candidate_html, WFO_TAXON_PATTERNS)
-        if fallback_slug:
-            return fallback_slug
-    return None
-
-
-def _wfo_taxonomy_id(scientific_name, config):
-    page_html = _search_page_html(scientific_name, config)
-    if page_html is None:
-        return None
-
-    return _extract_wfo_taxon_slug(page_html)
-
-
-def _floraweb_taxonomy_id(scientific_name, config):
-    return _search_page_taxonomy_id(
-        scientific_name,
-        config,
-        patterns=[
-            r'/taxon/([A-Za-z0-9\-]+)',
-            r'/pflanze/([A-Za-z0-9\-]+)',
-            r'[?&]taxnr=([0-9]+)',
-            r'/taxonomiedetail[s]?/[A-Za-z0-9\-]*([0-9]{3,})',
-        ],
-    )
-
-
-def _normalize_naturadb_slug(raw_slug):
-    slug = unquote(raw_slug or '')
-    slug = re.split(r'[?#]', slug, maxsplit=1)[0]
-    slug = slug.replace('\\', '/').strip().strip('/').lower()
-    segments = []
-    for segment in slug.split('/'):
-        normalized_segment = re.sub(r'[^a-z0-9\-]+', '-', segment)
-        normalized_segment = re.sub(r'-{2,}', '-', normalized_segment).strip('-')
-        if normalized_segment:
-            segments.append(normalized_segment)
-    return '/'.join(segments) or None
-
-
-def _naturadb_taxonomy_id(scientific_name, config):
-    page_html = _search_page_html(scientific_name, config)
-    if not page_html:
-        return None
-
-    # Bevorzugt den ersten Treffer im naturaDB-Kartenlayout:
-    # <a class="card__title no-link" href="/pflanzen/<slug>/">…</a>
-    for anchor_match in re.finditer(r'<a\b[^>]*>', page_html, flags=re.IGNORECASE):
-        anchor_tag = anchor_match.group(0)
-        class_match = re.search(r'class\s*=\s*["\']([^"\']+)["\']', anchor_tag, flags=re.IGNORECASE)
-        if not class_match:
-            continue
-        class_names = set((class_match.group(1) or '').lower().split())
-        if 'card__title' not in class_names or 'no-link' not in class_names:
-            continue
-        href_match = re.search(r'href\s*=\s*["\'](/pflanzen/([^"\']+)?)["\']', anchor_tag, flags=re.IGNORECASE)
-        if not href_match:
-            continue
-        href_value = (href_match.group(1) or '').strip()
-        if not href_value.startswith('/pflanzen/'):
-            continue
-        candidate_slug = _normalize_naturadb_slug(href_value[len('/pflanzen/'):])
-        if candidate_slug:
-            return candidate_slug
-
-    requested_slug = re.sub(r'[^a-z0-9\-]+', '-', _normalize_scientific_name_for_lookup(scientific_name) or '')
-    requested_slug = re.sub(r'-{2,}', '-', requested_slug).strip('-')
-
-    raw_id = _search_page_taxonomy_id(
-        scientific_name,
-        config,
-        patterns=[
-            r'https?://(?:www\.)?naturadb\.de/pflanzen/([^"\'\s\?#]+)',
-            r'/pflanzen/([^"\'\s\?#]+)',
-            r'\/pflanzen\/([^\"\s\?#]+)',
-            r'%2Fpflanzen%2F([^\s\?#]+)',
-        ],
-    )
-    if not raw_id:
-        return None
-
-    slug = _normalize_naturadb_slug(raw_id)
-    if requested_slug and slug == requested_slug:
-        return slug
-
-    # Suche auf Ergebnislisten bevorzugt nach exakt passendem wissenschaftlichen Namen.
-    if requested_slug:
-        exact_link_patterns = [
-            r'href="/pflanzen/([^"\'\s\?#]+)"[^>]*>\s*([^<]+)\s*</a>',
-            r'<a[^>]*href="/pflanzen/([^"\'\s\?#]+)"[^>]*>\s*([^<]+)\s*</a>',
-        ]
-        for link_pattern in exact_link_patterns:
-            for match in re.finditer(link_pattern, page_html, flags=re.IGNORECASE):
-                candidate_slug = _normalize_naturadb_slug(match.group(1))
-                candidate_text = (match.group(2) or '').strip()
-                normalized_candidate_text = (_normalize_scientific_name_for_lookup(candidate_text) or '').strip().lower()
-                if normalized_candidate_text == (requested_slug.replace('-', ' ').strip().lower()):
-                    return candidate_slug or None
-                if candidate_slug == requested_slug:
-                    return candidate_slug or None
-
-    return slug or None
-
-def _mein_schoener_garten_taxonomy_id(scientific_name, config):
-    raw_slug = _search_page_taxonomy_id(
-        scientific_name,
-        config,
-        patterns=[
-            r'https?://(?:www\.)?mein-schoener-garten\.de/pflanzen/([^"\'\s\?#/&]+)',
-            r'/pflanzen/([^"\'\s\?#/&]+)',
-            r'\/pflanzen\/([^\"\s\?#/&]+)',
-            r'%2Fpflanzen%2F([^%\s\?#/&]+)',
-        ],
-    )
-    if not raw_slug:
-        return None
-    slug = unquote(raw_slug).strip().strip('/').lower()
-    slug = re.sub(r'[^a-z0-9\-]+', '-', slug)
-    slug = re.sub(r'-{2,}', '-', slug).strip('-')
-    return slug or None
-
-
-
-
-def _resolver_config_for_catalog(catalog):
-    resolver = dict(TAXONOMY_ID_RESOLVER_CONFIG.get(catalog.key) or {'mode': 'none'})
-    if resolver.get('mode') not in {'wfo_search', 'floraweb_search', 'naturadb_search', 'mein_schoener_garten_search'}:
-        return resolver
-
-    template = (catalog.search_url_template or '').strip()
-    if not template:
-        return resolver
-
-    parsed = urlsplit(template)
-    if not parsed.scheme or not parsed.netloc:
-        return resolver
-
-    query_param = None
-    for key, value in parse_qsl(parsed.query, keep_blank_values=True):
-        if value == '{q}':
-            query_param = key
-            break
-
-    if query_param:
-        resolver['query_param'] = query_param
-    resolver['search_url'] = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, '', ''))
-    return resolver
-
-def _resolve_taxonomy_id_for_catalog(catalog_key, scientific_name, resolver=None):
-    resolver = resolver or dict(TAXONOMY_ID_RESOLVER_CONFIG.get(catalog_key) or {'mode': 'none'})
-    mode = resolver.get('mode')
-    if mode == 'gbif_species_match':
-        return _gbif_species_match_id(scientific_name, resolver)
-    if mode == 'powo_search':
-        return _powo_taxonomy_id(scientific_name, resolver)
-    if mode == 'wfo_search':
-        return _wfo_taxonomy_id(scientific_name, resolver)
-    if mode == 'floraweb_search':
-        return _floraweb_taxonomy_id(scientific_name, resolver)
-    if mode == 'search_query_passthrough':
-        return (scientific_name or '').strip() or None
-    if mode == 'naturadb_search':
-        return _naturadb_taxonomy_id(scientific_name, resolver)
-    if mode == 'mein_schoener_garten_search':
-        return _mein_schoener_garten_taxonomy_id(scientific_name, resolver)
-    return None
-
-
-
-def _external_resolver_debug_call(catalog_key, scientific_name, resolver=None):
-    resolver = resolver or dict(TAXONOMY_ID_RESOLVER_CONFIG.get(catalog_key) or {'mode': 'none'})
-    mode = resolver.get('mode')
-    if mode == 'gbif_species_match':
-        params = {'name': scientific_name, 'verbose': 'true', 'kingdom': resolver.get('kingdom') or 'Plantae'}
-        return {'endpoint': 'https://api.gbif.org/v1/species/match', 'query': params}
-    if mode == 'powo_search':
-        params = {'q': scientific_name, 'perPage': resolver.get('per_page') or 5}
-        if resolver.get('accepted_only', True):
-            params['f'] = 'accepted:true'
-        return {'endpoint': 'https://powo.science.kew.org/api/2/search', 'query': params}
-    if mode in {'wfo_search', 'floraweb_search', 'naturadb_search', 'mein_schoener_garten_search'}:
-        query_param = resolver.get('query_param') or 'q'
-        endpoint = resolver.get('search_url')
-        return {'endpoint': endpoint, 'query': {query_param: scientific_name}}
-    if mode == 'search_query_passthrough':
-        return {'endpoint': None, 'query': {'q': scientific_name}}
-    return None
-def _external_resolver_endpoint(catalog_key):
-    resolver = dict(TAXONOMY_ID_RESOLVER_CONFIG.get(catalog_key) or {'mode': 'none'})
-    mode = resolver.get('mode')
-    if mode == 'gbif_species_match':
-        return 'https://api.gbif.org/v1/species/match'
-    if mode == 'powo_search':
-        return 'https://powo.science.kew.org/api/2/search'
-    if mode in {'wfo_search', 'floraweb_search', 'naturadb_search', 'mein_schoener_garten_search'}:
-        return resolver.get('search_url')
-    return None
-
-
 @main_bp.route('/plants/<int:plant_id>/taxonomy-ids-suggest', methods=['POST'])
 @login_required
 def suggest_taxonomy_ids(plant_id):
@@ -1474,41 +1009,19 @@ def suggest_taxonomy_ids(plant_id):
     if not scientific_name:
         current_app.logger.info('[%s] taxonomy lookup aborted: missing scientific name', trace_id)
         return jsonify({'ok': False, 'error': 'Bitte zuerst einen wissenschaftlichen Namen eingeben.', 'debug': {'trace_id': trace_id}}), 400
-    catalogs = [catalog for catalog in get_or_create_database_catalogs() if catalog.enabled]
-    suggested = {}
-    unavailable = []
-    external_calls = []
-    for catalog in catalogs:
-        resolver = _resolver_config_for_catalog(catalog)
-        if resolver.get('mode') == 'none':
-            unavailable.append(catalog.key)
-            continue
 
-        debug_call = _external_resolver_debug_call(catalog.key, scientific_name, resolver)
-        if debug_call:
-            query = debug_call.get('query') or {}
-            endpoint = debug_call.get('endpoint')
-            request_url = f"{endpoint}?{urlencode(query)}" if endpoint and query else endpoint
-            external_calls.append({
-                'catalog': catalog.key,
-                'url': endpoint,
-                'query': query,
-                'request_url': request_url,
-            })
-        resolved_id = _resolve_taxonomy_id_for_catalog(catalog.key, scientific_name, resolver)
-        if resolved_id:
-            suggested[catalog.key] = resolved_id
+    catalogs = [catalog for catalog in get_or_create_database_catalogs() if catalog.enabled]
+    suggestion = taxonomy_service.suggest_ids(scientific_name, catalogs)
     duration_ms = round((time.perf_counter() - started_at) * 1000, 1)
-    current_app.logger.info('[%s] taxonomy lookup for "%s" (%sms): %s hits, unavailable=%s', trace_id, scientific_name, duration_ms, len(suggested), ','.join(unavailable) or '-')
-    return jsonify({
-        'ok': True,
-        'scientific_name': scientific_name,
-        'matches': suggested,
-        'unavailable_catalogs': unavailable,
-        'confidence': 0.9 if suggested else 0.0,
-        'note': 'IDs werden katalogspezifisch ermittelt. Ohne Resolver gibt es keinen Vorschlag.',
-        'debug': {'trace_id': trace_id, 'duration_ms': duration_ms, 'external_calls': external_calls},
-    })
+    current_app.logger.info(
+        '[%s] taxonomy lookup for "%s" (%sms): %s hits, unavailable=%s',
+        trace_id,
+        scientific_name,
+        duration_ms,
+        len(suggestion.matches),
+        ','.join(suggestion.unavailable_catalogs) or '-',
+    )
+    return jsonify(suggestion.to_response(trace_id=trace_id, duration_ms=duration_ms))
 
 @main_bp.route('/plants/<int:plant_id>/masterdata', methods=['POST'])
 @login_required
