@@ -9,8 +9,11 @@ from datetime import datetime
 from flask import Blueprint, current_app, g, render_template, request, redirect, url_for, session, jsonify, send_from_directory, flash
 from .models import db, User, Location, Plant, PlantPhoto, PlantNote, GardenMap, TimelineEntry, LightNeed, SoilProperty, DatabaseCatalog, PlantDatabaseIdentifier, plant_soil_property
 from .services.timeline_service import save_uploaded_attachment, set_single_title_entry, delete_timeline_entry, build_unique_upload_name
+from .taxonomy import registry as taxonomy_registry
 from .taxonomy import service as taxonomy_service
 from .taxonomy.resolvers.base import normalize_scientific_name_for_lookup
+from .taxonomy.resolvers.wfo import WfoResolver, extract_wfo_taxon_slug
+from .taxonomy.resolvers.html_search import search_page_html
 
 main_bp = Blueprint('main', __name__)
 ALLOWED = {'png', 'jpg', 'jpeg', 'webp', 'gif', 'pdf'}
@@ -104,6 +107,50 @@ DEFAULT_DATABASE_CATALOGS = [
 ]
 
 
+
+
+def _resolver_config_for_catalog(catalog):
+    return taxonomy_service.resolver_config_for_catalog(catalog)
+
+
+def _resolve_taxonomy_id_for_catalog(catalog_key, scientific_name, resolver=None):
+    return taxonomy_service.resolve_taxonomy_id_for_catalog(catalog_key, scientific_name, resolver)
+
+
+def _external_resolver_debug_call(catalog_key, scientific_name='', resolver=None):
+    for taxonomy_resolver in taxonomy_registry.iter_resolvers():
+        if taxonomy_resolver.key != catalog_key:
+            continue
+        if hasattr(taxonomy_resolver, 'default_config'):
+            config = taxonomy_resolver.default_config()
+        else:
+            config = {'mode': getattr(taxonomy_resolver, 'mode', taxonomy_resolver.key)}
+        config.update(resolver or {})
+        config.setdefault('catalog_key', catalog_key)
+        return taxonomy_resolver.debug_call(scientific_name, config)
+    return None
+
+
+def _external_resolver_endpoint(catalog_key):
+    return taxonomy_service.external_resolver_endpoint(catalog_key)
+
+
+def _extract_wfo_taxon_slug(page_html):
+    return extract_wfo_taxon_slug(page_html)
+
+
+def _search_page_html(scientific_name, config):
+    return search_page_html(scientific_name, config)
+
+
+def _wfo_taxonomy_id(scientific_name, config):
+    resolver = WfoResolver()
+    resolver_config = dict(resolver.default_config())
+    resolver_config.update(config or {})
+    page_html = _search_page_html(scientific_name, resolver_config)
+    if page_html is None:
+        return None
+    return extract_wfo_taxon_slug(page_html)
 
 
 def _guess_common_name_from_text(scientific_name, text):

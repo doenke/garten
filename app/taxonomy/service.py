@@ -1,62 +1,9 @@
 from dataclasses import dataclass, field
 from typing import Mapping
-from urllib.parse import parse_qsl, urlsplit, urlunsplit
 
-from .resolvers.base import ExternalCall, ResolverRequest, ResolverResult
-from .resolvers.floraweb import FlorawebResolver
-from .resolvers.gbif import GbifSpeciesMatchResolver
-from .resolvers.mein_schoener_garten import MeinSchoenerGartenResolver
-from .resolvers.naturadb import NaturadbResolver
-from .resolvers.powo import PowoResolver
-from .resolvers.wfo import WfoResolver
-
-
-TAXONOMY_ID_RESOLVER_CONFIG = {
-    'gbif': {
-        'mode': 'gbif_species_match',
-        'prefer_statuses': {'ACCEPTED'},
-        'kingdom': 'Plantae',
-    },
-    'wfo': {
-        'mode': 'wfo_search',
-        'search_url': 'https://www.worldfloraonline.org/search',
-        'query_param': 'query',
-    },
-    'powo_ipni': {
-        'mode': 'powo_search',
-        'accepted_only': True,
-        'per_page': 5,
-    },
-    'floraweb': {
-        'mode': 'floraweb_search',
-        'search_url': 'https://www.floraweb.de/php/taxoquery.php',
-        'query_param': 'taxname',
-    },
-    'botanikus': {
-        'mode': 'search_query_passthrough',
-    },
-    'naturadb': {
-        'mode': 'naturadb_search',
-        'search_url': 'https://www.naturadb.de/suche',
-        'query_param': 'query',
-    },
-    'mein_schoener_garten': {
-        'mode': 'mein_schoener_garten_search',
-        'search_url': 'https://www.mein-schoener-garten.de/suche',
-        'query_param': 'search_api_fulltext',
-    },
-}
-
-
-HTML_SEARCH_MODES = {'wfo_search', 'floraweb_search', 'naturadb_search', 'mein_schoener_garten_search'}
-RESOLVERS_BY_MODE = {
-    'gbif_species_match': GbifSpeciesMatchResolver(),
-    'powo_search': PowoResolver(),
-    'wfo_search': WfoResolver(),
-    'floraweb_search': FlorawebResolver(),
-    'naturadb_search': NaturadbResolver(),
-    'mein_schoener_garten_search': MeinSchoenerGartenResolver(),
-}
+from . import registry
+from . import resolvers  # noqa: F401 - import triggers static resolver registration
+from .resolvers.base import ExternalCall, ResolverResult
 
 
 @dataclass(frozen=True)
@@ -91,64 +38,35 @@ class TaxonomySuggestion:
 
 
 def resolver_config_for_catalog(catalog):
-    resolver = dict(TAXONOMY_ID_RESOLVER_CONFIG.get(catalog.key) or {'mode': 'none'})
-    if resolver.get('mode') not in HTML_SEARCH_MODES:
-        return resolver
+    taxonomy_resolver = registry.get_resolver_for_catalog(catalog)
+    if not taxonomy_resolver:
+        return {'catalog_key': catalog.key, 'mode': 'none'}
+    return taxonomy_resolver.build_config(catalog)
 
-    template = (catalog.search_url_template or '').strip()
-    if not template:
-        return resolver
 
-    parsed = urlsplit(template)
-    if not parsed.scheme or not parsed.netloc:
-        return resolver
-
-    query_param = None
-    for key, value in parse_qsl(parsed.query, keep_blank_values=True):
-        if value == '{q}':
-            query_param = key
-            break
-
-    if query_param:
-        resolver['query_param'] = query_param
-    resolver['search_url'] = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, '', ''))
-    return resolver
+def _resolver_for_key(catalog_key):
+    for resolver in registry.iter_resolvers():
+        if resolver.key == catalog_key:
+            return resolver
+    return None
 
 
 def resolve_taxonomy_id_for_catalog(catalog_key, scientific_name, resolver=None):
-    resolver = resolver or dict(TAXONOMY_ID_RESOLVER_CONFIG.get(catalog_key) or {'mode': 'none'})
-    mode = resolver.get('mode')
-    if mode == 'search_query_passthrough':
-        return (scientific_name or '').strip() or None
-    taxonomy_resolver = RESOLVERS_BY_MODE.get(mode)
+    config = dict(resolver or {'catalog_key': catalog_key})
+    config.setdefault('catalog_key', catalog_key)
+    taxonomy_resolver = _resolver_for_key(catalog_key)
     if not taxonomy_resolver:
         return None
-    return taxonomy_resolver.suggest_id(ResolverRequest(catalog_key, scientific_name, resolver))
+    return taxonomy_resolver.resolve(scientific_name, config).taxonomy_id
 
 
 def resolve_for_catalog(catalog, scientific_name):
-    resolver_config = resolver_config_for_catalog(catalog)
-    mode = resolver_config.get('mode')
-    if mode == 'none':
+    taxonomy_resolver = registry.get_resolver_for_catalog(catalog)
+    if not taxonomy_resolver:
         return ResolverResult(catalog.key, unavailable=True)
 
-    request = ResolverRequest(catalog.key, scientific_name, resolver_config)
-    if mode == 'search_query_passthrough':
-        return ResolverResult(
-            catalog.key,
-            taxonomy_id=(scientific_name or '').strip() or None,
-            external_call=ExternalCall(catalog=catalog.key, url=None, query={'q': scientific_name}),
-        )
-
-    resolver = RESOLVERS_BY_MODE.get(mode)
-    if not resolver:
-        return ResolverResult(catalog.key, unavailable=True)
-
-    return ResolverResult(
-        catalog.key,
-        taxonomy_id=resolver.suggest_id(request),
-        external_call=resolver.external_call(request),
-    )
+    resolver_config = taxonomy_resolver.build_config(catalog)
+    return taxonomy_resolver.resolve(scientific_name, resolver_config)
 
 
 def suggest_ids(scientific_name, catalogs):
@@ -175,13 +93,13 @@ def suggest_ids(scientific_name, catalogs):
 
 
 def external_resolver_endpoint(catalog_key):
-    resolver = dict(TAXONOMY_ID_RESOLVER_CONFIG.get(catalog_key) or {'mode': 'none'})
-    mode = resolver.get('mode')
-    if mode == 'search_query_passthrough':
-        return None
-    taxonomy_resolver = RESOLVERS_BY_MODE.get(mode)
+    taxonomy_resolver = _resolver_for_key(catalog_key)
     if not taxonomy_resolver:
         return None
-    request = ResolverRequest(catalog_key, '', resolver)
-    call = taxonomy_resolver.external_call(request)
+    if hasattr(taxonomy_resolver, 'default_config'):
+        config = taxonomy_resolver.default_config()
+    else:
+        config = {'mode': getattr(taxonomy_resolver, 'mode', taxonomy_resolver.key)}
+    config['catalog_key'] = catalog_key
+    call = taxonomy_resolver.debug_call('', config)
     return call.url if call else None

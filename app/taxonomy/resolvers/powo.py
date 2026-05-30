@@ -1,11 +1,20 @@
 import requests
 
-from .base import ExternalCall, ResolverRequest, USER_AGENT, normalize_scientific_name_for_lookup, parse_json_response
+from .base import ExternalCall, ResolverRequest, TaxonomyResolver, USER_AGENT, normalize_scientific_name_for_lookup, parse_json_response
 
 
-class PowoResolver:
+class PowoResolver(TaxonomyResolver):
+    key = 'powo_ipni'
     mode = 'powo_search'
     endpoint = 'https://powo.science.kew.org/api/2/search'
+
+    def build_config(self, catalog):
+        return {
+            'catalog_key': catalog.key,
+            'mode': self.mode,
+            'accepted_only': True,
+            'per_page': 5,
+        }
 
     def external_call(self, request: ResolverRequest):
         params = {'q': request.scientific_name, 'perPage': request.config.get('per_page') or 5}

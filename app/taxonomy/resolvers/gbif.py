@@ -1,11 +1,28 @@
 import requests
 
-from .base import ExternalCall, ResolverRequest, USER_AGENT, parse_json_response
+from .base import ExternalCall, ResolverRequest, ResolverResult, TaxonomyResolver, USER_AGENT, parse_json_response
 
 
-class GbifSpeciesMatchResolver:
+class GbifResolver(TaxonomyResolver):
+    key = 'gbif'
     mode = 'gbif_species_match'
     endpoint = 'https://api.gbif.org/v1/species/match'
+
+    def build_config(self, catalog):
+        return {
+            'catalog_key': catalog.key,
+            'mode': self.mode,
+            'prefer_statuses': {'ACCEPTED'},
+            'kingdom': 'Plantae',
+        }
+
+    def resolve(self, scientific_name: str, config: dict):
+        request = ResolverRequest(config.get('catalog_key') or self.key, scientific_name, config)
+        return ResolverResult(
+            request.catalog_key,
+            taxonomy_id=self.suggest_id(request),
+            external_call=self.debug_call(scientific_name, config),
+        )
 
     def external_call(self, request: ResolverRequest):
         return ExternalCall(
@@ -48,4 +65,7 @@ class GbifSpeciesMatchResolver:
 
 
 def gbif_species_match_id(scientific_name, config):
-    return GbifSpeciesMatchResolver().suggest_id(ResolverRequest('gbif', scientific_name, config))
+    return GbifResolver().suggest_id(ResolverRequest('gbif', scientific_name, config))
+
+
+GbifSpeciesMatchResolver = GbifResolver

@@ -4,7 +4,7 @@ from urllib.parse import unquote
 
 import requests
 
-from .base import ExternalCall, ResolverRequest, USER_AGENT
+from .base import ExternalCall, ResolverRequest, TaxonomyResolver, USER_AGENT
 
 
 def html_decode_candidates(page_html):
@@ -71,9 +71,18 @@ def search_page_html(scientific_name, config):
     return response.text or ''
 
 
-class HtmlSearchResolver:
+class HtmlSearchResolver(TaxonomyResolver):
+    key = None
     mode = None
     patterns = []
+
+    def build_config(self, catalog):
+        from ..registry import build_html_search_config
+
+        return build_html_search_config(catalog, self.default_config())
+
+    def default_config(self):
+        return {'mode': self.mode}
 
     def external_call(self, request: ResolverRequest):
         query_param = request.config.get('query_param') or 'q'
