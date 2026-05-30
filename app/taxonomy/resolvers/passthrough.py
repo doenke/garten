@@ -1,19 +1,19 @@
-from .base import ExternalCall, ResolverResult, TaxonomyResolver
+from .base import ExternalCall, ResolverRequest, ResolverResult, TaxonomyResolver
 
 
 class SearchQueryPassthroughResolver(TaxonomyResolver):
     key = 'botanikus'
     mode = 'search_query_passthrough'
 
-    def debug_call(self, scientific_name: str, config: dict):
-        return ExternalCall(catalog=config.get('catalog_key') or self.key, url=None, query={'q': scientific_name})
+    def external_call(self, request: ResolverRequest):
+        return ExternalCall(catalog=request.catalog_key, url=None, query={'q': request.scientific_name})
 
     def resolve(self, scientific_name: str, config: dict):
-        catalog_key = config.get('catalog_key') or self.key
+        request = ResolverRequest(config.get('catalog_key') or self.key, scientific_name, config)
+        call = self.external_call(request)
         return ResolverResult(
-            catalog_key,
             taxonomy_id=(scientific_name or '').strip() or None,
-            external_call=self.debug_call(scientific_name, config),
+            external_calls=[call],
         )
 
     def suggest_id(self, request):

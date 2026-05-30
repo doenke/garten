@@ -13,11 +13,15 @@ class DummyResolver(TaxonomyResolver):
     def build_config(self, catalog):
         return {'catalog_key': catalog.key, 'mode': 'dummy'}
 
-    def debug_call(self, scientific_name, config):
-        return ExternalCall(catalog=config['catalog_key'], url='https://example.test/lookup', query={'q': scientific_name})
+    def external_call(self, request):
+        return ExternalCall(catalog=request.catalog_key, url='https://example.test/lookup', query={'q': request.scientific_name})
 
     def resolve(self, scientific_name, config):
-        return ResolverResult(config['catalog_key'], taxonomy_id=scientific_name.upper(), external_call=self.debug_call(scientific_name, config))
+        from app.taxonomy.resolvers.base import ResolverRequest
+
+        request = ResolverRequest(config['catalog_key'], scientific_name, config)
+        call = self.external_call(request)
+        return ResolverResult(taxonomy_id=scientific_name.upper(), external_calls=[call])
 
 
 class TaxonomyRegistryTest(unittest.TestCase):
@@ -49,8 +53,8 @@ class TaxonomyRegistryTest(unittest.TestCase):
         with patch.object(registry, 'get_resolver_for_catalog', return_value=resolver):
             result = taxonomy_service.resolve_for_catalog(catalog, 'phlox paniculata')
 
-        self.assertEqual(result.catalog_key, 'dummy')
         self.assertEqual(result.taxonomy_id, 'PHLOX PANICULATA')
+        self.assertEqual(result.external_calls[0].catalog, 'dummy')
         self.assertEqual(result.external_call.request_url, 'https://example.test/lookup?q=phlox+paniculata')
 
     def test_unknown_catalog_is_unavailable(self):
