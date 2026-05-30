@@ -88,8 +88,13 @@
         </div>
         <small id="magic-common-name-status" class="muted"></small>
         <small id="magic-debug-last-common-name" class="muted"></small>
-        <label>Datenbank-IDs/-Slugs</label>
-        <div class="grid">
+        <label for="plant-source">Quelle</label>
+        <input id="plant-source" name="source" value="{{ plant.source or '' }}" placeholder="z. B. Gärtnerei Musterhof" list="source-suggestions">
+        <datalist id="source-suggestions">{% for source in source_suggestions %}<option value="{{ source }}">{% endfor %}</datalist>
+      </fieldset>
+      <fieldset class="form-section database-id-section">
+        <legend>Datenbank-IDs/-Slugs</legend>
+        <div class="database-id-grid">
           {% for catalog in database_catalogs %}
           {% set catalog_search_url = database_search_urls.get(catalog.key) %}
           <div class="database-id-row">
@@ -110,9 +115,6 @@
           <summary>Magic-Debuglog</summary>
           <ul id="magic-debug-log" class="muted" style="margin:.35rem 0 0 1.1rem;padding:0;display:grid;gap:.2rem;"></ul>
         </details>
-        <label for="plant-source">Quelle</label>
-        <input id="plant-source" name="source" value="{{ plant.source or '' }}" placeholder="z. B. Gärtnerei Musterhof" list="source-suggestions">
-        <datalist id="source-suggestions">{% for source in source_suggestions %}<option value="{{ source }}">{% endfor %}</datalist>
       </fieldset>
       <fieldset class="form-section">
         <legend>Standort &amp; Boden</legend>
@@ -358,6 +360,8 @@
 .light-need-option span{display:inline-flex;align-items:center;gap:.35rem;white-space:nowrap}
 .form-section{display:grid;gap:.6rem;align-content:start;padding:.8rem .9rem;margin:0;border:1px solid var(--border);border-radius:10px;background:color-mix(in srgb,var(--surface-soft) 70%,transparent)}
 .form-section + .form-section{margin-top:.35rem}
+.database-id-section{grid-column:1 / -1}
+.database-id-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,24rem),1fr));gap:.65rem .9rem}
 fieldset{border:1px solid var(--border);border-radius:10px}
 legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
 .chip-row{display:flex;flex-wrap:wrap;gap:.4rem}
