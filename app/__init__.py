@@ -5,7 +5,7 @@ from .auth import auth_bp, oauth
 from .views import main_bp
 import os
 from sqlalchemy import inspect
-from .models import LightNeed, Plant, SoilProperty, DatabaseCatalog, PlantDatabaseIdentifier, plant_light_need, plant_soil_property
+from .models import LightNeed, Plant, SoilProperty, PlantDatabaseIdentifier, plant_light_need, plant_soil_property
 
 
 _WEAK_SECRET_KEY_VALUES = {
@@ -218,62 +218,77 @@ def _ensure_soil_property_schema(inspector):
 
 
 
-def _migrate_plant_database_identifier_add_surrogate_id_sqlite(source_column='external_id'):
-    db.session.execute(db.text('DROP TABLE IF EXISTS plant_database_identifier_old'))
-    db.session.execute(db.text('ALTER TABLE plant_database_identifier RENAME TO plant_database_identifier_old'))
+def _create_plant_database_identifier_static_sqlite():
     db.session.execute(db.text(
         'CREATE TABLE plant_database_identifier ('
         'id INTEGER NOT NULL PRIMARY KEY, '
         'plant_id INTEGER NOT NULL, '
-        'catalog_id INTEGER NOT NULL, '
+        'catalog_key VARCHAR(64) NOT NULL, '
         'taxonomy_id VARCHAR(255) NOT NULL, '
-        'CONSTRAINT ux_plant_database_identifier_plant_catalog UNIQUE (plant_id, catalog_id), '
-        'FOREIGN KEY(plant_id) REFERENCES plant (id), '
-        'FOREIGN KEY(catalog_id) REFERENCES database_catalog (id)'
+        'CONSTRAINT ux_plant_database_identifier_plant_catalog UNIQUE (plant_id, catalog_key), '
+        'FOREIGN KEY(plant_id) REFERENCES plant (id)'
         ')'
     ))
-    db.session.execute(db.text(
-        'INSERT INTO plant_database_identifier (plant_id, catalog_id, taxonomy_id) '
-        f'SELECT plant_id, catalog_id, {source_column} FROM plant_database_identifier_old'
-    ))
-    db.session.execute(db.text('DROP TABLE plant_database_identifier_old'))
     db.session.execute(db.text('CREATE INDEX IF NOT EXISTS ix_plant_database_identifier_plant_id ON plant_database_identifier (plant_id)'))
-    db.session.execute(db.text('CREATE INDEX IF NOT EXISTS ix_plant_database_identifier_catalog_id ON plant_database_identifier (catalog_id)'))
+    db.session.execute(db.text('CREATE INDEX IF NOT EXISTS ix_plant_database_identifier_catalog_key ON plant_database_identifier (catalog_key)'))
+
+
+def _migrate_plant_database_identifier_to_static_sqlite(source_column='taxonomy_id'):
+    db.session.execute(db.text('DROP TABLE IF EXISTS plant_database_identifier_old'))
+    db.session.execute(db.text('ALTER TABLE plant_database_identifier RENAME TO plant_database_identifier_old'))
+    _create_plant_database_identifier_static_sqlite()
+    old_columns = {row[1] for row in db.session.execute(db.text('PRAGMA table_info(plant_database_identifier_old)')).all()}
+    id_insert_column = 'id, ' if 'id' in old_columns else ''
+    id_select_column = 'id, ' if 'id' in old_columns else ''
+    if 'catalog_key' in old_columns:
+        db.session.execute(db.text(
+            f'INSERT INTO plant_database_identifier ({id_insert_column}plant_id, catalog_key, taxonomy_id) '
+            f'SELECT {id_select_column}plant_id, catalog_key, {source_column} FROM plant_database_identifier_old '
+            "WHERE catalog_key IS NOT NULL AND catalog_key != ''"
+        ))
+    elif 'catalog_id' in old_columns:
+        db.session.execute(db.text(
+            f'INSERT INTO plant_database_identifier ({id_insert_column}plant_id, catalog_key, taxonomy_id) '
+            f'SELECT {"pdi.id, " if "id" in old_columns else ""}pdi.plant_id, dc.key, pdi.{source_column} '
+            'FROM plant_database_identifier_old pdi '
+            'JOIN database_catalog dc ON dc.id = pdi.catalog_id '
+            "WHERE dc.key IS NOT NULL AND dc.key != ''"
+        ))
+    db.session.execute(db.text('DROP TABLE plant_database_identifier_old'))
+
+
+def _ensure_plant_database_identifier_postgresql(identifier_columns):
+    if 'catalog_key' not in identifier_columns:
+        db.session.execute(db.text('ALTER TABLE plant_database_identifier ADD COLUMN catalog_key VARCHAR(64)'))
+        if 'catalog_id' in identifier_columns:
+            db.session.execute(db.text(
+                'UPDATE plant_database_identifier pdi '
+                'SET catalog_key = dc.key '
+                'FROM database_catalog dc '
+                'WHERE dc.id = pdi.catalog_id'
+            ))
+        db.session.execute(db.text("DELETE FROM plant_database_identifier WHERE catalog_key IS NULL OR catalog_key = ''"))
+        db.session.execute(db.text('ALTER TABLE plant_database_identifier ALTER COLUMN catalog_key SET NOT NULL'))
+    if 'taxonomy_id' not in identifier_columns and 'external_id' in identifier_columns:
+        db.session.execute(db.text('ALTER TABLE plant_database_identifier RENAME COLUMN external_id TO taxonomy_id'))
+    if 'catalog_id' in identifier_columns:
+        db.session.execute(db.text('ALTER TABLE plant_database_identifier DROP COLUMN IF EXISTS catalog_id'))
+    db.session.execute(db.text('CREATE INDEX IF NOT EXISTS ix_plant_database_identifier_catalog_key ON plant_database_identifier (catalog_key)'))
+    db.session.execute(db.text('CREATE UNIQUE INDEX IF NOT EXISTS ux_plant_database_identifier_plant_catalog ON plant_database_identifier (plant_id, catalog_key)'))
 
 
 def _ensure_plant_extended_schema(inspector):
     table_names = set(inspector.get_table_names())
-    if 'database_catalog' not in table_names:
-        DatabaseCatalog.__table__.create(bind=db.engine, checkfirst=True)
+    dialect = db.engine.dialect.name
     if 'plant_database_identifier' not in table_names:
         PlantDatabaseIdentifier.__table__.create(bind=db.engine, checkfirst=True)
     else:
         identifier_columns = {col['name'] for col in inspector.get_columns('plant_database_identifier')}
-        if db.engine.dialect.name == 'sqlite':
-            if 'id' not in identifier_columns:
-                source_column = 'taxonomy_id' if 'taxonomy_id' in identifier_columns else 'external_id'
-                _migrate_plant_database_identifier_add_surrogate_id_sqlite(source_column=source_column)
-            elif 'taxonomy_id' not in identifier_columns and 'external_id' in identifier_columns:
-                db.session.execute(db.text('DROP TABLE IF EXISTS plant_database_identifier_old'))
-                db.session.execute(db.text('ALTER TABLE plant_database_identifier RENAME TO plant_database_identifier_old'))
-                db.session.execute(db.text(
-                    'CREATE TABLE plant_database_identifier ('
-                    'id INTEGER NOT NULL PRIMARY KEY, '
-                    'plant_id INTEGER NOT NULL, '
-                    'catalog_id INTEGER NOT NULL, '
-                    'taxonomy_id VARCHAR(255) NOT NULL, '
-                    'CONSTRAINT ux_plant_database_identifier_plant_catalog UNIQUE (plant_id, catalog_id), '
-                    'FOREIGN KEY(plant_id) REFERENCES plant (id), '
-                    'FOREIGN KEY(catalog_id) REFERENCES database_catalog (id)'
-                    ')'
-                ))
-                db.session.execute(db.text(
-                    'INSERT INTO plant_database_identifier (id, plant_id, catalog_id, taxonomy_id) '
-                    'SELECT id, plant_id, catalog_id, external_id FROM plant_database_identifier_old'
-                ))
-                db.session.execute(db.text('DROP TABLE plant_database_identifier_old'))
-                db.session.execute(db.text('CREATE INDEX IF NOT EXISTS ix_plant_database_identifier_plant_id ON plant_database_identifier (plant_id)'))
-                db.session.execute(db.text('CREATE INDEX IF NOT EXISTS ix_plant_database_identifier_catalog_id ON plant_database_identifier (catalog_id)'))
+        source_column = 'taxonomy_id' if 'taxonomy_id' in identifier_columns else 'external_id'
+        if dialect == 'sqlite' and ('catalog_key' not in identifier_columns or 'id' not in identifier_columns or 'taxonomy_id' not in identifier_columns):
+            _migrate_plant_database_identifier_to_static_sqlite(source_column=source_column)
+        elif dialect == 'postgresql':
+            _ensure_plant_database_identifier_postgresql(identifier_columns)
 
     if 'plant' in table_names:
         columns = {col['name'] for col in inspector.get_columns('plant')}
@@ -281,7 +296,9 @@ def _ensure_plant_extended_schema(inspector):
             db.session.execute(db.text('ALTER TABLE plant ADD COLUMN cultivar VARCHAR(255)'))
         if 'scientific_name' not in columns:
             db.session.execute(db.text('ALTER TABLE plant ADD COLUMN scientific_name VARCHAR(255)'))
+
     if 'database_catalog' in table_names:
-        catalog_columns = {col['name'] for col in inspector.get_columns('database_catalog')}
-        if 'icon_url' not in catalog_columns:
-            db.session.execute(db.text('ALTER TABLE database_catalog ADD COLUMN icon_url VARCHAR(1024)'))
+        if dialect == 'sqlite':
+            db.session.execute(db.text('DROP TABLE IF EXISTS database_catalog'))
+        elif dialect == 'postgresql':
+            db.session.execute(db.text('DROP TABLE IF EXISTS database_catalog'))

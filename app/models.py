@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
+from .taxonomy.defaults import get_database_catalog
 from datetime import datetime
 
 
@@ -97,27 +98,20 @@ class GardenMap(db.Model):
     boundary_points = db.Column(db.Text)
 
 
-class DatabaseCatalog(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    key = db.Column(db.String(64), unique=True, nullable=False)
-    label = db.Column(db.String(128), nullable=False)
-    enabled = db.Column(db.Boolean, nullable=False, default=True)
-    record_url_template = db.Column(db.String(1024), nullable=False)
-    search_url_template = db.Column(db.String(1024))
-    icon_url = db.Column(db.String(1024))
-
-
 class PlantDatabaseIdentifier(db.Model):
     __table_args__ = (
-        db.UniqueConstraint('plant_id', 'catalog_id', name='ux_plant_database_identifier_plant_catalog'),
+        db.UniqueConstraint('plant_id', 'catalog_key', name='ux_plant_database_identifier_plant_catalog'),
     )
 
     id = db.Column(db.Integer, primary_key=True)
     plant_id = db.Column(db.Integer, db.ForeignKey('plant.id'), nullable=False, index=True)
-    catalog_id = db.Column(db.Integer, db.ForeignKey('database_catalog.id'), nullable=False, index=True)
+    catalog_key = db.Column(db.String(64), nullable=False, index=True)
     taxonomy_id = db.Column(db.String(255), nullable=False)
     plant = db.relationship('Plant', back_populates='database_identifiers')
-    catalog = db.relationship('DatabaseCatalog')
+
+    @property
+    def catalog(self):
+        return get_database_catalog(self.catalog_key)
 
 
 class PlantPhoto(db.Model):
