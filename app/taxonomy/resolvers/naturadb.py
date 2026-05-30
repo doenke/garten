@@ -18,8 +18,17 @@ def normalize_naturadb_slug(raw_slug):
     return '/'.join(segments) or None
 
 
-class NaturadbResolver(HtmlSearchResolver):
+class NaturaDbResolver(HtmlSearchResolver):
+    key = 'naturadb'
     mode = 'naturadb_search'
+
+    def default_config(self):
+        return {
+            'mode': self.mode,
+            'search_url': 'https://www.naturadb.de/suche',
+            'query_param': 'query',
+        }
+
     patterns = [
         r'https?://(?:www\.)?naturadb\.de/pflanzen/([^"\'\s\?#]+)',
         r'/pflanzen/([^"\'\s\?#]+)',
@@ -85,4 +94,7 @@ class NaturadbResolver(HtmlSearchResolver):
 def naturadb_taxonomy_id(scientific_name, config):
     from .base import ResolverRequest
 
-    return NaturadbResolver().suggest_id(ResolverRequest('naturadb', scientific_name, config))
+    return NaturaDbResolver().suggest_id(ResolverRequest('naturadb', scientific_name, config))
+
+
+NaturadbResolver = NaturaDbResolver

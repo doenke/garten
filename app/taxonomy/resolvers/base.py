@@ -1,6 +1,6 @@
 import re
 from dataclasses import dataclass, field
-from typing import Any, Mapping, Optional, Protocol
+from typing import Any, Mapping, Optional
 from urllib.parse import urlencode
 
 
@@ -43,14 +43,32 @@ class ResolverResult:
     unavailable: bool = False
 
 
-class TaxonomyResolver(Protocol):
-    mode: str
+class TaxonomyResolver:
+    key: str
+
+    def supports(self, catalog) -> bool:
+        return getattr(catalog, 'key', None) == self.key
+
+    def build_config(self, catalog) -> dict:
+        return {'mode': self.key}
+
+    def debug_call(self, scientific_name: str, config: dict) -> Optional[ExternalCall]:
+        return self.external_call(ResolverRequest(config.get('catalog_key') or self.key, scientific_name, config))
+
+    def resolve(self, scientific_name: str, config: dict) -> ResolverResult:
+        catalog_key = config.get('catalog_key') or self.key
+        request = ResolverRequest(catalog_key, scientific_name, config)
+        return ResolverResult(
+            catalog_key,
+            taxonomy_id=self.suggest_id(request),
+            external_call=self.debug_call(scientific_name, config),
+        )
 
     def suggest_id(self, request: ResolverRequest) -> Optional[str]:
-        ...
+        raise NotImplementedError
 
     def external_call(self, request: ResolverRequest) -> Optional[ExternalCall]:
-        ...
+        return None
 
 
 def parse_json_response(response, logger=None):

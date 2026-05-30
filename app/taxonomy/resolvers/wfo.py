@@ -1,6 +1,6 @@
 import re
 
-from .html_search import html_decode_candidates, search_page_html
+from .html_search import HtmlSearchResolver, html_decode_candidates, search_page_html
 
 
 WFO_TAXON_PATTERNS = [
@@ -40,13 +40,16 @@ def extract_wfo_taxon_slug(page_html):
     return None
 
 
-class WfoResolver:
+class WfoResolver(HtmlSearchResolver):
+    key = 'wfo'
     mode = 'wfo_search'
 
-    def external_call(self, request):
-        from .html_search import HtmlSearchResolver
-
-        return HtmlSearchResolver().external_call(request)
+    def default_config(self):
+        return {
+            'mode': self.mode,
+            'search_url': 'https://www.worldfloraonline.org/search',
+            'query_param': 'query',
+        }
 
     def suggest_id(self, request):
         page_html = search_page_html(request.scientific_name, request.config)
