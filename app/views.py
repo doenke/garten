@@ -1,4 +1,5 @@
 import html
+from html.parser import HTMLParser
 import json
 import time
 import re
@@ -1169,33 +1170,19 @@ def _powo_taxonomy_id(scientific_name, config):
     return fallback_id
 
 
-def _search_page_taxonomy_id(scientific_name, config, patterns):
-    search_url = (config.get('search_url') or '').strip()
-    query_param = (config.get('query_param') or 'q').strip()
-    if not search_url:
-        return None
-
-    try:
-        response = requests.get(
-            search_url,
-            params={query_param: scientific_name},
-            headers={'Accept': 'text/html,application/xhtml+xml', 'User-Agent': 'garten-taxonomy-resolver/1.0'},
-            timeout=8,
-        )
-        response.raise_for_status()
-    except requests.RequestException:
-        return None
-
-    page_html = response.text or ''
-    candidates = [page_html]
-    decoded_once = html.unescape(page_html)
-    if decoded_once != page_html:
+def _html_decode_candidates(page_html):
+    candidates = [page_html or '']
+    decoded_once = html.unescape(candidates[0])
+    if decoded_once not in candidates:
         candidates.append(decoded_once)
     decoded_twice = html.unescape(decoded_once)
     if decoded_twice not in candidates:
         candidates.append(decoded_twice)
+    return candidates
 
-    for candidate_html in candidates:
+
+def _extract_search_page_taxonomy_id(page_html, patterns):
+    for candidate_html in _html_decode_candidates(page_html):
         first_match = None
         for pattern in patterns:
             for match in re.finditer(pattern, candidate_html, flags=re.IGNORECASE):
@@ -1208,6 +1195,14 @@ def _search_page_taxonomy_id(scientific_name, config, patterns):
         if taxonomy_id:
             return taxonomy_id
     return None
+
+
+def _search_page_taxonomy_id(scientific_name, config, patterns):
+    page_html = _search_page_html(scientific_name, config)
+    if page_html is None:
+        return None
+    return _extract_search_page_taxonomy_id(page_html, patterns)
+
 
 def _search_page_html(scientific_name, config):
     search_url = (config.get('search_url') or '').strip()
@@ -1227,23 +1222,99 @@ def _search_page_html(scientific_name, config):
     return response.text or ''
 
 
+WFO_TAXON_PATTERNS = [
+    r'/taxon/(wfo-[A-Za-z0-9\-]+)',
+    r'worldfloraonline\.org/taxon/(wfo-[A-Za-z0-9\-]+)',
+    r'\\/taxon\\/(wfo-[A-Za-z0-9\-]+)',
+    r'worldfloraonline\\.org\\/taxon\\/(wfo-[A-Za-z0-9\-]+)',
+    r'%2Ftaxon%2F(wfo-[A-Za-z0-9\-]+)',
+    r'/taxon/([A-Za-z0-9\-]+)',
+    r'worldfloraonline\.org/taxon/([A-Za-z0-9\-]+)',
+    r'\\/taxon\\/([A-Za-z0-9\-]+)',
+    r'worldfloraonline\\.org\\/taxon\\/([A-Za-z0-9\-]+)',
+    r'%2Ftaxon%2F([A-Za-z0-9\-]+)',
+]
+
+
+class _WfoResultAnchorParser(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.anchors = []
+        self._current = None
+
+    def handle_starttag(self, tag, attrs):
+        if tag.lower() != 'a':
+            return
+        attr_map = {key.lower(): value or '' for key, value in attrs}
+        href = attr_map.get('href', '')
+        match = re.search(r'/taxon/(wfo-[A-Za-z0-9\-]+)', href, flags=re.IGNORECASE)
+        if not match:
+            return
+        class_names = set((attr_map.get('class') or '').lower().split())
+        self._current = {
+            'taxonomy_id': match.group(1),
+            'title': attr_map.get('title', ''),
+            'text_parts': [],
+            'is_result': 'result' in class_names,
+        }
+
+    def handle_data(self, data):
+        if self._current is not None and data:
+            self._current['text_parts'].append(data)
+
+    def handle_endtag(self, tag):
+        if tag.lower() == 'a' and self._current is not None:
+            self.anchors.append(self._current)
+            self._current = None
+
+
+def _normalize_wfo_result_name(value):
+    normalized = _normalize_scientific_name_for_lookup(value)
+    return (normalized or value or '').strip().lower()
+
+
+def _wfo_result_taxonomy_id(scientific_name, page_html):
+    requested_name = _normalize_wfo_result_name(scientific_name)
+    if not requested_name:
+        return None
+
+    fallback_id = None
+    for candidate_html in _html_decode_candidates(page_html):
+        parser = _WfoResultAnchorParser()
+        try:
+            parser.feed(candidate_html)
+        except Exception:
+            continue
+
+        for anchor in parser.anchors:
+            taxonomy_id = anchor.get('taxonomy_id')
+            if not taxonomy_id:
+                continue
+            if not fallback_id and anchor.get('is_result'):
+                fallback_id = taxonomy_id
+
+            title = anchor.get('title') or ''
+            text = ' '.join(anchor.get('text_parts') or [])
+            names = [title, text]
+            for name in names:
+                if _normalize_wfo_result_name(name) == requested_name:
+                    return taxonomy_id
+
+        if fallback_id:
+            return fallback_id
+    return None
+
+
 def _wfo_taxonomy_id(scientific_name, config):
-    return _search_page_taxonomy_id(
-        scientific_name,
-        config,
-        patterns=[
-            r'/taxon/(wfo-[A-Za-z0-9\-]+)',
-            r'worldfloraonline\.org/taxon/(wfo-[A-Za-z0-9\-]+)',
-            r'\\/taxon\\/(wfo-[A-Za-z0-9\-]+)',
-            r'worldfloraonline\\.org\\/taxon\\/(wfo-[A-Za-z0-9\-]+)',
-            r'%2Ftaxon%2F(wfo-[A-Za-z0-9\-]+)',
-            r'/taxon/([A-Za-z0-9\-]+)',
-            r'worldfloraonline\.org/taxon/([A-Za-z0-9\-]+)',
-            r'\\/taxon\\/([A-Za-z0-9\-]+)',
-            r'worldfloraonline\\.org\\/taxon\\/([A-Za-z0-9\-]+)',
-            r'%2Ftaxon%2F([A-Za-z0-9\-]+)',
-        ],
-    )
+    page_html = _search_page_html(scientific_name, config)
+    if page_html is None:
+        return None
+
+    taxonomy_id = _wfo_result_taxonomy_id(scientific_name, page_html)
+    if taxonomy_id:
+        return taxonomy_id
+
+    return _extract_search_page_taxonomy_id(page_html, WFO_TAXON_PATTERNS)
 
 
 def _floraweb_taxonomy_id(scientific_name, config):
