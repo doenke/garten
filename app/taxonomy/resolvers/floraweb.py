@@ -4,6 +4,11 @@ from .html_search import HtmlSearchResolver
 class FlorawebResolver(HtmlSearchResolver):
     key = 'floraweb'
     mode = 'floraweb_search'
+    default_config_values = {
+        'mode': 'floraweb_search',
+        'search_url': 'https://www.floraweb.de/php/taxoquery.php',
+        'query_param': 'taxname',
+    }
 
     patterns = [
         r'/taxon/([A-Za-z0-9\-]+)',

@@ -7,6 +7,11 @@ class GbifResolver(TaxonomyResolver):
     key = 'gbif'
     mode = 'gbif_species_match'
     endpoint = 'https://api.gbif.org/v1/species/match'
+    default_config_values = {
+        'mode': 'gbif_species_match',
+        'prefer_statuses': {'ACCEPTED'},
+        'kingdom': 'Plantae',
+    }
 
     def external_call(self, request: ResolverRequest):
         return ExternalCall(

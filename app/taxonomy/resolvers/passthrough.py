@@ -4,6 +4,9 @@ from .base import ExternalCall, ResolverRequest, ResolverResult, TaxonomyResolve
 class SearchQueryPassthroughResolver(TaxonomyResolver):
     key = 'botanikus'
     mode = 'search_query_passthrough'
+    default_config_values = {
+        'mode': 'search_query_passthrough',
+    }
 
     def external_call(self, request: ResolverRequest):
         return ExternalCall(catalog=request.catalog_key, url=None, query={'q': request.scientific_name})

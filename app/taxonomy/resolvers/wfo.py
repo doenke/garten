@@ -43,6 +43,11 @@ def extract_wfo_taxon_slug(page_html):
 class WfoResolver(HtmlSearchResolver):
     key = 'wfo'
     mode = 'wfo_search'
+    default_config_values = {
+        'mode': 'wfo_search',
+        'search_url': 'https://www.worldfloraonline.org/search',
+        'query_param': 'query',
+    }
 
     def suggest_id(self, request):
         page_html = search_page_html(request.scientific_name, request.config)
