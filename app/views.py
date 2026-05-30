@@ -1,5 +1,4 @@
 import html
-from html.parser import HTMLParser
 import json
 import time
 import re
@@ -1227,81 +1226,20 @@ WFO_TAXON_PATTERNS = [
     r'worldfloraonline\.org/taxon/(wfo-[A-Za-z0-9\-]+)',
     r'\\/taxon\\/(wfo-[A-Za-z0-9\-]+)',
     r'worldfloraonline\\.org\\/taxon\\/(wfo-[A-Za-z0-9\-]+)',
-    r'%2Ftaxon%2F(wfo-[A-Za-z0-9\-]+)',
-    r'/taxon/([A-Za-z0-9\-]+)',
-    r'worldfloraonline\.org/taxon/([A-Za-z0-9\-]+)',
-    r'\\/taxon\\/([A-Za-z0-9\-]+)',
-    r'worldfloraonline\\.org\\/taxon\\/([A-Za-z0-9\-]+)',
-    r'%2Ftaxon%2F([A-Za-z0-9\-]+)',
+    r'%2[fF]taxon%2[fF](wfo-[A-Za-z0-9\-]+)',
 ]
 
 
-class _WfoResultAnchorParser(HTMLParser):
-    def __init__(self):
-        super().__init__(convert_charrefs=True)
-        self.anchors = []
-        self._current = None
-
-    def handle_starttag(self, tag, attrs):
-        if tag.lower() != 'a':
-            return
-        attr_map = {key.lower(): value or '' for key, value in attrs}
-        href = attr_map.get('href', '')
-        match = re.search(r'/taxon/(wfo-[A-Za-z0-9\-]+)', href, flags=re.IGNORECASE)
-        if not match:
-            return
-        class_names = set((attr_map.get('class') or '').lower().split())
-        self._current = {
-            'taxonomy_id': match.group(1),
-            'title': attr_map.get('title', ''),
-            'text_parts': [],
-            'is_result': 'result' in class_names,
-        }
-
-    def handle_data(self, data):
-        if self._current is not None and data:
-            self._current['text_parts'].append(data)
-
-    def handle_endtag(self, tag):
-        if tag.lower() == 'a' and self._current is not None:
-            self.anchors.append(self._current)
-            self._current = None
-
-
-def _normalize_wfo_result_name(value):
-    normalized = _normalize_scientific_name_for_lookup(value)
-    return (normalized or value or '').strip().lower()
-
-
-def _wfo_result_taxonomy_id(scientific_name, page_html):
-    requested_name = _normalize_wfo_result_name(scientific_name)
-    if not requested_name:
-        return None
-
-    fallback_id = None
+def _extract_wfo_taxon_slug(page_html):
     for candidate_html in _html_decode_candidates(page_html):
-        parser = _WfoResultAnchorParser()
-        try:
-            parser.feed(candidate_html)
-        except Exception:
-            continue
-
-        for anchor in parser.anchors:
-            taxonomy_id = anchor.get('taxonomy_id')
-            if not taxonomy_id:
-                continue
-            if not fallback_id and anchor.get('is_result'):
-                fallback_id = taxonomy_id
-
-            title = anchor.get('title') or ''
-            text = ' '.join(anchor.get('text_parts') or [])
-            names = [title, text]
-            for name in names:
-                if _normalize_wfo_result_name(name) == requested_name:
-                    return taxonomy_id
-
-        if fallback_id:
-            return fallback_id
+        first_match = None
+        for pattern in WFO_TAXON_PATTERNS:
+            for match in re.finditer(pattern, candidate_html):
+                if first_match is None or match.start() < first_match.start():
+                    first_match = match
+                break
+        if first_match:
+            return first_match.group(1)
     return None
 
 
@@ -1310,11 +1248,7 @@ def _wfo_taxonomy_id(scientific_name, config):
     if page_html is None:
         return None
 
-    taxonomy_id = _wfo_result_taxonomy_id(scientific_name, page_html)
-    if taxonomy_id:
-        return taxonomy_id
-
-    return _extract_search_page_taxonomy_id(page_html, WFO_TAXON_PATTERNS)
+    return _extract_wfo_taxon_slug(page_html)
 
 
 def _floraweb_taxonomy_id(scientific_name, config):
