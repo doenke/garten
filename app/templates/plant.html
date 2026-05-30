@@ -88,12 +88,19 @@
         </div>
         <small id="magic-common-name-status" class="muted"></small>
         <small id="magic-debug-last-common-name" class="muted"></small>
-        <label>Datenbank-IDs</label>
+        <label>Datenbank-IDs/-Slugs</label>
         <div class="grid">
           {% for catalog in database_catalogs %}
-          <div class="magic-field-row">
-            <input id="plant-db-{{ catalog.key }}" name="database_id_{{ catalog.key }}" value="{{ (plant.database_identifiers | selectattr('catalog.key', 'equalto', catalog.key) | map(attribute='taxonomy_id') | list | first) or '' }}" placeholder="{{ catalog.label }}-ID">
-            <button type="button" class="btn secondary magic-db-id" data-catalog-key="{{ catalog.key }}" title="{{ catalog.label }}-ID suchen">🪄</button>
+          {% set catalog_search_url = database_search_urls.get(catalog.key) %}
+          <div class="database-id-row">
+            <label class="database-id-label" for="plant-db-{{ catalog.key }}">{{ catalog.label }}</label>
+            <input id="plant-db-{{ catalog.key }}" name="database_id_{{ catalog.key }}" value="{{ (plant.database_identifiers | selectattr('catalog.key', 'equalto', catalog.key) | map(attribute='taxonomy_id') | list | first) or '' }}" placeholder="ID/Slug">
+            {% if catalog_search_url %}
+            <a class="btn secondary database-search-link" href="{{ catalog_search_url }}" target="_blank" rel="noopener noreferrer" data-search-url-template="{{ catalog.search_url_template or '' }}" title="{{ catalog.label }} nach {{ database_search_query }} suchen" aria-label="{{ catalog.label }} nach {{ database_search_query }} suchen">🔎</a>
+            {% else %}
+            <span class="btn secondary database-search-link disabled" title="Kein Suchlink für {{ catalog.label }} konfiguriert" aria-hidden="true">🔎</span>
+            {% endif %}
+            <button type="button" class="btn secondary magic-db-id" data-catalog-key="{{ catalog.key }}" title="{{ catalog.label }}-ID/Slug suchen">🪄</button>
           </div>
           {% endfor %}
         </div>
@@ -361,6 +368,10 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
 .field-pair{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
 .field-pair-item{display:grid;gap:.35rem}
 .magic-field-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.45rem;align-items:center}
+.database-id-row{display:grid;grid-template-columns:minmax(7rem,auto) minmax(0,1fr) auto auto;gap:.45rem;align-items:center}
+.database-id-label{font-weight:600;color:var(--muted);margin:0}
+.database-search-link{display:inline-flex;align-items:center;justify-content:center;min-width:2.6rem;text-decoration:none}
+.database-search-link.disabled{opacity:.45;cursor:not-allowed}
 #magic-common-name{min-width:2.6rem;padding:.45rem .55rem}
 
 .timeline-panel{display:flex;flex-direction:column;gap:.85rem}
@@ -378,6 +389,8 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
 .image-modal-close{position:absolute;top:-.5rem;right:-.5rem;font-size:1.4rem;line-height:1;padding:.45rem .6rem;min-width:44px;min-height:44px;border-radius:999px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.32);text-shadow:none}
 @media (max-width: 640px){
   .field-pair{grid-template-columns:1fr}
+  .database-id-row{grid-template-columns:minmax(0,1fr) auto auto}
+  .database-id-label{grid-column:1 / -1}
   .timeline-form-row{grid-template-columns:1fr}
   .image-modal{padding:0;background:#000;overscroll-behavior:none}
   .image-modal-inner{width:100vw;height:100dvh;max-width:none;max-height:none;display:grid;grid-template-columns:1fr;grid-template-rows:1fr}
@@ -548,8 +561,18 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
       }
     });
   }
-  const magicIdButtons = Array.from(document.querySelectorAll('.magic-db-id'));
   const scientificNameInput = document.getElementById('plant-scientific-name');
+  const databaseSearchLinks = Array.from(document.querySelectorAll('.database-search-link[href][data-search-url-template]'));
+  databaseSearchLinks.forEach((searchLink) => {
+    searchLink.addEventListener('click', () => {
+      const sourceName = (scientificNameInput?.value || nameInput?.value || '').trim();
+      const template = searchLink.dataset.searchUrlTemplate || '';
+      if (!sourceName || !template.includes('{q}')) return;
+      searchLink.href = template.replace('{q}', encodeURIComponent(sourceName));
+    });
+  });
+
+  const magicIdButtons = Array.from(document.querySelectorAll('.magic-db-id'));
   const idsStatus = document.getElementById('magic-taxonomy-ids-status');
   if (magicIdButtons.length && scientificNameInput) {
     magicIdButtons.forEach((magicIdsButton) => {
