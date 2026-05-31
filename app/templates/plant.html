@@ -863,15 +863,15 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
         alert('Die Pflanzenposition lag außerhalb des Beets und wurde in die Mitte des Polygons verschoben.');
       }
       positionEditMode = true;
-      positionEditToggleButton.style.display = 'none';
-      positionSaveButton.style.display = '';
+      positionEditToggleButton.classList.add('hidden');
+      positionSaveButton.classList.remove('hidden');
     });
 
     if (positionForm) {
       positionForm.addEventListener('submit', () => {
         positionEditMode = false;
-        positionSaveButton.style.display = 'none';
-        positionEditToggleButton.style.display = '';
+        positionSaveButton.classList.add('hidden');
+        positionEditToggleButton.classList.remove('hidden');
       });
     }
   }
