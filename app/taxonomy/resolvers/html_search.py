@@ -2,7 +2,8 @@ import html
 import re
 from urllib.parse import unquote
 
-from .base import ExternalCall, ResolverRequest, TaxonomyResolver, fetch_text
+from .base import ExternalCall, ResolverRequest, TaxonomyResolver
+from .http import fetch_text
 
 
 def html_decode_candidates(page_html):

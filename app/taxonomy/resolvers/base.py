@@ -4,13 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any, Mapping, Optional
 from urllib.parse import urlencode
 
-import requests
-
 from ..url_templates import config_from_search_url_template
-
-
-USER_AGENT = 'garten-taxonomy-resolver/1.0'
-REQUEST_TIMEOUT = 8
 
 
 @dataclass
@@ -98,41 +92,27 @@ class TaxonomyResolver:
 
 
 def fetch_response(call: ExternalCall, accept: str):
-    response = requests.get(
-        call.url,
-        params=call.query,
-        headers={'Accept': accept, 'User-Agent': USER_AGENT},
-        timeout=REQUEST_TIMEOUT,
-    )
-    response.raise_for_status()
-    return response
+    from .http import fetch_response as _fetch_response
+
+    return _fetch_response(call, accept)
 
 
 def parse_json_response(response, logger=None):
-    if not response.content:
-        return {}
-    try:
-        return response.json()
-    except ValueError:
-        if logger:
-            logger.warning('taxonomy resolver non-json response from %s (status=%s)', response.url, response.status_code)
-        return None
+    from .http import parse_json_response as _parse_json_response
+
+    return _parse_json_response(response, logger)
 
 
 def fetch_json(call: ExternalCall, accept: str = 'application/json'):
-    try:
-        response = fetch_response(call, accept)
-    except requests.RequestException:
-        return None
-    return parse_json_response(response)
+    from .http import fetch_json as _fetch_json
+
+    return _fetch_json(call, accept)
 
 
 def fetch_text(call: ExternalCall, accept: str = 'text/html,application/xhtml+xml'):
-    try:
-        response = fetch_response(call, accept)
-    except requests.RequestException:
-        return None
-    return response.text or ''
+    from .http import fetch_text as _fetch_text
+
+    return _fetch_text(call, accept)
 
 
 def normalize_scientific_name_for_lookup(scientific_name):

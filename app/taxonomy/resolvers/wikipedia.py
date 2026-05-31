@@ -1,6 +1,7 @@
 from urllib.parse import quote
 
-from .base import ExternalCall, ResolverRequest, TaxonomyResolver, fetch_json, normalize_scientific_name_for_lookup
+from .base import ExternalCall, ResolverRequest, TaxonomyResolver, normalize_scientific_name_for_lookup
+from .http import fetch_json
 
 
 class GermanWikipediaResolver(TaxonomyResolver):
