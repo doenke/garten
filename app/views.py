@@ -12,8 +12,6 @@ from .services.timeline_service import save_uploaded_attachment, set_single_titl
 from .taxonomy import service as taxonomy_service
 from .taxonomy.catalogs import get_database_catalogs
 from .taxonomy.resolvers.base import normalize_scientific_name_for_lookup
-from .taxonomy.resolvers.wfo import WfoResolver, extract_wfo_taxon_slug
-from .taxonomy.resolvers.html_search import search_page_html
 
 main_bp = Blueprint('main', __name__)
 ALLOWED = {'png', 'jpg', 'jpeg', 'webp', 'gif', 'pdf'}
@@ -61,36 +59,6 @@ LIGHT_NEED_OPTIONS = [
 ]
 LIGHT_NEED_KEY_TO_LABEL = {item['key']: item['label'] for item in LIGHT_NEED_OPTIONS}
 LIGHT_NEED_ICON_BY_KEY = {item['key']: item['icon'] for item in LIGHT_NEED_OPTIONS}
-
-
-def _resolver_config_for_catalog(catalog):
-    return taxonomy_service.resolver_config_for_catalog(catalog)
-
-
-def _resolve_taxonomy_id_for_catalog(catalog_key, scientific_name, resolver=None):
-    return taxonomy_service.resolve_taxonomy_id_for_catalog(catalog_key, scientific_name, resolver)
-
-
-def _external_resolver_endpoint(catalog_key):
-    return taxonomy_service.external_resolver_endpoint(catalog_key)
-
-
-def _extract_wfo_taxon_slug(page_html):
-    return extract_wfo_taxon_slug(page_html)
-
-
-def _search_page_html(scientific_name, config):
-    return search_page_html(scientific_name, config)
-
-
-def _wfo_taxonomy_id(scientific_name, config):
-    resolver = WfoResolver()
-    resolver_config = dict(resolver.default_config())
-    resolver_config.update(config or {})
-    page_html = _search_page_html(scientific_name, resolver_config)
-    if page_html is None:
-        return None
-    return extract_wfo_taxon_slug(page_html)
 
 
 def _guess_common_name_from_text(scientific_name, text):
