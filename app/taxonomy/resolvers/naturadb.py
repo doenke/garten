@@ -1,21 +1,11 @@
 import re
-from urllib.parse import unquote
 
-from .base import normalize_scientific_name_for_lookup
+from .base import normalize_scientific_name_for_lookup, normalize_url_slug
 from .html_search import HtmlSearchResolver, search_page_html, search_page_taxonomy_id
 
 
 def normalize_naturadb_slug(raw_slug):
-    slug = unquote(raw_slug or '')
-    slug = re.split(r'[?#]', slug, maxsplit=1)[0]
-    slug = slug.replace('\\', '/').strip().strip('/').lower()
-    segments = []
-    for segment in slug.split('/'):
-        normalized_segment = re.sub(r'[^a-z0-9\-]+', '-', segment)
-        normalized_segment = re.sub(r'-{2,}', '-', normalized_segment).strip('-')
-        if normalized_segment:
-            segments.append(normalized_segment)
-    return '/'.join(segments) or None
+    return normalize_url_slug(raw_slug, allow_path=True)
 
 
 class NaturaDbResolver(HtmlSearchResolver):

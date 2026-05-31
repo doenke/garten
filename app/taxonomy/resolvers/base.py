@@ -2,7 +2,7 @@ import re
 from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Optional
-from urllib.parse import urlencode
+from urllib.parse import unquote, urlencode
 
 from ..url_templates import config_from_search_url_template
 
@@ -113,6 +113,29 @@ def fetch_text(call: ExternalCall, accept: str = 'text/html,application/xhtml+xm
     from .http import fetch_text as _fetch_text
 
     return _fetch_text(call, accept)
+
+
+def normalize_url_slug(raw_slug, allow_path=False):
+    slug = unquote(raw_slug or '')
+    slug = re.split(r'[?#]', slug, maxsplit=1)[0]
+    if allow_path:
+        slug = slug.replace('\\', '/')
+    slug = slug.strip().strip('/').lower()
+
+    segments = slug.split('/') if allow_path else [slug]
+    normalized_segments = []
+    for segment in segments:
+        normalized_segment = re.sub(r'[^a-z0-9\-]+', '-', segment)
+        normalized_segment = re.sub(r'-{2,}', '-', normalized_segment).strip('-')
+        if normalized_segment:
+            normalized_segments.append(normalized_segment)
+
+    separator = '/' if allow_path else '-'
+    return separator.join(normalized_segments) or None
+
+
+def normalize_single_segment_slug(raw_slug):
+    return normalize_url_slug(raw_slug, allow_path=False)
 
 
 def normalize_scientific_name_for_lookup(scientific_name):

@@ -1,6 +1,4 @@
-import re
-from urllib.parse import unquote
-
+from .base import normalize_single_segment_slug
 from .html_search import HtmlSearchResolver, search_page_taxonomy_id
 
 
@@ -24,10 +22,7 @@ class MeinSchoenerGartenResolver(HtmlSearchResolver):
         raw_slug = search_page_taxonomy_id(request.scientific_name, request.config, self.patterns)
         if not raw_slug:
             return None
-        slug = unquote(raw_slug).strip().strip('/').lower()
-        slug = re.sub(r'[^a-z0-9\-]+', '-', slug)
-        slug = re.sub(r'-{2,}', '-', slug).strip('-')
-        return slug or None
+        return normalize_single_segment_slug(raw_slug)
 
 
 def mein_schoener_garten_taxonomy_id(scientific_name, config):
