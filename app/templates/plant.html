@@ -32,8 +32,8 @@
             href="{{ item.url }}"
             target="_blank"
             rel="noopener noreferrer"
-            title="{{ item.catalog_label }} ({{ item.identifier }})"
-            aria-label="{{ item.catalog_label }} ({{ item.identifier }})"
+            title="{{ item.catalog_label }} ({{ item.display_identifier }})"
+            aria-label="{{ item.catalog_label }} ({{ item.display_identifier }})"
           >
             {% if item.icon_url %}
             <img src="{{ item.icon_url }}" alt="" loading="lazy" class="db-icon-image">
@@ -206,7 +206,7 @@
           {% set catalog_search_url = database_search_urls.get(catalog.key) %}
           <div class="database-id-row">
             <label class="database-id-label" for="plant-db-{{ catalog.key }}">{{ catalog.label }}</label>
-            <input id="plant-db-{{ catalog.key }}" name="database_id_{{ catalog.key }}" value="{{ (plant.database_identifiers | selectattr('catalog.key', 'equalto', catalog.key) | map(attribute='taxonomy_id') | list | first) or '' }}" placeholder="ID/Slug">
+            <input id="plant-db-{{ catalog.key }}" name="database_id_{{ catalog.key }}" value="{{ database_identifier_values.get(catalog.key, '') }}" placeholder="ID/Slug">
             <span class="database-id-actions">
               {% if catalog_search_url %}
               <a class="btn secondary database-search-link" href="{{ catalog_search_url }}" target="_blank" rel="noopener noreferrer" data-search-url-template="{{ catalog.search_url_template or '' }}" title="{{ catalog.label }} nach {{ database_search_query }} suchen" aria-label="{{ catalog.label }} nach {{ database_search_query }} suchen">🔎</a>
