@@ -2,9 +2,7 @@ import html
 import re
 from urllib.parse import unquote
 
-import requests
-
-from .base import ExternalCall, ResolverRequest, TaxonomyResolver, USER_AGENT
+from .base import ExternalCall, ResolverRequest, TaxonomyResolver, fetch_text
 
 
 def html_decode_candidates(page_html):
@@ -58,17 +56,12 @@ def search_page_html(scientific_name, config):
     query_param = (config.get('query_param') or 'q').strip()
     if not search_url:
         return None
-    try:
-        response = requests.get(
-            search_url,
-            params={query_param: scientific_name},
-            headers={'Accept': 'text/html,application/xhtml+xml', 'User-Agent': USER_AGENT},
-            timeout=8,
-        )
-        response.raise_for_status()
-    except requests.RequestException:
-        return None
-    return response.text or ''
+    call = ExternalCall(
+        catalog=config.get('catalog_key') or config.get('mode') or 'html_search',
+        url=search_url,
+        query={query_param: scientific_name},
+    )
+    return fetch_text(call)
 
 
 class HtmlSearchResolver(TaxonomyResolver):
