@@ -185,7 +185,7 @@ def parse_light_need_keys(values):
     return keys
 
 
-def format_light_need_labels(light_needs):
+def format_light_needs(light_needs):
     return ', '.join(light_need.label for light_need in light_needs)
 
 
@@ -1107,8 +1107,8 @@ def update_masterdata(plant_id):
 
     light_need_keys = parse_light_need_keys(request.form.getlist('light_need'))
     new_light_needs = LightNeed.query.filter(LightNeed.key.in_(light_need_keys)).order_by(LightNeed.id.asc()).all()
-    old_light_need_display = format_light_need_labels(plant.light_needs) or '-'
-    new_light_need_display = format_light_need_labels(new_light_needs) or '-'
+    old_light_need_display = format_light_needs(plant.light_needs) or '-'
+    new_light_need_display = format_light_needs(new_light_needs) or '-'
     if old_light_need_display != new_light_need_display:
         changes.append(f"Lichtbedarf: {old_light_need_display} → {new_light_need_display}")
         plant.light_needs = new_light_needs
