@@ -82,10 +82,6 @@ class Plant(db.Model):
     )
 
     @property
-    def light_need_labels(self):
-        return [light_need.label for light_need in self.light_needs]
-
-    @property
     def soil_property_labels(self):
         return [soil_property.label for soil_property in self.soil_properties]
 
