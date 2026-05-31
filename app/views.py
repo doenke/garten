@@ -72,6 +72,17 @@ def _title_text_from_html(page_html):
     return title or None
 
 
+def _strip_edge_special_characters(value):
+    value = (value or '').strip()
+    start = 0
+    end = len(value)
+    while start < end and not value[start].isalnum():
+        start += 1
+    while end > start and not value[end - 1].isalnum():
+        end -= 1
+    return value[start:end].strip() or None
+
+
 def _naturadb_common_name_from_slug(slug):
     slug = (slug or '').strip().strip('/')
     if not slug:
@@ -89,10 +100,12 @@ def _naturadb_common_name_from_slug(slug):
     if not title:
         return None, [url]
     scientific = normalize_scientific_name_for_lookup(slug.replace('-', ' ')) or ''
-    name = title
+    cleaned_title = _strip_edge_special_characters(title)
+    name = cleaned_title or title
     if scientific:
-        name = re.sub(rf'\s*\(?\b{re.escape(scientific)}\b\)?\s*$', '', name, flags=re.IGNORECASE).strip(' -–—|()')
-    return (name or title), [url]
+        name = re.sub(rf'\s*\(?\b{re.escape(scientific)}\b\)?\s*$', '', name, flags=re.IGNORECASE)
+    cleaned_name = _strip_edge_special_characters(name)
+    return (cleaned_name or cleaned_title or title), [url]
 
 
 def _guess_common_name_from_text(scientific_name, text):
