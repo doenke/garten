@@ -92,11 +92,20 @@
           <fieldset class="form-section">
         <legend>Basisdaten</legend>
         <label for="plant-name">Name</label>
-        <input id="plant-name" name="name" value="{{ plant.name }}" required>
+        <div class="magic-field-row">
+          <input id="plant-name" name="name" value="{{ plant.name }}" required>
+          <button type="button" id="magic-all" class="btn secondary" title="Alle Magic-Buttons der Reihe nach ausführen" aria-label="Alle Magic-Buttons der Reihe nach ausführen">➜</button>
+        </div>
         <label for="plant-cultivar">Sorte/Kultivar</label>
-        <input id="plant-cultivar" name="cultivar" value="{{ plant.cultivar or '' }}">
+        <div class="magic-field-row">
+          <input id="plant-cultivar" name="cultivar" value="{{ plant.cultivar or '' }}">
+          <button type="button" id="magic-cultivar" class="btn secondary" title="Kultivar aus dem Namen übernehmen">🪄</button>
+        </div>
         <label for="plant-scientific-name">Wissenschaftlicher Name</label>
-        <input id="plant-scientific-name" name="scientific_name" value="{{ plant.scientific_name or '' }}">
+        <div class="magic-field-row">
+          <input id="plant-scientific-name" name="scientific_name" value="{{ plant.scientific_name or '' }}">
+          <button type="button" id="magic-scientific-name" class="btn secondary" title="Wissenschaftlichen Namen aus dem Namen übernehmen">🪄</button>
+        </div>
         <label for="plant-common-name">Bürgerlicher Name</label>
         <div class="magic-field-row">
           <input id="plant-common-name" name="common_name" value="{{ plant.common_name or '' }}">
@@ -501,8 +510,13 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
 
 
   const magicButton = document.getElementById('magic-common-name');
+  const magicAllButton = document.getElementById('magic-all');
+  const magicCultivarButton = document.getElementById('magic-cultivar');
+  const magicScientificNameButton = document.getElementById('magic-scientific-name');
   const commonNameInput = document.getElementById('plant-common-name');
   const nameInput = document.getElementById('plant-name');
+  const cultivarInput = document.getElementById('plant-cultivar');
+  const scientificNameInput = document.getElementById('plant-scientific-name');
   const magicStatus = document.getElementById('magic-common-name-status');
   const commonNameDebug = document.getElementById('magic-debug-last-common-name');
   const taxonomyDebug = document.getElementById('magic-debug-last-taxonomy');
@@ -526,62 +540,117 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
     while (magicDebugLog.children.length > 12) magicDebugLog.removeChild(magicDebugLog.lastChild);
   };
 
-  if (magicButton && commonNameInput && nameInput) {
-    magicButton.addEventListener('click', async () => {
-      const sourceName = (nameInput.value || '').trim();
-      if (!sourceName) {
-        if (magicStatus) magicStatus.textContent = 'Bitte zuerst einen Namen eintragen.';
-        pushMagicDebugLog('Common Name', 'Abbruch: leeres Eingabefeld.');
-        nameInput.focus();
-        return;
-      }
+  const extractQuotedCultivar = (rawName) => {
+    const name = (rawName || '').trim();
+    const match = name.match(/["'„“‘’‚‛]([^"'„“‘’‚‛]+)["'„“‘’‚‛]/);
+    return match ? match[1].trim() : '';
+  };
 
-      magicButton.disabled = true;
-      const oldText = magicButton.textContent;
-      magicButton.textContent = '…';
-      if (magicStatus) magicStatus.textContent = 'Suche läuft …';
+  const extractScientificName = (rawName) => {
+    const name = (rawName || '').trim();
+    if (!name) return '';
+    const quoteIndex = name.search(/["'„“‘’‚‛]/);
+    return (quoteIndex >= 0 ? name.slice(0, quoteIndex) : name).trim();
+  };
 
-      try {
-        const requestUrl = '/plants/{{ plant.id }}/common-name-suggest';
-        const requestPayload = {name: sourceName};
-        pushMagicDebugLog('Common Name', `Suche gestartet für: "${sourceName}"`);
-        const response = await fetch(requestUrl, {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(requestPayload),
-        });
-        const rawResponse = await response.text();
-        let data;
-        try {
-          data = rawResponse ? JSON.parse(rawResponse) : {};
-        } catch (parseError) {
-          throw new Error('Antwort konnte nicht als JSON gelesen werden.');
-        }
-        const externalSources = Array.isArray(data?.sources) ? data.sources : [];
-        if (externalSources.length) {
-          externalSources.slice(0, 3).forEach((url) => pushMagicDebugLog('Common Name', `Externer Call: ${url}`));
-          if (externalSources.length > 3) pushMagicDebugLog('Common Name', `+${externalSources.length - 3} weitere externe Quellen`);
-        }
-        pushMagicDebugLog('Common Name', `Response: ${rawResponse || '(leer)'}`);
-        if (!response.ok || !data.ok) throw new Error(data.error || 'Kein Vorschlag gefunden');
-        commonNameInput.value = data.common_name || '';
-        const confidenceText = typeof data.confidence === 'number' ? ` (Confidence: ${Math.round(data.confidence * 100)}%)` : '';
-        const sourceCount = Array.isArray(data.sources) ? data.sources.length : 0;
-        if (magicStatus) magicStatus.textContent = `Vorschlag übernommen${confidenceText}. Quellen: ${sourceCount}.`;
-        const traceId = data?.debug?.trace_id || '-';
-        const duration = data?.debug?.duration_ms;
-        if (commonNameDebug) commonNameDebug.textContent = `Letzter Lauf: ${traceId}${typeof duration === 'number' ? `, ${duration} ms` : ''}`;
-        pushMagicDebugLog('Common Name', `OK (${traceId})${typeof duration === 'number' ? ` in ${duration} ms` : ''}, Quellen: ${sourceCount}.`);
-      } catch (error) {
-        if (magicStatus) magicStatus.textContent = error.message || 'Automatisches Ausfüllen fehlgeschlagen.';
-        pushMagicDebugLog('Common Name', `Fehler: ${error.message || 'Unbekannt'}`);
-      } finally {
-        magicButton.disabled = false;
-        magicButton.textContent = oldText;
-      }
+  const runCultivarMagic = async () => {
+    const cultivar = extractQuotedCultivar(nameInput?.value || '');
+    if (!cultivar) {
+      pushMagicDebugLog('Cultivar', 'Kein Text in Anführungszeichen gefunden.');
+      return false;
+    }
+    if (cultivarInput) cultivarInput.value = cultivar;
+    pushMagicDebugLog('Cultivar', `OK: "${cultivar}" übernommen.`);
+    return true;
+  };
+
+  const runScientificNameMagic = async () => {
+    const scientificName = extractScientificName(nameInput?.value || '');
+    if (!scientificName) {
+      pushMagicDebugLog('Scientific Name', 'Kein Namensanteil vor Anführungszeichen gefunden.');
+      return false;
+    }
+    if (scientificNameInput) scientificNameInput.value = scientificName;
+    pushMagicDebugLog('Scientific Name', `OK: "${scientificName}" übernommen.`);
+    return true;
+  };
+
+  if (magicCultivarButton) {
+    magicCultivarButton.addEventListener('click', async () => {
+      magicCultivarButton.disabled = true;
+      try { await runCultivarMagic(); } finally { magicCultivarButton.disabled = false; }
     });
   }
-  const scientificNameInput = document.getElementById('plant-scientific-name');
+
+  if (magicScientificNameButton) {
+    magicScientificNameButton.addEventListener('click', async () => {
+      magicScientificNameButton.disabled = true;
+      try { await runScientificNameMagic(); } finally { magicScientificNameButton.disabled = false; }
+    });
+  }
+
+  const runCommonNameMagic = async () => {
+    if (!magicButton || !commonNameInput || !nameInput) return false;
+    const sourceName = (nameInput.value || '').trim();
+    if (!sourceName) {
+      if (magicStatus) magicStatus.textContent = 'Bitte zuerst einen Namen eintragen.';
+      pushMagicDebugLog('Common Name', 'Abbruch: leeres Eingabefeld.');
+      nameInput.focus();
+      return false;
+    }
+
+    magicButton.disabled = true;
+    const oldText = magicButton.textContent;
+    magicButton.textContent = '…';
+    if (magicStatus) magicStatus.textContent = 'Suche läuft …';
+
+    try {
+      const requestUrl = '/plants/{{ plant.id }}/common-name-suggest';
+      const naturadbInput = document.getElementById('plant-db-naturadb');
+      const requestPayload = {name: sourceName, naturadb_id: (naturadbInput?.value || '').trim()};
+      pushMagicDebugLog('Common Name', `Suche gestartet für: "${sourceName}"${requestPayload.naturadb_id ? ` mit NaturaDB ${requestPayload.naturadb_id}` : ''}`);
+      const response = await fetch(requestUrl, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(requestPayload),
+      });
+      const rawResponse = await response.text();
+      let data;
+      try {
+        data = rawResponse ? JSON.parse(rawResponse) : {};
+      } catch (parseError) {
+        throw new Error('Antwort konnte nicht als JSON gelesen werden.');
+      }
+      const externalSources = Array.isArray(data?.sources) ? data.sources : [];
+      if (externalSources.length) {
+        externalSources.slice(0, 3).forEach((url) => pushMagicDebugLog('Common Name', `Externer Call: ${url}`, url));
+        if (externalSources.length > 3) pushMagicDebugLog('Common Name', `+${externalSources.length - 3} weitere externe Quellen`);
+      }
+      pushMagicDebugLog('Common Name', `Response: ${rawResponse || '(leer)'}`);
+      if (!response.ok || !data.ok) throw new Error(data.error || 'Kein Vorschlag gefunden');
+      commonNameInput.value = data.common_name || '';
+      const confidenceText = typeof data.confidence === 'number' ? ` (Confidence: ${Math.round(data.confidence * 100)}%)` : '';
+      const sourceCount = Array.isArray(data.sources) ? data.sources.length : 0;
+      if (magicStatus) magicStatus.textContent = `Vorschlag übernommen${confidenceText}. Quellen: ${sourceCount}.`;
+      const traceId = data?.debug?.trace_id || '-';
+      const duration = data?.debug?.duration_ms;
+      if (commonNameDebug) commonNameDebug.textContent = `Letzter Lauf: ${traceId}${typeof duration === 'number' ? `, ${duration} ms` : ''}`;
+      pushMagicDebugLog('Common Name', `OK (${traceId})${typeof duration === 'number' ? ` in ${duration} ms` : ''}, Quellen: ${sourceCount}.`);
+      return true;
+    } catch (error) {
+      if (magicStatus) magicStatus.textContent = error.message || 'Automatisches Ausfüllen fehlgeschlagen.';
+      pushMagicDebugLog('Common Name', `Fehler: ${error.message || 'Unbekannt'}`);
+      return false;
+    } finally {
+      magicButton.disabled = false;
+      magicButton.textContent = oldText;
+    }
+  };
+
+  if (magicButton && commonNameInput && nameInput) {
+    magicButton.addEventListener('click', runCommonNameMagic);
+  }
+
   const databaseSearchLinks = Array.from(document.querySelectorAll('.database-search-link[href][data-search-url-template]'));
   databaseSearchLinks.forEach((searchLink) => {
     searchLink.addEventListener('click', () => {
@@ -594,69 +663,99 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
 
   const magicIdButtons = Array.from(document.querySelectorAll('.magic-db-id'));
   const idsStatus = document.getElementById('magic-taxonomy-ids-status');
+  const runTaxonomyMagic = async (magicIdsButton) => {
+    if (!magicIdsButton || !scientificNameInput) return false;
+    const sourceName = (scientificNameInput.value || nameInput.value || '').trim();
+    const catalogKey = magicIdsButton.dataset.catalogKey;
+    if (!sourceName || !catalogKey) {
+      pushMagicDebugLog('Taxonomy', `Abbruch: Eingabe/Katalog fehlt (${catalogKey || 'kein key'}).`);
+      return false;
+    }
+    magicIdsButton.disabled = true;
+    const oldText = magicIdsButton.textContent;
+    magicIdsButton.textContent = '…';
+    try {
+      const requestUrl = '/plants/{{ plant.id }}/taxonomy-ids-suggest';
+      const requestPayload = {scientific_name: sourceName, catalog_key: catalogKey};
+      pushMagicDebugLog('Taxonomy', `Suche gestartet für: "${sourceName}" (${catalogKey.toUpperCase()})`);
+      const response = await fetch(requestUrl, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(requestPayload),
+      });
+      const rawResponse = await response.text();
+      let data;
+      try {
+        data = rawResponse ? JSON.parse(rawResponse) : {};
+      } catch (parseError) {
+        throw new Error('Antwort konnte nicht als JSON gelesen werden.');
+      }
+      const externalCalls = Array.isArray(data?.debug?.external_calls) ? data.debug.external_calls : [];
+      const matchingExternalCalls = externalCalls.filter((entry) => entry?.catalog === catalogKey);
+      if (matchingExternalCalls.length) {
+        matchingExternalCalls.forEach((entry) => {
+          const endpoint = entry?.url || '-';
+          const query = entry?.query ? JSON.stringify(entry.query) : '-';
+          const requestLink = entry?.request_url || endpoint;
+          pushMagicDebugLog('Taxonomy', `Externer Call (${catalogKey.toUpperCase()}): ${endpoint} | Query: ${query}`, requestLink);
+        });
+      }
+      pushMagicDebugLog('Taxonomy', `Response: ${rawResponse || '(leer)'}`);
+      if (!response.ok || !data.ok) throw new Error(data.error || 'Kein Vorschlag gefunden');
+      const input = document.getElementById(`plant-db-${catalogKey}`);
+      const suggestedId = data.matches?.[catalogKey];
+      if (input && suggestedId) {
+        input.value = suggestedId;
+        if (idsStatus) idsStatus.textContent = `${catalogKey.toUpperCase()}-Vorschlag übernommen.`;
+      } else if (idsStatus) {
+        idsStatus.textContent = `Kein Vorschlag für ${catalogKey.toUpperCase()} gefunden.`;
+      }
+      const traceId = data?.debug?.trace_id || '-';
+      const duration = data?.debug?.duration_ms;
+      const unavailable = Array.isArray(data?.unavailable_catalogs) ? data.unavailable_catalogs.join(', ') : '';
+      if (taxonomyDebug) taxonomyDebug.textContent = `Letzter Lauf: ${traceId}${typeof duration === 'number' ? `, ${duration} ms` : ''}`;
+      pushMagicDebugLog('Taxonomy', `${catalogKey.toUpperCase()}: ${suggestedId ? `Treffer ${suggestedId}` : 'kein Treffer'} (${traceId})${unavailable ? `, ohne Resolver: ${unavailable}` : ''}`);
+      return Boolean(suggestedId);
+    } catch (error) {
+      if (idsStatus) idsStatus.textContent = error.message || 'Automatisches Ausfüllen fehlgeschlagen.';
+      pushMagicDebugLog('Taxonomy', `Fehler: ${error.message || 'Unbekannt'}`);
+      return false;
+    } finally {
+      magicIdsButton.disabled = false;
+      magicIdsButton.textContent = oldText;
+    }
+  };
+
   if (magicIdButtons.length && scientificNameInput) {
     magicIdButtons.forEach((magicIdsButton) => {
-      magicIdsButton.addEventListener('click', async () => {
-        const sourceName = (scientificNameInput.value || nameInput.value || '').trim();
-        const catalogKey = magicIdsButton.dataset.catalogKey;
-        if (!sourceName || !catalogKey) {
-          pushMagicDebugLog('Taxonomy', `Abbruch: Eingabe/Katalog fehlt (${catalogKey || 'kein key'}).`);
-          return;
-        }
-        magicIdsButton.disabled = true;
-        const oldText = magicIdsButton.textContent;
-        magicIdsButton.textContent = '…';
-        try {
-          const requestUrl = '/plants/{{ plant.id }}/taxonomy-ids-suggest';
-          const requestPayload = {scientific_name: sourceName, catalog_key: catalogKey};
-          pushMagicDebugLog('Taxonomy', `Suche gestartet für: "${sourceName}" (${catalogKey.toUpperCase()})`);
-          const response = await fetch(requestUrl, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(requestPayload),
-          });
-          const rawResponse = await response.text();
-          let data;
-          try {
-            data = rawResponse ? JSON.parse(rawResponse) : {};
-          } catch (parseError) {
-            throw new Error('Antwort konnte nicht als JSON gelesen werden.');
-          }
-          const externalCalls = Array.isArray(data?.debug?.external_calls) ? data.debug.external_calls : [];
-          const matchingExternalCalls = externalCalls.filter((entry) => entry?.catalog === catalogKey);
-          if (matchingExternalCalls.length) {
-            matchingExternalCalls.forEach((entry) => {
-              const endpoint = entry?.url || '-';
-              const query = entry?.query ? JSON.stringify(entry.query) : '-';
-              const requestLink = entry?.request_url || endpoint;
-              pushMagicDebugLog('Taxonomy', `Externer Call (${catalogKey.toUpperCase()}): ${endpoint} | Query: ${query}`, requestLink);
-            });
-          }
-          pushMagicDebugLog('Taxonomy', `Response: ${rawResponse || '(leer)'}`);
-          if (!response.ok || !data.ok) throw new Error(data.error || 'Kein Vorschlag gefunden');
-          const input = document.getElementById(`plant-db-${catalogKey}`);
-          const suggestedId = data.matches?.[catalogKey];
-          if (input && suggestedId) {
-            input.value = suggestedId;
-            if (idsStatus) idsStatus.textContent = `${catalogKey.toUpperCase()}-Vorschlag übernommen.`;
-          } else if (idsStatus) {
-            idsStatus.textContent = `Kein Vorschlag für ${catalogKey.toUpperCase()} gefunden.`;
-          }
-          const traceId = data?.debug?.trace_id || '-';
-          const duration = data?.debug?.duration_ms;
-          const unavailable = Array.isArray(data?.unavailable_catalogs) ? data.unavailable_catalogs.join(', ') : '';
-          if (taxonomyDebug) taxonomyDebug.textContent = `Letzter Lauf: ${traceId}${typeof duration === 'number' ? `, ${duration} ms` : ''}`;
-          pushMagicDebugLog('Taxonomy', `${catalogKey.toUpperCase()}: ${suggestedId ? `Treffer ${suggestedId}` : 'kein Treffer'} (${traceId})${unavailable ? `, ohne Resolver: ${unavailable}` : ''}`);
-        } catch (error) {
-          if (idsStatus) idsStatus.textContent = error.message || 'Automatisches Ausfüllen fehlgeschlagen.';
-          pushMagicDebugLog('Taxonomy', `Fehler: ${error.message || 'Unbekannt'}`);
-        } finally {
-          magicIdsButton.disabled = false;
-          magicIdsButton.textContent = oldText;
-        }
-      });
+      magicIdsButton.addEventListener('click', () => runTaxonomyMagic(magicIdsButton));
     });
   }
+
+  if (magicAllButton) {
+    magicAllButton.addEventListener('click', async () => {
+      magicAllButton.disabled = true;
+      const oldText = magicAllButton.textContent;
+      magicAllButton.textContent = '…';
+      try {
+        pushMagicDebugLog('Magic All', 'Starte alle Magic-Buttons der Reihe nach.');
+        await runCultivarMagic();
+        await runScientificNameMagic();
+        const naturadbButton = magicIdButtons.find((button) => button.dataset.catalogKey === 'naturadb');
+        if (naturadbButton) await runTaxonomyMagic(naturadbButton);
+        await runCommonNameMagic();
+        for (const button of magicIdButtons) {
+          if (button.dataset.catalogKey === 'naturadb') continue;
+          await runTaxonomyMagic(button);
+        }
+        pushMagicDebugLog('Magic All', 'Fertig.');
+      } finally {
+        magicAllButton.disabled = false;
+        magicAllButton.textContent = oldText;
+      }
+    });
+  }
+
 
   const mapImage = document.getElementById('plant-map-image');
   const baseOverlay = document.getElementById('plant-map-overlay-base');

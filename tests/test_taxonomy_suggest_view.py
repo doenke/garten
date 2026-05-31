@@ -113,6 +113,37 @@ class TaxonomySuggestViewTest(unittest.TestCase):
         self.assertIn('existiert nicht', response.get_json()['error'])
         suggest_for_catalog.assert_not_called()
 
+    def test_common_name_uses_naturadb_before_wikipedia(self):
+        with patch('app.views._lookup_common_name_from_naturadb_slug', return_value=('Flammenblume', ['https://www.naturadb.de/pflanzen/phlox-paniculata/'])) as naturadb_lookup, \
+             patch('app.views._lookup_common_name_from_web') as wikipedia_lookup:
+            response = self.client.post(
+                f'/plants/{self.plant_id}/common-name-suggest',
+                json={'name': 'Phlox paniculata', 'naturadb_id': 'phlox-paniculata'},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()['common_name'], 'Flammenblume')
+        naturadb_lookup.assert_called_once_with('phlox-paniculata', scientific_name='Phlox paniculata')
+        wikipedia_lookup.assert_not_called()
+
+    def test_common_name_falls_back_to_wikipedia_without_naturadb_hit(self):
+        with patch('app.views._lookup_common_name_from_naturadb_slug', return_value=(None, ['https://www.naturadb.de/pflanzen/phlox-paniculata/'])) as naturadb_lookup, \
+             patch('app.views._lookup_common_name_from_web', return_value=('Hohe Flammenblume', ['https://de.wikipedia.org/wiki/Hohe_Flammenblume'])) as wikipedia_lookup:
+            response = self.client.post(
+                f'/plants/{self.plant_id}/common-name-suggest',
+                json={'name': 'Phlox paniculata', 'naturadb_id': 'phlox-paniculata'},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()['common_name'], 'Hohe Flammenblume')
+        self.assertEqual(response.get_json()['sources'], [
+            'https://www.naturadb.de/pflanzen/phlox-paniculata/',
+            'https://de.wikipedia.org/wiki/Hohe_Flammenblume',
+        ])
+        naturadb_lookup.assert_called_once_with('phlox-paniculata', scientific_name='Phlox paniculata')
+        wikipedia_lookup.assert_called_once_with('Phlox paniculata', language_code='de')
+
+
 
 
 if __name__ == '__main__':

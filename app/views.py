@@ -80,6 +80,52 @@ def _guess_common_name_from_text(scientific_name, text):
 
 
 
+def _common_name_from_naturadb_title(page_title, scientific_name=None):
+    title = re.sub(r"\s+", ' ', (page_title or '')).strip()
+    if not title:
+        return None
+
+    title = re.sub(r"\s*[|–—-]\s*NaturaDB\s*$", '', title, flags=re.IGNORECASE).strip()
+    title = re.sub(r"\s*\([^)]*\)\s*$", '', title).strip()
+
+    if ' - ' in title:
+        candidate_parts = [part.strip() for part in title.split(' - ') if part.strip()]
+        if candidate_parts:
+            normalized_scientific_name = (normalize_scientific_name_for_lookup(scientific_name or '') or '').lower()
+            for part in candidate_parts:
+                normalized_part = (normalize_scientific_name_for_lookup(part) or part).lower()
+                if normalized_scientific_name and normalized_part == normalized_scientific_name:
+                    continue
+                return part
+            return candidate_parts[0]
+
+    return title or None
+
+
+def _lookup_common_name_from_naturadb_slug(raw_slug, scientific_name=None):
+    slug = (raw_slug or '').strip().strip('/')
+    if not slug:
+        return None, []
+    slug = slug.split('?', 1)[0].split('#', 1)[0].strip('/')
+    if not slug:
+        return None, []
+
+    url = f'https://www.naturadb.de/pflanzen/{quote(slug, safe="/-_")}/'
+    try:
+        response = requests.get(url, timeout=6)
+        response.raise_for_status()
+    except requests.RequestException:
+        return None, [url]
+
+    match = re.search(r'<title[^>]*>(.*?)</title>', response.text or '', flags=re.IGNORECASE | re.DOTALL)
+    if not match:
+        return None, [url]
+
+    page_title = re.sub(r'<[^>]+>', '', match.group(1))
+    common_name = _common_name_from_naturadb_title(page_title, scientific_name=scientific_name)
+    return common_name, [url]
+
+
 def _lookup_common_name_from_web(scientific_name, language_code='de'):
     query = (scientific_name or '').strip()
     normalized_query = normalize_scientific_name_for_lookup(query)
@@ -937,8 +983,16 @@ def suggest_common_name(plant_id):
         current_app.logger.info('[%s] common-name lookup aborted: missing source name', trace_id)
         return jsonify({'ok': False, 'error': 'Bitte zuerst einen Namen eingeben.', 'debug': {'trace_id': trace_id}}), 400
 
+    naturadb_id = (payload.get('naturadb_id') or '').strip()
+    common_name = None
+    sources = []
+    if naturadb_id:
+        common_name, sources = _lookup_common_name_from_naturadb_slug(naturadb_id, scientific_name=name_value)
+
     lookup_language = current_app.config.get('COMMON_NAME_LOOKUP_LANG', 'de')
-    common_name, sources = _lookup_common_name_from_web(name_value, language_code=lookup_language)
+    if not common_name:
+        common_name, wikipedia_sources = _lookup_common_name_from_web(name_value, language_code=lookup_language)
+        sources = [*sources, *wikipedia_sources]
     if not common_name:
         duration_ms = round((time.perf_counter() - started_at) * 1000, 1)
         current_app.logger.info('[%s] common-name lookup failed for "%s" (%sms, sources=%s)', trace_id, name_value, duration_ms, len(sources or []))
