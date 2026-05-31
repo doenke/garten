@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-from app.taxonomy.resolvers.wfo import WfoResolver, extract_wfo_taxon_slug
+from app.taxonomy.resolvers.wfo import WfoResolver, extract_wfo_match_api_id, extract_wfo_taxon_slug
 
 
 class WfoTaxonomyExtractionTest(unittest.TestCase):
@@ -44,7 +44,65 @@ class WfoTaxonomyExtractionTest(unittest.TestCase):
         self.assertEqual(extract_wfo_taxon_slug(page_html), 'wfo-0000000002')
 
 
+class WfoMatchApiExtractionTest(unittest.TestCase):
+    def test_extract_wfo_match_api_id_returns_unambiguous_match(self):
+        payload = {
+            'match': {
+                'wfo_id': 'wfo-0000572861',
+                'full_name_plain': 'Brunnera macrophylla (Adams) I.M.Johnst.',
+            },
+            'candidates': [],
+        }
+
+        self.assertEqual(extract_wfo_match_api_id(payload), 'wfo-0000572861')
+
+    def test_extract_wfo_match_api_id_accepts_single_candidate(self):
+        payload = {
+            'match': None,
+            'candidates': [{'wfoId': 'wfo-0000572861'}],
+        }
+
+        self.assertEqual(extract_wfo_match_api_id(payload), 'wfo-0000572861')
+
+    def test_extract_wfo_match_api_id_ignores_ambiguous_candidates(self):
+        payload = {
+            'match': None,
+            'candidates': [
+                {'wfo_id': 'wfo-0000572861'},
+                {'wfo_id': 'wfo-0000572862'},
+            ],
+        }
+
+        self.assertIsNone(extract_wfo_match_api_id(payload))
+
+
 class WfoResolverTest(unittest.TestCase):
+
+    def test_resolve_uses_wfo_matching_api_when_configured(self):
+        config = {
+            'catalog_key': 'wfo',
+            'match_url': 'https://list.worldfloraonline.org/matching_rest.php',
+            'input_string_param': 'input_string',
+            'accept_single_candidate': True,
+            'search_url': 'https://www.worldfloraonline.org/search',
+            'query_param': 'query',
+        }
+
+        with patch('app.taxonomy.resolvers.wfo.fetch_json', return_value={
+            'match': {'wfo_id': 'wfo-0000572861'},
+            'candidates': [],
+        }) as fetch_json, patch('app.taxonomy.resolvers.wfo.search_page_html') as search_page_html:
+            result = WfoResolver().resolve('Brunnera macrophylla', config)
+
+        fetch_json.assert_called_once()
+        search_page_html.assert_not_called()
+        self.assertEqual(result.taxonomy_id, 'wfo-0000572861')
+        self.assertEqual(result.external_call.catalog, 'wfo')
+        self.assertEqual(
+            result.external_call.request_url,
+            'https://list.worldfloraonline.org/matching_rest.php?input_string=Brunnera+macrophylla&accept_single_candidate=true',
+        )
+
     def test_resolve_returns_first_search_result_slug_from_mocked_html_helper(self):
         page_html = """
             <div class="not-result">
