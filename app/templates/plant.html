@@ -317,9 +317,14 @@
 {% endfor %}
   </section>
 </div>
-<form method="post" action="/plants/{{ plant.id }}/delete" onsubmit="return confirm('Pflanze wirklich löschen?');" class="floating-trash">
-  <button type="submit" aria-label="Pflanze löschen" title="Pflanze löschen">🗑️</button>
-</form>
+<div class="floating-plant-actions">
+  <form method="post" action="/plants/{{ plant.id }}/duplicate" class="floating-icon-form">
+    <button type="submit" class="floating-icon-button duplicate" aria-label="Pflanze duplizieren" title="Pflanze duplizieren">⧉</button>
+  </form>
+  <form method="post" action="/plants/{{ plant.id }}/delete" onsubmit="return confirm('Pflanze wirklich löschen?');" class="floating-icon-form">
+    <button type="submit" class="floating-icon-button delete" aria-label="Pflanze löschen" title="Pflanze löschen">🗑️</button>
+  </form>
+</div>
 
 <div id="image-modal" class="image-modal hidden" aria-hidden="true">
   <div class="image-modal-inner">
