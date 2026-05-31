@@ -722,9 +722,14 @@ def new_plant(location_id):
         flash('Bitte beide Monate für die Blütezeit angeben oder beide leer lassen.', 'warning')
         return redirect(url_for('main.location_detail', location_id=location_id))
 
+    name = (request.form.get('name') or '').strip()
+    if not name:
+        flash('Bitte einen Pflanzennamen angeben.', 'warning')
+        return redirect(url_for('main.location_detail', location_id=location_id))
+
     p = Plant(
         location_id=location_id,
-        name=request.form['name'],
+        name=name,
         cultivar=request.form.get('cultivar'),
         scientific_name=request.form.get('scientific_name'),
         common_name=request.form.get('common_name'),
@@ -755,7 +760,7 @@ def new_plant(location_id):
         creator_id=current_user().id
     )
     db.session.commit()
-    return redirect(url_for('main.plant_detail', plant_id=p.id))
+    return redirect(url_for('main.plant_detail', plant_id=p.id, edit=1))
 
 @main_bp.route('/locations/<int:location_id>/delete', methods=['POST'])
 @login_required
