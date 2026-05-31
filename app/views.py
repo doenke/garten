@@ -299,6 +299,64 @@ def get_source_suggestions(limit=30):
     )
     return [source for source, _ in sources]
 
+
+def build_duplicate_plant_name(original_name):
+    base_name = (original_name or 'Pflanze').strip() or 'Pflanze'
+    copy_name = f"{base_name} (Kopie)"
+    existing_names = {
+        name for (name,) in db.session.query(Plant.name)
+        .filter(Plant.name.like(f"{copy_name}%"))
+        .all()
+    }
+    if copy_name not in existing_names:
+        return copy_name
+
+    counter = 2
+    while f"{copy_name} {counter}" in existing_names:
+        counter += 1
+    return f"{copy_name} {counter}"
+
+
+def duplicate_plant_record(plant, creator_id):
+    duplicated = Plant(
+        location_id=plant.location_id,
+        name=build_duplicate_plant_name(plant.name),
+        cultivar=plant.cultivar,
+        scientific_name=plant.scientific_name,
+        common_name=plant.common_name,
+        source=plant.source,
+        bloom_start_month=plant.bloom_start_month,
+        bloom_end_month=plant.bloom_end_month,
+        flower_color=plant.flower_color,
+        height_without_bloom_cm=plant.height_without_bloom_cm,
+        height_with_bloom_cm=plant.height_with_bloom_cm,
+        info=plant.info,
+        map_x=plant.map_x,
+        map_y=plant.map_y,
+        creator_id=creator_id,
+    )
+    duplicated.light_needs = list(plant.light_needs)
+    duplicated.soil_properties = list(plant.soil_properties)
+    duplicated.database_identifiers = [
+        PlantDatabaseIdentifier(
+            catalog_key=identifier.catalog_key,
+            taxonomy_id=identifier.taxonomy_id,
+        )
+        for identifier in plant.database_identifiers
+    ]
+    db.session.add(duplicated)
+    db.session.flush()
+    create_timeline_entry(
+        scope_type='plant',
+        scope_id=duplicated.id,
+        event_type='data_event',
+        event_at=datetime.utcnow(),
+        title='Pflanze dupliziert',
+        description=f'Dupliziert von {plant.name}.',
+        creator_id=creator_id,
+    )
+    return duplicated
+
 def create_system_event(plant_id, key, creator_id, event_at=None, description=None):
     tpl = SYSTEM_EVENT_TEMPLATES[key]
     create_timeline_entry(
@@ -1074,6 +1132,17 @@ def update_masterdata(plant_id):
 
     db.session.commit()
     return redirect(url_for('main.plant_detail', plant_id=plant.id))
+
+
+@main_bp.route('/plants/<int:plant_id>/duplicate', methods=['POST'])
+@login_required
+def duplicate_plant(plant_id):
+    plant = Plant.query.get_or_404(plant_id)
+    duplicated = duplicate_plant_record(plant, current_user().id)
+    db.session.commit()
+    flash(f'Pflanze „{plant.name}“ wurde dupliziert.', 'success')
+    return redirect(url_for('main.plant_detail', plant_id=duplicated.id))
+
 @main_bp.route('/plants/<int:plant_id>/delete', methods=['POST'])
 @login_required
 def delete_plant(plant_id):
