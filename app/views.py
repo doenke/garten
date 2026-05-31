@@ -785,7 +785,7 @@ def new_plant(location_id):
         flash('Bitte beide Monate für die Blütezeit angeben oder beide leer lassen.', 'warning')
         return redirect(url_for('main.location_detail', location_id=location_id))
 
-    name = (request.form.get('name') or '').strip()
+    name = (request.form.get('plant_name') or request.form.get('name') or '').strip()
     if not name:
         flash('Bitte einen Pflanzennamen angeben.', 'warning')
         return redirect(url_for('main.location_detail', location_id=location_id))

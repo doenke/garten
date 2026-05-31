@@ -44,11 +44,15 @@ class PlantCreateViewTest(unittest.TestCase):
         html = response.get_data(as_text=True)
         self.assertIn('id="plant-create-dialog"', html)
         self.assertIn('id="plant-create-name"', html)
+        self.assertIn('name="plant_name"', html)
+        self.assertIn('autocomplete="off"', html)
+        self.assertIn('data-1p-ignore="true"', html)
+        self.assertNotIn('name="name" placeholder="Name der Pflanze"', html)
         self.assertNotIn('id="plant-form"', html)
         self.assertNotIn('placeholder="Sorte/Kultivar"', html)
 
     def test_create_plant_redirects_to_open_masterdata_editor(self):
-        response = self.client.post(f'/locations/{self.location_id}/plants/new', data={'name': '  Salbei  '})
+        response = self.client.post(f'/locations/{self.location_id}/plants/new', data={'plant_name': '  Salbei  '})
 
         self.assertEqual(response.status_code, 302)
         with self.app.app_context():
@@ -62,7 +66,7 @@ class PlantCreateViewTest(unittest.TestCase):
             self.assertIn('<details open>', detail_response.get_data(as_text=True))
 
     def test_create_plant_requires_name(self):
-        response = self.client.post(f'/locations/{self.location_id}/plants/new', data={'name': '   '})
+        response = self.client.post(f'/locations/{self.location_id}/plants/new', data={'plant_name': '   '})
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.headers['Location'], f'/locations/{self.location_id}')
