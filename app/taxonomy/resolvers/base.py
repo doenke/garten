@@ -4,10 +4,13 @@ from dataclasses import dataclass, field
 from typing import Any, Mapping, Optional
 from urllib.parse import urlencode
 
+import requests
+
 from ..url_templates import config_from_search_url_template
 
 
 USER_AGENT = 'garten-taxonomy-resolver/1.0'
+REQUEST_TIMEOUT = 8
 
 
 @dataclass
@@ -94,6 +97,17 @@ class TaxonomyResolver:
         return None
 
 
+def fetch_response(call: ExternalCall, accept: str):
+    response = requests.get(
+        call.url,
+        params=call.query,
+        headers={'Accept': accept, 'User-Agent': USER_AGENT},
+        timeout=REQUEST_TIMEOUT,
+    )
+    response.raise_for_status()
+    return response
+
+
 def parse_json_response(response, logger=None):
     if not response.content:
         return {}
@@ -103,6 +117,22 @@ def parse_json_response(response, logger=None):
         if logger:
             logger.warning('taxonomy resolver non-json response from %s (status=%s)', response.url, response.status_code)
         return None
+
+
+def fetch_json(call: ExternalCall, accept: str = 'application/json'):
+    try:
+        response = fetch_response(call, accept)
+    except requests.RequestException:
+        return None
+    return parse_json_response(response)
+
+
+def fetch_text(call: ExternalCall, accept: str = 'text/html,application/xhtml+xml'):
+    try:
+        response = fetch_response(call, accept)
+    except requests.RequestException:
+        return None
+    return response.text or ''
 
 
 def normalize_scientific_name_for_lookup(scientific_name):

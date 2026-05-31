@@ -1,6 +1,4 @@
-import requests
-
-from .base import ExternalCall, ResolverRequest, TaxonomyResolver, USER_AGENT, parse_json_response
+from .base import ExternalCall, ResolverRequest, TaxonomyResolver, fetch_json
 
 
 class GbifResolver(TaxonomyResolver):
@@ -26,18 +24,7 @@ class GbifResolver(TaxonomyResolver):
 
     def suggest_id(self, request: ResolverRequest):
         call = self.external_call(request)
-        try:
-            response = requests.get(
-                self.endpoint,
-                params=call.query,
-                headers={'Accept': 'application/json', 'User-Agent': USER_AGENT},
-                timeout=8,
-            )
-            response.raise_for_status()
-        except requests.RequestException:
-            return None
-
-        payload = parse_json_response(response)
+        payload = fetch_json(call)
         if payload is None:
             return None
         usage_key = payload.get('usageKey')
