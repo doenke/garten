@@ -1,4 +1,5 @@
-from .base import ExternalCall, ResolverRequest, TaxonomyResolver, fetch_json
+from .base import ExternalCall, ResolverRequest, TaxonomyResolver
+from .http import fetch_json
 
 
 class GbifResolver(TaxonomyResolver):
