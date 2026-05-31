@@ -74,7 +74,24 @@
 <label>Blütezeit von <select name="bloom_start_month"><option value="">Monat</option>{% set month_names = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'] %}{% for m in range(1,13) %}<option value="{{ m }}">{{ month_names[m-1] }}</option>{% endfor %}</select> bis <select name="bloom_end_month"><option value="">Monat</option>{% for m in range(1,13) %}<option value="{{ m }}">{{ month_names[m-1] }}</option>{% endfor %}</select></label>
 <input name="flower_color" placeholder="Blütenfarbe" list="flower-color-suggestions">
 <datalist id="flower-color-suggestions">{% for color in flower_color_suggestions %}<option value="{{ color }}">{% endfor %}</datalist>
-<input name="soil_properties" placeholder="Bodeneigenschaften (kommagetrennt)">
+<label for="soil-property-input">Bodeneigenschaften</label>
+<input id="soil-property-input" list="soil-property-suggestions" placeholder="z. B. humos, kalkhaltig">
+<datalist id="soil-property-suggestions">
+  {% for suggestion in soil_property_suggestions %}
+  <option value="{{ suggestion.label }}"></option>
+  {% endfor %}
+</datalist>
+<input type="hidden" id="soil-properties-hidden" name="soil_properties" value="">
+<div class="soil-sections">
+  <div>
+    <p class="soil-section-label">Zugewiesen</p>
+    <div id="soil-properties-selected" class="chip-row"></div>
+  </div>
+  <div>
+    <p class="soil-section-label">Auswahl</p>
+    <div id="soil-top-chips" class="chip-row" data-top-soil-properties='{{ top_soil_properties | tojson }}'></div>
+  </div>
+</div>
 <input type="number" name="height_without_bloom_cm" min="0" placeholder="Höhe ohne Blüte (cm)">
 <input type="number" name="height_with_bloom_cm" min="0" placeholder="Höhe mit Blüte (cm)">
 <textarea name="info" placeholder="Weitere Info"></textarea>
@@ -320,6 +337,72 @@
       syncPolygonField();
       renderOverlay();
     });
+  }
+
+  const soilInput = document.getElementById('soil-property-input');
+  const soilHidden = document.getElementById('soil-properties-hidden');
+  const soilSelectedWrapper = document.getElementById('soil-properties-selected');
+  if (soilInput && soilHidden && soilSelectedWrapper) {
+    const selected = new Map();
+    const topSoilWrapper = document.getElementById('soil-top-chips');
+    const suggestionOptions = Array.from(document.querySelectorAll('#soil-property-suggestions option'));
+    const suggestionLabels = suggestionOptions
+      .map((option) => (option.value || '').trim())
+      .filter(Boolean);
+    const topSoilLabels = topSoilWrapper ? JSON.parse(topSoilWrapper.dataset.topSoilProperties || '[]') : [];
+    const availableTopSoilLabels = topSoilLabels.length ? topSoilLabels : suggestionLabels;
+    const updateTopSoilButtons = () => {
+      if (!topSoilWrapper) return;
+      topSoilWrapper.innerHTML = '';
+      let renderedCount = 0;
+      availableTopSoilLabels.forEach((label) => {
+        if (renderedCount >= 5) return;
+        const normalizedLabel = (label || '').trim();
+        const key = normalizedLabel.toLowerCase();
+        if (!normalizedLabel || selected.has(key)) return;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'chip soil-top-chip';
+        button.dataset.soilLabel = normalizedLabel;
+        button.textContent = normalizedLabel;
+        button.addEventListener('click', () => addSoil(normalizedLabel));
+        topSoilWrapper.appendChild(button);
+        renderedCount += 1;
+      });
+    };
+    const renderSoil = () => {
+      soilSelectedWrapper.innerHTML = '';
+      soilHidden.value = Array.from(selected.values()).join(', ');
+      selected.forEach((label, key) => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'chip selected';
+        chip.textContent = `${label} ×`;
+        chip.addEventListener('click', () => {
+          selected.delete(key);
+          renderSoil();
+        });
+        soilSelectedWrapper.appendChild(chip);
+      });
+      updateTopSoilButtons();
+    };
+    const addSoil = (rawLabel) => {
+      const label = (rawLabel || '').trim();
+      if (!label) return;
+      const key = label.toLowerCase();
+      if (!selected.has(key)) selected.set(key, label);
+      renderSoil();
+      soilInput.value = '';
+    };
+    (soilHidden.value || '').split(',').forEach(addSoil);
+    renderSoil();
+    soilInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ',') {
+        event.preventDefault();
+        addSoil(soilInput.value);
+      }
+    });
+    soilInput.addEventListener('blur', () => addSoil(soilInput.value));
   }
 
   const togglePlantFormButton = document.getElementById('toggle-plant-form');
