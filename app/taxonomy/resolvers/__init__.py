@@ -8,6 +8,7 @@ from .naturadb import NaturaDbResolver
 from .passthrough import SearchQueryPassthroughResolver
 from .powo import PowoResolver
 from .wfo import WfoResolver
+from .wikipedia import GermanWikipediaResolver
 
 
 _REGISTERED_RESOLVERS = (
@@ -17,6 +18,7 @@ _REGISTERED_RESOLVERS = (
     FlorawebResolver(),
     NaturaDbResolver(),
     MeinSchoenerGartenResolver(),
+    GermanWikipediaResolver(),
     SearchQueryPassthroughResolver(),
 )
 
@@ -30,5 +32,6 @@ __all__ = [
     'FlorawebResolver',
     'NaturaDbResolver',
     'MeinSchoenerGartenResolver',
+    'GermanWikipediaResolver',
     'SearchQueryPassthroughResolver',
 ]
