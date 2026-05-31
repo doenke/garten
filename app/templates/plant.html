@@ -88,7 +88,7 @@
 
       <details>
         <summary>Pflanzendaten ändern</summary>
-        <form method="post" action="/plants/{{ plant.id }}/masterdata" class="grid mt-75">
+        <form method="post" action="/plants/{{ plant.id }}/masterdata" id="plant-masterdata-form" class="grid mt-75">
           <fieldset class="form-section">
         <legend>Basisdaten</legend>
         <label for="plant-name">Name</label>
@@ -393,6 +393,21 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
 .database-search-link{display:inline-flex;align-items:center;justify-content:center;min-width:2.25rem;padding:.45rem .5rem;text-decoration:none}
 .database-search-link.disabled{opacity:.45;cursor:not-allowed}
 #magic-common-name{min-width:2.6rem;padding:.45rem .55rem}
+#plant-masterdata-form input.is-dirty:not([type="checkbox"]):not([type="radio"]),
+#plant-masterdata-form textarea.is-dirty,
+#plant-masterdata-form select.is-dirty{
+  border-color:#d97706;
+  background:color-mix(in srgb, #f59e0b 18%, var(--surface) 82%);
+  box-shadow:0 0 0 2px color-mix(in srgb, #f59e0b 28%, transparent);
+}
+#plant-masterdata-form .light-need-option.is-dirty,
+#plant-masterdata-form .dirty-field-proxy.is-dirty{
+  border-color:#d97706;
+  background:color-mix(in srgb, #f59e0b 16%, var(--surface-soft) 84%);
+  box-shadow:0 0 0 2px color-mix(in srgb, #f59e0b 22%, transparent);
+}
+#plant-masterdata-form .light-need-option.is-dirty{border-radius:999px;padding:.15rem .45rem;margin:-.15rem -.45rem}
+#plant-masterdata-form .dirty-field-proxy.is-dirty{border-radius:10px;padding:.35rem}
 
 .timeline-panel{display:flex;flex-direction:column;gap:.85rem}
 .timeline-panel-title{margin:0}
@@ -432,6 +447,47 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
 
 <script>
 (() => {
+  const masterdataForm = document.getElementById('plant-masterdata-form');
+  const dirtyFieldState = new Map();
+  const getComparableFieldValue = (field) => {
+    if (!field) return '';
+    if (field.type === 'checkbox' || field.type === 'radio') return field.checked ? 'checked' : '';
+    if (field.tagName === 'SELECT' && field.multiple) {
+      return Array.from(field.selectedOptions).map((option) => option.value).join('\u0000');
+    }
+    return field.value || '';
+  };
+  const getDirtyVisualTarget = (field) => {
+    if (!field) return null;
+    if (field.id === 'soil-properties-hidden') return document.getElementById('soil-properties-selected');
+    if (field.type === 'checkbox' || field.type === 'radio') return field.closest('label') || field;
+    return field;
+  };
+  const updateDirtyFieldState = (field) => {
+    const originalValue = dirtyFieldState.get(field);
+    if (originalValue === undefined) return;
+    const isDirty = getComparableFieldValue(field) !== originalValue;
+    const visualTarget = getDirtyVisualTarget(field);
+    if (visualTarget) {
+      visualTarget.classList.toggle('is-dirty', isDirty);
+      if (field.id === 'soil-properties-hidden') visualTarget.classList.add('dirty-field-proxy');
+    }
+    field.classList.toggle('is-dirty', isDirty && field.type !== 'hidden');
+  };
+  const updateAllDirtyFieldStates = () => {
+    dirtyFieldState.forEach((_, field) => updateDirtyFieldState(field));
+  };
+  if (masterdataForm) {
+    const dirtyTrackedFields = Array.from(masterdataForm.querySelectorAll('input, select, textarea'))
+      .filter((field) => field.type !== 'hidden' || field.id === 'soil-properties-hidden');
+    dirtyTrackedFields.forEach((field) => {
+      dirtyFieldState.set(field, getComparableFieldValue(field));
+      field.addEventListener('input', () => updateDirtyFieldState(field));
+      field.addEventListener('change', () => updateDirtyFieldState(field));
+    });
+    updateAllDirtyFieldStates();
+  }
+
   const soilInput = document.getElementById('soil-property-input');
   const soilHidden = document.getElementById('soil-properties-hidden');
   const soilSelectedWrapper = document.getElementById('soil-properties-selected');
@@ -478,6 +534,7 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
         soilSelectedWrapper.appendChild(chip);
       });
       updateTopSoilButtons();
+      updateDirtyFieldState(soilHidden);
     };
     const addSoil = (rawLabel) => {
       const label = (rawLabel || '').trim();
@@ -565,6 +622,7 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
         pushMagicDebugLog('Common Name', `Response: ${rawResponse || '(leer)'}`);
         if (!response.ok || !data.ok) throw new Error(data.error || 'Kein Vorschlag gefunden');
         commonNameInput.value = data.common_name || '';
+        updateDirtyFieldState(commonNameInput);
         const confidenceText = typeof data.confidence === 'number' ? ` (Confidence: ${Math.round(data.confidence * 100)}%)` : '';
         const sourceCount = Array.isArray(data.sources) ? data.sources.length : 0;
         if (magicStatus) magicStatus.textContent = `Vorschlag übernommen${confidenceText}. Quellen: ${sourceCount}.`;
@@ -638,6 +696,7 @@ legend{padding:0 .4rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
           const suggestedId = data.matches?.[catalogKey];
           if (input && suggestedId) {
             input.value = suggestedId;
+            updateDirtyFieldState(input);
             if (idsStatus) idsStatus.textContent = `${catalogKey.toUpperCase()}-Vorschlag übernommen.`;
           } else if (idsStatus) {
             idsStatus.textContent = `Kein Vorschlag für ${catalogKey.toUpperCase()} gefunden.`;
