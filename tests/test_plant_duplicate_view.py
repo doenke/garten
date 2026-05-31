@@ -90,6 +90,18 @@ class PlantDuplicateViewTest(unittest.TestCase):
             event = TimelineEntry.query.filter_by(scope_type='plant', scope_id=duplicated.id).one()
             self.assertEqual(event.title, 'Pflanze dupliziert')
 
+    def test_delete_plant_redirects_to_source_location(self):
+        response = self.client.post(f'/plants/{self.plant_id}/delete')
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers['Location'], f'/locations/{self.location_id}')
+        with self.app.app_context():
+            trash = Location.query.filter_by(name='Papierkorb').one()
+            plant = db.session.get(Plant, self.plant_id)
+            self.assertEqual(plant.location_id, trash.id)
+            event = TimelineEntry.query.filter_by(scope_type='plant', scope_id=self.plant_id, title='Ausgepflanzt').one()
+            self.assertEqual(event.description, 'Pflanze wurde ausgepflanzt.')
+
     def test_build_duplicate_plant_name_increments_existing_copies(self):
         with self.app.app_context():
             db.session.add(Plant(name='Phlox (Kopie)', location_id=self.location_id, creator_id=self.user_id))

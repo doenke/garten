@@ -1155,12 +1155,13 @@ def duplicate_plant(plant_id):
 @login_required
 def delete_plant(plant_id):
     plant = Plant.query.get_or_404(plant_id)
+    source_location_id = plant.location_id
     trash = get_or_create_trash_location()
     if plant.location_id != trash.id:
         create_system_event(plant.id, 'outplant', current_user().id)
     plant.location_id = trash.id
     db.session.commit()
-    return redirect(url_for('main.plant_detail', plant_id=plant.id))
+    return redirect(url_for('main.location_detail', location_id=source_location_id))
 
 @main_bp.route('/plants/<int:plant_id>/move', methods=['POST'])
 @login_required
