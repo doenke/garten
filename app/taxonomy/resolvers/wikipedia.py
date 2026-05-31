@@ -1,5 +1,3 @@
-from urllib.parse import quote
-
 from .base import ExternalCall, ResolverRequest, TaxonomyResolver, normalize_scientific_name_for_lookup
 from .http import fetch_json
 
@@ -42,5 +40,5 @@ class GermanWikipediaResolver(TaxonomyResolver):
             for item in results:
                 title = (item.get('title') or '').strip()
                 if title:
-                    return quote(title.replace(' ', '_'), safe=':_()-,.%')
+                    return title.replace(' ', '_')
         return None

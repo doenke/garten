@@ -237,6 +237,40 @@ def get_catalog_configs():
     return get_database_catalogs()
 
 
+def _normalize_database_identifier_for_catalog(catalog_key, identifier):
+    value = (identifier or '').strip()
+    if catalog_key == 'wikipedia_de':
+        return unquote(value).replace(' ', '_')
+    return value
+
+
+def _display_database_identifier_for_catalog(catalog_key, identifier):
+    value = (identifier or '').strip()
+    if catalog_key == 'wikipedia_de':
+        return unquote(value)
+    return value
+
+
+def _record_url_for_database_identifier(catalog, identifier):
+    value = (identifier or '').strip()
+    if not value:
+        return ''
+    if catalog.key == 'wikipedia_de':
+        value = quote(unquote(value).replace(' ', '_'), safe=':_()-,.%')
+    return (catalog.record_url_template or '').replace('{id}', value)
+
+
+def _build_database_identifier_values(plant):
+    values = {}
+    for item in plant.database_identifiers:
+        if not item.catalog:
+            continue
+        identifier = _display_database_identifier_for_catalog(item.catalog.key, item.taxonomy_id)
+        if identifier:
+            values[item.catalog.key] = identifier
+    return values
+
+
 def _build_database_links_for_plant(plant):
     links = []
     for item in plant.database_identifiers:
@@ -245,15 +279,17 @@ def _build_database_links_for_plant(plant):
         identifier = (item.taxonomy_id or '').strip()
         if not identifier:
             continue
-        url = (item.catalog.record_url_template or '').replace('{id}', identifier)
+        display_identifier = _display_database_identifier_for_catalog(item.catalog.key, identifier)
+        url = _record_url_for_database_identifier(item.catalog, identifier)
         links.append({
             'catalog_key': item.catalog.key,
             'catalog_label': item.catalog.label,
             'identifier': identifier,
+            'display_identifier': display_identifier,
             'url': url,
             'icon_url': (item.catalog.icon_url or '').strip(),
         })
-    return sorted(links, key=lambda link: ((link['catalog_label'] or '').lower(), link['identifier'].lower()))
+    return sorted(links, key=lambda link: ((link['catalog_label'] or '').lower(), link['display_identifier'].lower()))
 
 
 def _build_database_search_urls(catalogs, search_query):
@@ -904,6 +940,7 @@ def plant_detail(plant_id):
         source_suggestions=get_source_suggestions(),
         database_links=_build_database_links_for_plant(plant),
         database_catalogs=database_catalogs,
+        database_identifier_values=_build_database_identifier_values(plant),
         database_search_query=database_search_query,
         database_search_urls=_build_database_search_urls(database_catalogs, database_search_query),
     )
@@ -1040,7 +1077,10 @@ def suggest_common_name(plant_id):
 
 def upsert_plant_database_identifiers(plant, form):
     catalog_by_key = {catalog.key: catalog for catalog in get_catalog_configs()}
-    desired_values = {catalog_key: (form.get(f'database_id_{catalog_key}') or '').strip() for catalog_key in catalog_by_key.keys()}
+    desired_values = {
+        catalog_key: _normalize_database_identifier_for_catalog(catalog_key, form.get(f'database_id_{catalog_key}'))
+        for catalog_key in catalog_by_key.keys()
+    }
 
     existing_by_key = {entry.catalog.key: entry for entry in plant.database_identifiers if entry.catalog}
     new_entries = []

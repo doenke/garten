@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 from app.taxonomy.catalogs import DatabaseCatalogConfig
 from app.taxonomy import registry
@@ -75,6 +76,17 @@ class TaxonomyResolverConfigTest(unittest.TestCase):
         self.assertEqual(config['prefer_statuses'], {'ACCEPTED'})
         self.assertEqual(config['kingdom'], 'Plantae')
         self.assertEqual(config['search_url_template'], catalog.search_url_template)
+
+    def test_wikipedia_resolver_returns_readable_unicode_slug(self):
+        resolver = GermanWikipediaResolver()
+        request = ResolverRequest('wikipedia_de', 'Brunnera macrophylla', resolver.default_config_values)
+
+        with patch('app.taxonomy.resolvers.wikipedia.fetch_json', return_value={
+            'query': {'search': [{'title': 'Großblättriges Kaukasusvergissmeinnicht'}]},
+        }):
+            suggestion = resolver.suggest_id(request)
+
+        self.assertEqual(suggestion, 'Großblättriges_Kaukasusvergissmeinnicht')
 
     def test_common_config_validation_checks_required_keys(self):
         self.assertTrue(validate_common_config({'search_url': 'https://example.test/search'}, required=('search_url',)))
