@@ -12,7 +12,6 @@ from .services.timeline_service import save_uploaded_attachment, set_single_titl
 from .taxonomy import service as taxonomy_service
 from .taxonomy.catalogs import get_database_catalogs
 from .taxonomy.resolvers.base import normalize_scientific_name_for_lookup
-from .taxonomy.resolvers.wfo import extract_wfo_taxon_slug
 
 main_bp = Blueprint('main', __name__)
 ALLOWED = {'png', 'jpg', 'jpeg', 'webp', 'gif', 'pdf'}
@@ -60,10 +59,6 @@ LIGHT_NEED_OPTIONS = [
 ]
 LIGHT_NEED_KEY_TO_LABEL = {item['key']: item['label'] for item in LIGHT_NEED_OPTIONS}
 LIGHT_NEED_ICON_BY_KEY = {item['key']: item['icon'] for item in LIGHT_NEED_OPTIONS}
-
-
-def _extract_wfo_taxon_slug(page_html):
-    return extract_wfo_taxon_slug(page_html)
 
 
 def _guess_common_name_from_text(scientific_name, text):
