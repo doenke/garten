@@ -250,6 +250,41 @@ def get_or_create_soil_properties(labels):
     return properties
 
 
+def get_top_soil_property_labels(excluded_soil_property_ids=None, limit=5):
+    excluded_soil_property_ids = excluded_soil_property_ids or []
+    top_soil_properties_query = (
+        db.session.query(
+            SoilProperty.label,
+            db.func.count(plant_soil_property.c.plant_id).label('usage_count'),
+        )
+        .join(plant_soil_property, plant_soil_property.c.soil_property_id == SoilProperty.id)
+    )
+    if excluded_soil_property_ids:
+        top_soil_properties_query = top_soil_properties_query.filter(~SoilProperty.id.in_(excluded_soil_property_ids))
+    top_soil_properties = (
+        top_soil_properties_query
+        .group_by(SoilProperty.id, SoilProperty.label)
+        .order_by(db.desc('usage_count'), SoilProperty.label.asc())
+        .limit(limit)
+        .all()
+    )
+    if len(top_soil_properties) < limit:
+        existing_top_labels = {item.label for item in top_soil_properties}
+        fallback_soil_properties = SoilProperty.query
+        if excluded_soil_property_ids:
+            fallback_soil_properties = fallback_soil_properties.filter(~SoilProperty.id.in_(excluded_soil_property_ids))
+        if existing_top_labels:
+            fallback_soil_properties = fallback_soil_properties.filter(~SoilProperty.label.in_(existing_top_labels))
+        fallback_soil_properties = (
+            fallback_soil_properties
+            .order_by(SoilProperty.label.asc())
+            .limit(limit - len(top_soil_properties))
+            .all()
+        )
+        top_soil_properties += [(item.label, 0) for item in fallback_soil_properties]
+    return [item[0] for item in top_soil_properties]
+
+
 def create_timeline_entry(*, scope_type, scope_id, creator_id, created_at=None, event_at=None, event_type=None, title=None, description=None, attachment_filename=None, attachment_kind=None):
     entry = TimelineEntry(
         scope_type=scope_type,
@@ -564,6 +599,8 @@ def location_detail(location_id):
         light_need_options=LIGHT_NEED_OPTIONS,
         flower_color_suggestions=get_flower_color_suggestions(),
         source_suggestions=get_source_suggestions(),
+        top_soil_properties=get_top_soil_property_labels(),
+        soil_property_suggestions=SoilProperty.query.order_by(SoilProperty.label.asc()).all(),
         other_location_polygons=[
             {
                 'id': other_loc.id,
@@ -732,36 +769,7 @@ def plant_detail(plant_id):
     ]
     title_event = next((event for event in events if event.is_title_entry), None)
     assigned_soil_property_ids = [soil_property.id for soil_property in plant.soil_properties]
-    top_soil_properties_query = (
-        db.session.query(
-            SoilProperty.label,
-            db.func.count(plant_soil_property.c.plant_id).label('usage_count'),
-        )
-        .join(plant_soil_property, plant_soil_property.c.soil_property_id == SoilProperty.id)
-    )
-    if assigned_soil_property_ids:
-        top_soil_properties_query = top_soil_properties_query.filter(~SoilProperty.id.in_(assigned_soil_property_ids))
-    top_soil_properties = (
-        top_soil_properties_query
-        .group_by(SoilProperty.id, SoilProperty.label)
-        .order_by(db.desc('usage_count'), SoilProperty.label.asc())
-        .limit(5)
-        .all()
-    )
-    if len(top_soil_properties) < 5:
-        existing_top_labels = {item.label for item in top_soil_properties}
-        fallback_soil_properties = SoilProperty.query
-        if assigned_soil_property_ids:
-            fallback_soil_properties = fallback_soil_properties.filter(~SoilProperty.id.in_(assigned_soil_property_ids))
-        if existing_top_labels:
-            fallback_soil_properties = fallback_soil_properties.filter(~SoilProperty.label.in_(existing_top_labels))
-        fallback_soil_properties = (
-            fallback_soil_properties
-            .order_by(SoilProperty.label.asc())
-            .limit(5 - len(top_soil_properties))
-            .all()
-        )
-        top_soil_properties += [(item.label, 0) for item in fallback_soil_properties]
+    top_soil_properties = get_top_soil_property_labels(assigned_soil_property_ids)
     soil_property_suggestions = SoilProperty.query.order_by(SoilProperty.label.asc()).all()
     database_catalogs = get_catalog_configs()
     database_search_query = plant.scientific_name or plant.name
@@ -783,7 +791,7 @@ def plant_detail(plant_id):
         title_event=title_event,
         light_need_options=LIGHT_NEED_OPTIONS,
         light_need_icon_by_key=LIGHT_NEED_ICON_BY_KEY,
-        top_soil_properties=[item[0] for item in top_soil_properties],
+        top_soil_properties=top_soil_properties,
         soil_property_suggestions=soil_property_suggestions,
         flower_color_suggestions=get_flower_color_suggestions(),
         source_suggestions=get_source_suggestions(),
