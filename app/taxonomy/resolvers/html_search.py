@@ -2,7 +2,7 @@ import html
 import re
 from urllib.parse import unquote
 
-from .base import ExternalCall, ResolverRequest, TaxonomyResolver
+from .base import ExternalCall, ResolverRequest, TaxonomyResolver, validate_common_config
 from .http import fetch_text
 
 
@@ -53,10 +53,10 @@ def search_page_taxonomy_id(scientific_name, config, patterns):
 
 
 def search_page_html(scientific_name, config):
-    search_url = (config.get('search_url') or '').strip()
-    query_param = (config.get('query_param') or 'q').strip()
-    if not search_url:
+    if not validate_common_config(config, required=('search_url',)):
         return None
+    search_url = config.get('search_url').strip()
+    query_param = (config.get('query_param') or 'q').strip()
     call = ExternalCall(
         catalog=config.get('catalog_key') or config.get('mode') or 'html_search',
         url=search_url,
@@ -69,8 +69,14 @@ class HtmlSearchResolver(TaxonomyResolver):
     key = None
     mode = None
     patterns = []
+    required_config_keys = ('search_url',)
+
+    def has_required_config(self, config):
+        return validate_common_config(config, required=self.required_config_keys)
 
     def external_call(self, request: ResolverRequest):
+        if not self.has_required_config(request.config):
+            return None
         query_param = request.config.get('query_param') or 'q'
         return ExternalCall(
             catalog=request.catalog_key,
@@ -79,4 +85,6 @@ class HtmlSearchResolver(TaxonomyResolver):
         )
 
     def suggest_id(self, request: ResolverRequest):
+        if not self.has_required_config(request.config):
+            return None
         return search_page_taxonomy_id(request.scientific_name, request.config, self.patterns)

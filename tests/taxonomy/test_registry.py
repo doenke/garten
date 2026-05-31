@@ -3,6 +3,7 @@ import unittest
 from app.taxonomy.catalogs import DatabaseCatalogConfig
 from app.taxonomy import registry
 from app.taxonomy import resolvers  # noqa: F401 - import triggers static resolver registration
+from app.taxonomy.resolvers.base import ResolverRequest, validate_common_config
 from app.taxonomy.resolvers.floraweb import FlorawebResolver
 from app.taxonomy.resolvers.gbif import GbifResolver
 from app.taxonomy.resolvers.mein_schoener_garten import MeinSchoenerGartenResolver
@@ -74,6 +75,17 @@ class TaxonomyResolverConfigTest(unittest.TestCase):
         self.assertEqual(config['prefer_statuses'], {'ACCEPTED'})
         self.assertEqual(config['kingdom'], 'Plantae')
         self.assertEqual(config['search_url_template'], catalog.search_url_template)
+
+    def test_common_config_validation_checks_required_keys(self):
+        self.assertTrue(validate_common_config({'search_url': 'https://example.test/search'}, required=('search_url',)))
+        self.assertFalse(validate_common_config({'search_url': '   '}, required=('search_url',)))
+        self.assertFalse(validate_common_config({}, required=('search_url',)))
+
+    def test_html_resolver_requires_search_url_for_external_call(self):
+        resolver = FlorawebResolver()
+        request = ResolverRequest('floraweb', 'Bellis perennis', {'query_param': 'taxname'})
+
+        self.assertIsNone(resolver.external_call(request))
 
     def test_wikipedia_resolver_external_call_uses_api_with_search_query(self):
         catalog = DatabaseCatalogConfig(

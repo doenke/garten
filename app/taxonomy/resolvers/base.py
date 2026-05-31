@@ -65,6 +65,23 @@ class TaxonomyResolver:
         return defaults
 
     def build_config(self, catalog) -> dict:
+        """Build resolver config from resolver defaults and catalog metadata.
+
+        Common config keys shared by the current resolver implementations:
+
+        * ``catalog_key``: catalog identifier used for logging/debug calls.
+        * ``mode``: resolver mode used to select the lookup strategy.
+        * ``search_url_template``: optional user-facing catalog search URL from
+          the catalog configuration.
+        * ``search_url``: optional request URL derived from the search template
+          or resolver defaults, mainly used by HTML search resolvers.
+        * ``query_param``: optional query parameter name for ``search_url``;
+          HTML search resolvers default to ``q`` when it is absent.
+
+        API resolvers should continue to validate and default their own
+        catalog-specific settings locally instead of relying on a larger shared
+        type hierarchy.
+        """
         config = config_from_search_url_template(
             getattr(catalog, 'search_url_template', None),
             self.default_config(),
@@ -95,6 +112,23 @@ def fetch_response(call: ExternalCall, accept: str):
     from .http import fetch_response as _fetch_response
 
     return _fetch_response(call, accept)
+
+
+def validate_common_config(config, required=()):
+    """Return ``True`` when all requested common resolver config keys are set.
+
+    The helper intentionally stays small while the resolver set is small: each
+    resolver can opt in to the keys it needs and keep catalog-specific defaults
+    or validation close to its own implementation.
+    """
+    config = config or {}
+    for key in required or ():
+        value = config.get(key)
+        if value is None:
+            return False
+        if isinstance(value, str) and not value.strip():
+            return False
+    return True
 
 
 def parse_json_response(response, logger=None):
