@@ -86,7 +86,7 @@
     </div>
     <div class="plant-masterdata-edit-box">
 
-      <details>
+      <details {% if request.args.get('edit') %}open{% endif %}>
         <summary>Pflanzendaten ändern</summary>
         <form method="post" action="/plants/{{ plant.id }}/masterdata" id="plant-masterdata-form" class="grid mt-75">
           <fieldset class="form-section">
