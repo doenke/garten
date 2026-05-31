@@ -1,7 +1,7 @@
 import os
 import time
 import re
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 import requests
 from functools import wraps
@@ -10,7 +10,7 @@ from flask import Blueprint, current_app, g, render_template, request, redirect,
 from .models import db, User, Location, Plant, PlantPhoto, PlantNote, GardenMap, TimelineEntry, LightNeed, SoilProperty, PlantDatabaseIdentifier, plant_soil_property
 from .services.timeline_service import save_uploaded_attachment, set_single_title_entry, delete_timeline_entry, build_unique_upload_name
 from .taxonomy import service as taxonomy_service
-from .taxonomy.catalogs import get_database_catalogs
+from .taxonomy.catalogs import get_database_catalog_by_key, get_database_catalogs
 from .taxonomy.resolvers.base import normalize_scientific_name_for_lookup
 
 main_bp = Blueprint('main', __name__)
@@ -61,6 +61,40 @@ LIGHT_NEED_KEY_TO_LABEL = {item['key']: item['label'] for item in LIGHT_NEED_OPT
 LIGHT_NEED_ICON_BY_KEY = {item['key']: item['icon'] for item in LIGHT_NEED_OPTIONS}
 
 
+def _title_text_from_html(page_html):
+    if not page_html:
+        return None
+    match = re.search(r'<title[^>]*>(.*?)</title>', page_html, flags=re.IGNORECASE | re.DOTALL)
+    if not match:
+        return None
+    title = re.sub(r'\s+', ' ', match.group(1)).strip()
+    title = re.sub(r'\s*[-|–—]\s*NaturaDB\s*$', '', title, flags=re.IGNORECASE).strip()
+    return title or None
+
+
+def _naturadb_common_name_from_slug(slug):
+    slug = (slug or '').strip().strip('/')
+    if not slug:
+        return None, []
+    catalog = get_database_catalog_by_key('naturadb')
+    if not catalog:
+        return None, []
+    url = (catalog.record_url_template or '').replace('{id}', quote(slug, safe='/'))
+    try:
+        response = requests.get(url, timeout=6)
+        response.raise_for_status()
+    except requests.RequestException:
+        return None, [url]
+    title = _title_text_from_html(response.text or '')
+    if not title:
+        return None, [url]
+    scientific = normalize_scientific_name_for_lookup(slug.replace('-', ' ')) or ''
+    name = title
+    if scientific:
+        name = re.sub(rf'\s*\(?\b{re.escape(scientific)}\b\)?\s*$', '', name, flags=re.IGNORECASE).strip(' -–—|()')
+    return (name or title), [url]
+
+
 def _guess_common_name_from_text(scientific_name, text):
     if not text:
         return None
@@ -80,8 +114,15 @@ def _guess_common_name_from_text(scientific_name, text):
 
 
 
-def _lookup_common_name_from_web(scientific_name, language_code='de'):
+def _lookup_common_name_from_web(scientific_name, language_code='de', naturadb_id=None, wikipedia_id=None):
     query = (scientific_name or '').strip()
+    wikipedia_id = (wikipedia_id or '').strip()
+    naturadb_id = (naturadb_id or '').strip()
+    if naturadb_id:
+        common_name, sources = _naturadb_common_name_from_slug(naturadb_id)
+        if common_name:
+            return common_name, sources
+
     normalized_query = normalize_scientific_name_for_lookup(query)
     language = (language_code or 'de').strip().lower()
     if not query:
@@ -114,6 +155,28 @@ def _lookup_common_name_from_web(scientific_name, language_code='de'):
             return response.json().get('query', {}).get('search', [])
         except requests.RequestException:
             return []
+
+    if wikipedia_id:
+        page_slug = quote(unquote(wikipedia_id).replace(' ', '_'), safe=':_()-,.%')
+        sources.append(f'{base_domain}/wiki/{page_slug}')
+        try:
+            summary_response = requests.get(
+                f'{summary_url}/{page_slug}',
+                timeout=6,
+            )
+            summary_response.raise_for_status()
+            summary_data = summary_response.json()
+            extract = (summary_data.get('extract') or '').strip()
+            title = (summary_data.get('title') or '').strip()
+        except requests.RequestException:
+            extract = ''
+            title = ''
+        common_name = _guess_common_name_from_text(normalized_query or query, extract)
+        normalized_title = normalize_scientific_name_for_lookup(title) or title
+        if not common_name and title and normalized_title.lower() != (normalized_query or query).lower():
+            common_name = title
+        if common_name:
+            return common_name, list(dict.fromkeys(sources))
 
     search_results = _search(query)
     if not search_results and normalized_query and normalized_query.lower() != query.lower():
@@ -932,13 +995,20 @@ def suggest_common_name(plant_id):
     started_at = time.perf_counter()
     payload = request.get_json(silent=True) or {}
     name_value = (payload.get('name') or plant.name or '').strip()
+    naturadb_id = (payload.get('naturadb_id') or '').strip()
+    wikipedia_id = (payload.get('wikipedia_id') or '').strip()
     trace_id = f"magic-common-{plant_id}-{int(time.time() * 1000)}"
     if not name_value:
         current_app.logger.info('[%s] common-name lookup aborted: missing source name', trace_id)
         return jsonify({'ok': False, 'error': 'Bitte zuerst einen Namen eingeben.', 'debug': {'trace_id': trace_id}}), 400
 
     lookup_language = current_app.config.get('COMMON_NAME_LOOKUP_LANG', 'de')
-    common_name, sources = _lookup_common_name_from_web(name_value, language_code=lookup_language)
+    common_name, sources = _lookup_common_name_from_web(
+        name_value,
+        language_code=lookup_language,
+        naturadb_id=naturadb_id,
+        wikipedia_id=wikipedia_id,
+    )
     if not common_name:
         duration_ms = round((time.perf_counter() - started_at) * 1000, 1)
         current_app.logger.info('[%s] common-name lookup failed for "%s" (%sms, sources=%s)', trace_id, name_value, duration_ms, len(sources or []))

@@ -10,6 +10,7 @@ from app.taxonomy.resolvers.naturadb import NaturaDbResolver
 from app.taxonomy.resolvers.passthrough import SearchQueryPassthroughResolver
 from app.taxonomy.resolvers.powo import PowoResolver
 from app.taxonomy.resolvers.wfo import WfoResolver
+from app.taxonomy.resolvers.wikipedia import GermanWikipediaResolver
 
 
 class TaxonomyRegistryTest(unittest.TestCase):
@@ -21,6 +22,7 @@ class TaxonomyRegistryTest(unittest.TestCase):
             'floraweb': FlorawebResolver,
             'naturadb': NaturaDbResolver,
             'mein_schoener_garten': MeinSchoenerGartenResolver,
+            'wikipedia_de': GermanWikipediaResolver,
             'botanikus': SearchQueryPassthroughResolver,
         }
 
@@ -72,6 +74,23 @@ class TaxonomyResolverConfigTest(unittest.TestCase):
         self.assertEqual(config['prefer_statuses'], {'ACCEPTED'})
         self.assertEqual(config['kingdom'], 'Plantae')
         self.assertEqual(config['search_url_template'], catalog.search_url_template)
+
+    def test_wikipedia_resolver_external_call_uses_api_with_search_query(self):
+        catalog = DatabaseCatalogConfig(
+            key='wikipedia_de',
+            label='Deutsche Wikipedia',
+            enabled=True,
+            record_url_template='https://de.wikipedia.org/wiki/{id}',
+            search_url_template='https://de.wikipedia.org/w/index.php?search={q}',
+        )
+        resolver = GermanWikipediaResolver()
+        config = resolver.build_config(catalog)
+
+        call = resolver.debug_call('Phlox paniculata', config)
+
+        self.assertEqual(call.url, 'https://de.wikipedia.org/w/api.php')
+        self.assertEqual(call.query['srsearch'], 'Phlox paniculata')
+        self.assertEqual(call.query['list'], 'search')
 
 
 if __name__ == '__main__':

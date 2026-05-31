@@ -49,6 +49,13 @@ _DEFAULT_DATABASE_CATALOGS = (
         icon_url='https://www.naturadb.de/favicon.ico',
     ),
     DatabaseCatalogConfig(
+        key='wikipedia_de',
+        label='Deutsche Wikipedia',
+        record_url_template='https://de.wikipedia.org/wiki/{id}',
+        search_url_template='https://de.wikipedia.org/w/index.php?search={q}',
+        icon_url='https://de.wikipedia.org/favicon.ico',
+    ),
+    DatabaseCatalogConfig(
         key='mein_schoener_garten',
         label='Mein schöner Garten',
         record_url_template='https://www.mein-schoener-garten.de/pflanzen/{id}',
