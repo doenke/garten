@@ -1,6 +1,3 @@
-from .url_templates import config_from_search_url_template
-
-
 _RESOLVERS = []
 
 
@@ -25,14 +22,3 @@ def get_resolver_for_catalog(catalog):
 
 def iter_resolvers():
     return iter(tuple(_RESOLVERS))
-
-
-def build_html_search_config(catalog, defaults):
-    """Compatibility wrapper for older callers.
-
-    New resolver code uses ``TaxonomyResolver.build_config`` and
-    ``config_from_search_url_template`` directly.
-    """
-    config = config_from_search_url_template(getattr(catalog, 'search_url_template', None), defaults)
-    config['catalog_key'] = catalog.key
-    return config
