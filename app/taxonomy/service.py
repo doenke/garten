@@ -3,7 +3,7 @@ from typing import Mapping
 
 from . import registry
 from . import resolvers  # noqa: F401 - import triggers static resolver registration
-from .resolvers.base import ResolverRequest, ResolverResult
+from .resolvers.base import ResolverResult
 
 
 @dataclass(frozen=True)
@@ -41,29 +41,6 @@ class TaxonomySuggestion:
         }
 
 
-def resolver_config_for_catalog(catalog):
-    taxonomy_resolver = registry.get_resolver_for_catalog(catalog)
-    if not taxonomy_resolver:
-        return {'catalog_key': catalog.key, 'mode': 'none'}
-    return taxonomy_resolver.build_config(catalog)
-
-
-def _resolver_for_key(catalog_key):
-    for resolver in registry.iter_resolvers():
-        if resolver.key == catalog_key:
-            return resolver
-    return None
-
-
-def resolve_taxonomy_id_for_catalog(catalog_key, scientific_name, resolver=None):
-    config = dict(resolver or {'catalog_key': catalog_key})
-    config.setdefault('catalog_key', catalog_key)
-    taxonomy_resolver = _resolver_for_key(catalog_key)
-    if not taxonomy_resolver:
-        return None
-    return taxonomy_resolver.resolve(scientific_name, config).taxonomy_id
-
-
 def resolve_for_catalog(catalog, scientific_name):
     taxonomy_resolver = registry.get_resolver_for_catalog(catalog)
     if not taxonomy_resolver:
@@ -97,20 +74,3 @@ def suggest_for_all_enabled(scientific_name, catalogs):
         unavailable_catalogs=unavailable,
         resolver_results=resolver_results,
     )
-
-
-def suggest_ids(scientific_name, catalogs):
-    return suggest_for_all_enabled(scientific_name, catalogs)
-
-
-def external_resolver_endpoint(catalog_key):
-    taxonomy_resolver = _resolver_for_key(catalog_key)
-    if not taxonomy_resolver:
-        return None
-    if hasattr(taxonomy_resolver, 'default_config'):
-        config = taxonomy_resolver.default_config()
-    else:
-        config = {'mode': getattr(taxonomy_resolver, 'mode', taxonomy_resolver.key)}
-    config['catalog_key'] = catalog_key
-    call = taxonomy_resolver.external_call(ResolverRequest(catalog_key, '', config))
-    return call.url if call else None

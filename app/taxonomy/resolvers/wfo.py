@@ -54,9 +54,3 @@ class WfoResolver(HtmlSearchResolver):
         if page_html is None:
             return None
         return extract_wfo_taxon_slug(page_html)
-
-
-def wfo_taxonomy_id(scientific_name, config):
-    from .base import ResolverRequest
-
-    return WfoResolver().suggest_id(ResolverRequest('wfo', scientific_name, config))
